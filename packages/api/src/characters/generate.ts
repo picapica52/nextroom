@@ -39,7 +39,7 @@ const LENGTH: Record<PersonaGeneratedField, string> = {
 const instructionsOf = (field: PersonaGeneratedField) =>
 	[
 		"You write one field of a fictional character's settings for a role-play app.",
-		"In the app, the character lives in a world of their own and talks with the user through a video-call device in their room. The settings never describe a relationship with the user.",
+		"In the app, the character lives in a world of their own and talks with the user through a voice-call device in their room. The settings never describe a relationship with the user.",
 		"",
 		`The field is "${field}": ${FIELD_GUIDE[field]}`,
 		"",

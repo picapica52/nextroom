@@ -27,7 +27,7 @@ export const FIELD_GUIDE: Record<keyof Persona, string> = {
 	world:
 		"The world the character lives in: era, place, technology or magic, how its society works.",
 	profile: "Age, position or job, and an outline of who the character is.",
-	appearance: "Hair, eyes, build, clothes: how the character looks on a screen.",
+	appearance: "Hair, eyes, build, clothes: how the character looks.",
 	personality: "What the character is like, and how they treat someone they have just met.",
 	speech:
 		"First-person pronoun, sentence endings, verbal habits, politeness, and a few lines the character says.",
@@ -52,12 +52,12 @@ export const FIELD_GUIDE: Record<keyof Persona, string> = {
 	belongings: "Things the character treasures or always carries, and why they matter.",
 	room: "The room the character lives in: what it is like and where the device sits in it.",
 	device:
-		"What the video-call device in the character's room is in the character's world: its name and form, and how the other person appears on it.",
+		"What the voice-call device in the character's room is in the character's world: its name and form, and how the other person's voice comes through it.",
 };
 
 const INSTRUCTIONS = [
 	"You read source material about a fictional character and write that character's settings for a role-play app.",
-	"In the app, the character lives in a world of their own and talks with the user through a video-call device in their room. The settings never describe a relationship with the user.",
+	"In the app, the character lives in a world of their own and talks with the user through a voice-call device in their room. The settings never describe a relationship with the user.",
 	"",
 	"Fields:",
 	...PERSONA_FIELDS.map((key) => `- ${key}: ${FIELD_GUIDE[key]}`),

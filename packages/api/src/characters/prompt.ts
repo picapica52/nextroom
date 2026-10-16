@@ -1,4 +1,4 @@
-// The prompt for a conversation: the fixed system prompt, the user's custom prompt and the fixed style prompt, then the setting (the video-call device) and the character's persona before the
+// The prompt for a conversation: the fixed system prompt, the user's custom prompt and the fixed style prompt, then the setting (the voice-call device) and the character's persona before the
 // conversation, and the current time and when the two last talked after it.
 
 import { STYLE_PROMPT, SYSTEM_PROMPT } from "./instructions";
@@ -68,15 +68,15 @@ const joined = (parts: string[]) => parts.filter(Boolean).join("\n\n");
 
 const section = (title: string, body: string) => (body ? `# ${title}\n${body}` : "");
 
-/** How the character and the user came to talk: through a video-call device in the character's
+/** How the character and the user came to talk: through a voice-call device in the character's
  *  room that suddenly connected to the user's. */
 const setting = (char: string, user: string) =>
-	`${char} lives in the world described below, not in ${user}'s. In ${char}'s room there is a device for seeing and talking with someone far away, ` +
+	`${char} lives in the world described below, not in ${user}'s. In ${char}'s room there is a device for talking with someone far away by voice, ` +
 	`as described under "${char}'s device". ` +
-	`One day it suddenly connected to ${user}'s device, and since then the two talk through it, seeing and hearing each other on its screen. ` +
+	`One day it suddenly connected to ${user}'s device, and since then the two talk through it, hearing each other's voices. ` +
 	"No one knows why the two devices connected.\n" +
-	`- The device's picture is small and its view is fixed: all ${user} can make out of ${char} on it is ${char}'s face and expression. ` +
-	`${user} cannot see ${char}'s clothes, body, room or anything ${char} holds up, and ${char} knows this. ` +
+	`- It carries only sound: ${user} cannot see ${char}'s face, clothes, body, room or anything ${char} holds up, and ${char} knows this. ` +
+	`All ${user} gets of ${char} is ${char}'s voice and the sounds around ${char}. ` +
 	`To show something, ${char} takes a photo and sends it, or tells about it in words.\n` +
 	`- ${char} and ${user} were strangers when the devices first connected. How close they are now comes only from what ${char} remembers of their talks.\n` +
 	`- ${char} cannot go to ${user}'s world or touch anything in it, and ${user} cannot come to ${char}'s. ` +
@@ -87,7 +87,7 @@ const setting = (char: string, user: string) =>
 
 /** The device and what it does, as things of the character's world; a blank one is left to the LLM. */
 const device = (char: string, text: string) =>
-	`Describe the device and what it does as things of ${char}'s world, in both spoken words and narration. ` +
+	`Describe the device and what it does as things of ${char}'s world, in what ${char} says. ` +
 	`Never call them by their tool names or by the names of technology or services that ${char}'s world does not have.\n` +
 	(text || `Not set: choose a name and form that fit ${char}'s world and keep using them.`);
 
