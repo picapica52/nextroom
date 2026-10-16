@@ -1,32 +1,5 @@
 // Turning a streamed reply into sentences that can be read aloud.
 
-import { type FaceMark, pullFaceTags } from "./face-tags";
-
-const PARTIAL_FACE_TAG = /\[\s*[a-z_]*\s*$/i;
-const LONGEST_FACE_TAG = 40;
-
-/** Takes the face tags (`[smile]`) out of a streamed reply, holding back a tag cut in two. */
-export class FaceTags {
-	private buf = "";
-
-	feed(text: string): { text: string; marks: FaceMark[] } {
-		this.buf += text;
-		const open = this.buf.lastIndexOf("[");
-		const tail = open >= 0 ? this.buf.slice(open) : "";
-		const keep =
-			tail.length < LONGEST_FACE_TAG && PARTIAL_FACE_TAG.test(tail) ? open : this.buf.length;
-		const ready = this.buf.slice(0, keep);
-		this.buf = this.buf.slice(keep);
-		return pullFaceTags(ready);
-	}
-
-	flush(): { text: string; marks: FaceMark[] } {
-		const rest = this.buf;
-		this.buf = "";
-		return pullFaceTags(rest);
-	}
-}
-
 // Only a line break or narration ends a sentence. A line too long to synthesize in one go is cut
 // at the last terminator that fits, then at a comma.
 const TERMINATORS = "。！？!?.…」』）";

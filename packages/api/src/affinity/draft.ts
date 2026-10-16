@@ -36,7 +36,7 @@ interface Draft {
 }
 
 const DRAFT_INSTRUCTIONS = [
-	"You plan a moment in a conversation app where a character talks with the user through a video-call device.",
+	"You plan a moment in a conversation app where a character talks with the user through a voice-call device.",
 	"You get what the character should do, the character's notes on the user, earlier messages (each with an id), and topics already used.",
 	"Pick what the character will bring up, using only what the notes or the messages really say. Never invent past events, promises or things the user said.",
 	"Avoid the topics already used.",

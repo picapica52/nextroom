@@ -49,7 +49,8 @@ export const chatSettingsSchema = z.object({
 	asr_model: z.string(),
 	/** Off: replies are text only, and nothing is synthesized. */
 	tts_enabled: z.boolean(),
-	/** Empty: images cannot be tagged. */
+	/** The Decisions model that tags expression images and chooses the faces in a call. Empty:
+	 *  images cannot be tagged, and the face does not change. */
 	image_tag_model: z.string(),
 	/** OpenRouter's model, for expression images and the image tool. Empty: images cannot be drawn. */
 	image_gen_model: z.string(),

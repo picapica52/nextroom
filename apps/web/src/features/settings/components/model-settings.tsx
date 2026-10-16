@@ -161,8 +161,8 @@ function ImageGenSection({ f: { form, set } }: { f: ChatSettingsForm }) {
 function ImageTagSection({ f: { form, set } }: { f: ChatSettingsForm }) {
 	return (
 		<SettingsSection
-			title="画像のタグ付け"
-			description={<Uses items={["表情画像の「タグを判定」"]} />}
+			title="表情の判定"
+			description={<Uses items={["表情画像の「タグを判定」", "通話中の表情"]} />}
 			className="gap-5"
 		>
 			<ConnectionStatus name="OpenRouter" isSet={form.has_openrouter_api_key} />
@@ -175,7 +175,8 @@ function ImageTagSection({ f: { form, set } }: { f: ChatSettingsForm }) {
 					onChange={(image_tag_model) => set({ image_tag_model })}
 				/>
 				<FieldDescription className="text-xs">
-					画像を読める OpenRouter の Decisions モデルから選びます。未選択ではタグを判定できません。
+					画像を読める OpenRouter の Decisions
+					モデルから選びます。未選択ではタグを判定できず、通話中の表情も変わりません。
 				</FieldDescription>
 			</Field>
 		</SettingsSection>

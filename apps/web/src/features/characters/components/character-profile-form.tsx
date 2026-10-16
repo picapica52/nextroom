@@ -85,7 +85,7 @@ export function CharacterProfileForm({
 					id="ch-appearance"
 					label="見た目"
 					rows={3}
-					placeholder="髪・目・体つき・服装など。地の文で画面に映る姿を書くときに使います"
+					placeholder="髪・目・体つき・服装など。キャラクターが自分の姿を語るときに使います"
 					{...generated("appearance")}
 				/>
 			</SettingsSection>
@@ -206,7 +206,7 @@ export function CharacterProfileForm({
 			</SettingsSection>
 			<SettingsSection
 				title="部屋"
-				description="キャラクターの部屋には、あなたの端末と突然つながったビデオ通話の端末が置いてあります。"
+				description="キャラクターの部屋には、あなたの端末と突然つながった音声通話の端末が置いてあります。"
 				className="gap-5"
 			>
 				<TextField

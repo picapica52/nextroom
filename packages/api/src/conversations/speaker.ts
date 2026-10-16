@@ -1,19 +1,20 @@
 // The reply's sentences spoken one after another while the reply keeps streaming in. Each is
 // synthesized as soon as it is complete and kept in memory (live-turn) for the browser to play;
 // with speech turned off, the sentences only update the reply's text. The first failure stops
-// the rest and aborts `stop`. The face tags the reply wrote decide the faces shown with each
-// sentence (expression.ts).
+// the rest and aborts `stop`. The face shown with each sentence is chosen while the sentences
+// before it are synthesized (expression.ts).
 
 import type { ChatSegment } from "@nextroom/contracts";
 import { speakAs } from "../characters/speak";
 import type { VoiceSettings } from "../engine/voice";
 import type { Job } from "../lib/jobs";
-import type { facePicker } from "./expression";
-import type { FaceMark } from "./face-tags";
+import type { faceChooser } from "./expression";
 import { addSegment, settleSpeech, updateMessage } from "./live-turn";
 import { type SpokenSentence, speakable } from "./speech";
 
 type Faces = NonNullable<ChatSegment["faces"]>;
+
+const NO_FACES: Promise<Faces> = Promise.resolve([]);
 
 interface SpeakerOptions {
 	job: Job;
@@ -23,21 +24,19 @@ interface SpeakerOptions {
 	voice: VoiceSettings;
 	characterId: string | null;
 	/** null: the faces do not change. */
-	pickFace: ReturnType<typeof facePicker> | null;
-	/** The reply's text so far, and the face tags taken out of it. */
+	chooseFace: ReturnType<typeof faceChooser> | null;
+	/** The reply's text so far. */
 	text: () => string;
-	marks: FaceMark[];
 	stop: AbortController;
 }
 
 export function createSpeaker(options: SpeakerOptions) {
-	const { job, sessionId, replyId, voice, characterId, pickFace, text, marks, stop } = options;
+	const { job, sessionId, replyId, voice, characterId, chooseFace, text, stop } = options;
 	let spokenCount = 0;
 	let speaking = Promise.resolve();
 	let speakError: unknown = null;
-	let nextMark = 0;
 
-	const speak = async (sentence: SpokenSentence, faces: Faces) => {
+	const speak = async (sentence: SpokenSentence, faces: Promise<Faces>) => {
 		job.checkCancelled();
 		if (!options.ttsEnabled) {
 			updateMessage(sessionId, replyId, { text: text() });
@@ -48,36 +47,22 @@ export function createSpeaker(options: SpeakerOptions) {
 		updateMessage(sessionId, replyId, { status: "speaking", text: text() });
 		job.update(null, `音声合成中: ${spoken.slice(0, 20)}`);
 		const speech = await speakAs(characterId, voice, spoken, job.signal);
+		const chosen = await faces;
 		const segment = addSegment(sessionId, spoken, sentence, speech.wav, speech.duration);
 		settleSpeech(sessionId, sentence.end);
-		if (segment && faces.length) segment.faces = faces;
+		if (segment && chosen.length) segment.faces = chosen;
 		spokenCount++;
 		updateMessage(sessionId, replyId, { text: text() });
-	};
-	// The tags up to the sentence's end: those before it show from its start, those inside it from
-	// where they are. A first tag inside it leaves the face before it as it was. The tags of a
-	// sentence with nothing to say are left to the next one.
-	const facesOf = (sentence: SpokenSentence): Faces => {
-		const faces: Faces = [];
-		if (!pickFace || !speakable(sentence.text)) return faces;
-		for (; nextMark < marks.length; nextMark++) {
-			const mark = marks[nextMark];
-			if (!mark || mark.at >= sentence.end) break;
-			const expression = pickFace(mark.tag);
-			if (expression === undefined) continue;
-			const length = sentence.end - sentence.start;
-			const at = Math.min(Math.max((mark.at - sentence.start) / length, 0), 1);
-			if (faces.at(-1)?.at === at) faces.pop();
-			faces.push({ at, expression });
-		}
-		if (faces.length && (faces[0]?.at ?? 0) > 0) faces.unshift({ at: 0 });
-		return faces;
 	};
 
 	return {
 		queue(found: SpokenSentence[]) {
 			for (const sentence of found) {
-				const faces = facesOf(sentence);
+				// Asked at once, so the answer is back by the time the sentence is synthesized.
+				const faces =
+					chooseFace && options.ttsEnabled && speakable(sentence.text)
+						? chooseFace(sentence, text())
+						: NO_FACES;
 				speaking = speaking
 					.then(() => (speakError ? undefined : speak(sentence, faces)))
 					.catch((error) => {

@@ -1,5 +1,5 @@
 // Characters, with this app's own schema: a character lives in a world of its own, and talks
-// with the user through a video-call device in its room that suddenly connected to theirs.
+// with the user through a voice-call device in its room that suddenly connected to theirs.
 
 import { z } from "zod";
 

@@ -42,7 +42,7 @@ function photoTool(settings: AgentSettings) {
 		description:
 			"Take a photo with your device, where you are right now, and send it to the user: a selfie, what you are eating, " +
 			"the view, your outfit, and so on. The photo is shown to the user with your reply. " +
-			"The device's screen shows the user only your face, so this is how you show them anything else.",
+			"The device carries only your voice, so this is how you show the user anything.",
 		inputSchema: z.object({
 			scene: z
 				.string()
