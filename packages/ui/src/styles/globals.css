@@ -26,6 +26,8 @@
 	--animate-blink: blink 1s steps(1) infinite;
 	--animate-eq: eq 0.6s ease-in-out infinite alternate;
 	--animate-bob: bob 0.5s var(--ease-smooth) infinite alternate;
+	/* 通話: キャラクターが話している間、顔の丸から広がる輪 */
+	--animate-ripple: ripple 1.8s ease-out infinite;
 
 	@keyframes rise {
 		from {
@@ -95,6 +97,16 @@
 	@keyframes bob {
 		to {
 			transform: translateY(-2px);
+		}
+	}
+	@keyframes ripple {
+		from {
+			transform: scale(1);
+			opacity: 0.6;
+		}
+		to {
+			transform: scale(1.3);
+			opacity: 0;
 		}
 	}
 }

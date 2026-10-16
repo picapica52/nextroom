@@ -19,7 +19,7 @@ import { usePushToTalk } from "../voice/push-to-talk";
 import { useReplyVoice } from "../voice/use-reply-voice";
 import { BrowserDialog } from "./browser-dialog";
 import { CallCaptions, ReplyReveal } from "./call-captions";
-import { CallStage } from "./call-stage";
+import { CallStage, type CallState } from "./call-stage";
 import { ChatBottomBar } from "./chat-bottom-bar";
 import { ChatEmptyState } from "./chat-empty-state";
 import { ChatListPane } from "./chat-list-pane";
@@ -111,7 +111,14 @@ export default function ChatPage() {
 	const { reply } = reading;
 	const playing = reading.voice?.playing ?? null;
 	const steps = (reply?.steps ?? []).filter((s) => !s.parent).slice(-SHOWN_STEPS);
-	const speaking = segments.playing || activeTurn?.status === "speaking";
+	const callState: CallState =
+		talk.state === "holding"
+			? "listening"
+			: segments.playing || activeTurn?.status === "speaking"
+				? "speaking"
+				: busy
+					? "thinking"
+					: "idle";
 	const subtitle = talkedSince(messages);
 
 	const log = (
@@ -167,8 +174,10 @@ export default function ChatPage() {
 						<CallStage
 							characterId={characterId}
 							character={character.data}
+							name={name}
 							face={reading.face}
-							speaking={speaking}
+							state={callState}
+							micLevel={micLevel}
 							steps={steps}
 							onLog={layout.showLog}
 						>
