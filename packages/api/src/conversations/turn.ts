@@ -11,8 +11,8 @@
 // is complete and held in memory (live-turn) so the browser can start playing before the
 // reply ends; the audio is not saved with the conversation. Only the call screen asks for
 // speech; in the chat, or with speech turned off in the settings, the sentences only update
-// the reply's text. In a call, the reply writes face tags that pick the face the call screen
-// shows with each sentence (expression.ts); they are taken out of the reply in any case.
+// the reply's text. In a call, the Decisions API chooses the face the call screen shows with
+// each sentence (expression.ts).
 
 import {
 	AFFINITY_EVENT_LABELS,
@@ -34,6 +34,7 @@ import {
 } from "../affinity/turn";
 import { conversationPrompt } from "../characters/prompt";
 import { getCharacter } from "../characters/store";
+import { canDecide } from "../decisions/client";
 import type { VoiceSettings } from "../engine/voice";
 import { BadRequestError, Cancelled, ConflictError, messageOf } from "../lib/errors";
 import { type Job, queue } from "../lib/jobs";
@@ -47,8 +48,7 @@ import { connectionOf, type LlmConnection } from "../mastra/providers";
 import { TurnReporter } from "../mastra/steps";
 import { loadAgentSettings } from "../settings/agent";
 import { loadSettings, speaksWith } from "../settings/chat";
-import { faceInstruction, facePicker, faceTagsOf } from "./expression";
-import type { FaceMark } from "./face-tags";
+import { faceChooser, faceTagsOf } from "./expression";
 import { lastTalkedAt, recordTurn } from "./history";
 import { MAX_TURN_IMAGES, saveChatImage, withImageNote } from "./images";
 import {
@@ -63,7 +63,7 @@ import {
 } from "./live-turn";
 import { loadSession, saveSession } from "./sessions";
 import { createSpeaker } from "./speaker";
-import { FaceTags, SpokenSentences } from "./speech";
+import { SpokenSentences } from "./speech";
 import { transcribeTurn } from "./transcribe";
 
 /** Everything a turn runs with, as it was when the turn was submitted. */
@@ -196,7 +196,7 @@ async function runTurn(job: Job, plan: TurnPlan) {
 	const stop = new AbortController();
 	const onCancel = () => stop.abort();
 	job.signal.addEventListener("abort", onCancel);
-	const reply = replyWriter(job, plan, turn.pickFace, stop);
+	const reply = replyWriter(job, plan, turn.chooseFace, stop);
 	try {
 		await streamTurn(plan, turn, userText, reply, stop.signal);
 		return await finishTurn(job, plan, turn, reply);
@@ -246,7 +246,7 @@ interface PreparedTurn {
 	resourceId: string;
 	affinity: AffinityTurn;
 	/** null: the faces do not change. */
-	pickFace: ReturnType<typeof facePicker> | null;
+	chooseFace: ReturnType<typeof faceChooser> | null;
 }
 
 /** The agent's context for the reply, and the memory resource it is remembered under. */
@@ -272,12 +272,17 @@ async function prepareTurn(
 		signal: job.signal,
 	});
 	prompt.postHistory = [prompt.postHistory, affinity.note].join("\n\n");
-	const faceTags = plan.speaks ? affinity.faces(faceTagsOf(character.expressions)) : [];
-	const pickFace = faceTags.length ? facePicker(character.expressions) : null;
-	if (faceTags.length)
-		prompt.postHistory = [prompt.postHistory, faceInstruction(faceTags)]
-			.filter(Boolean)
-			.join("\n\n");
+	const faceTags =
+		plan.speaks && canDecide() ? affinity.faces(faceTagsOf(character.expressions)) : [];
+	const chooseFace = faceTags.length
+		? faceChooser({
+				expressions: character.expressions,
+				tags: faceTags,
+				charName: character.persona.name,
+				userText: plan.opening ? "" : userText,
+				signal: job.signal,
+			})
+		: null;
 	const reporter = new TurnReporter(sessionId, job.signal, (steps, status) =>
 		updateMessage(sessionId, replyId, { steps, ...(status ? { status } : {}) }),
 	);
@@ -297,22 +302,21 @@ async function prepareTurn(
 		},
 		resourceId,
 		affinity,
-		pickFace,
+		chooseFace,
 	};
 }
 
-/** The reply as it streams in: its text without thinking and face tags (where the tags were is
- *  kept in `marks`), and its sentences queued to be spoken. */
+/** The reply as it streams in: its text without thinking, and its sentences queued to be
+ *  spoken. */
 function replyWriter(
 	job: Job,
 	plan: TurnPlan,
-	pickFace: PreparedTurn["pickFace"],
+	chooseFace: PreparedTurn["chooseFace"],
 	stop: AbortController,
 ) {
 	const think = new ThinkFilter();
-	const tags = new FaceTags();
-	const marks: FaceMark[] = [];
-	// Narration (`*…*`) is shown in the reply but not read aloud.
+	// Narration (`*…*`), in older replies or written against the instructions, is shown in the
+	// reply but not read aloud.
 	const sentences = new SpokenSentences();
 	let full = "";
 	const speaker = createSpeaker({
@@ -322,18 +326,13 @@ function replyWriter(
 		ttsEnabled: plan.speaks,
 		voice: plan.voice,
 		characterId: plan.sessionId,
-		pickFace,
+		chooseFace,
 		text: () => full,
-		marks,
 		stop,
 	});
 	// No leading blank, so the places of the sentences hold once the reply is trimmed.
-	const add = (visible: { text: string; marks: FaceMark[] }) => {
-		const text = full ? visible.text : visible.text.trimStart();
-		const cut = visible.text.length - text.length;
-		for (const mark of visible.marks)
-			marks.push({ at: full.length + Math.max(mark.at - cut, 0), tag: mark.tag });
-		full += text;
+	const add = (text: string) => {
+		full += full ? text : text.trimStart();
 	};
 	return {
 		speaker,
@@ -341,13 +340,12 @@ function replyWriter(
 			return full;
 		},
 		feed(piece: string) {
-			add(tags.feed(think.feed(piece)));
+			add(think.feed(piece));
 			speaker.queue(sentences.feed(full));
 		},
 		/** Where a run of text ends: what was held back is complete now. */
 		flush() {
-			add(tags.feed(think.flush()));
-			add(tags.flush());
+			add(think.flush());
 			speaker.queue(sentences.flush(full));
 		},
 	};
