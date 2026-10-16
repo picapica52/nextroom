@@ -1,0 +1,13 @@
+{
+	"extends": "@nextroom/config/tsconfig.base.json",
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"lib": ["ES2023", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
+		"noEmit": true,
+		"types": ["vite/client", "node"],
+		"paths": {
+			"@/*": ["./src/*"]
+		}
+	},
+	"include": ["src", "vite.config.ts"]
+}

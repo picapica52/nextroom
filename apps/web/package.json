@@ -1,0 +1,38 @@
+{
+	"name": "@nextroom/web",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"serve": "vite preview",
+		"check-types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@nextroom/contracts": "workspace:*",
+		"@nextroom/ui": "workspace:*",
+		"@headless-tree/core": "^1.7.0",
+		"@headless-tree/react": "^1.7.0",
+		"@tanstack/react-query": "^5.104.1",
+		"hono": "catalog:",
+		"lucide-react": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:",
+		"react-router-dom": "^7.18.4",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@nextroom/api": "workspace:*",
+		"@nextroom/config": "workspace:*",
+		"@tailwindcss/vite": "catalog:",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@vitejs/plugin-basic-ssl": "2.3.0",
+		"@vitejs/plugin-react": "^6.1.1",
+		"tailwindcss": "catalog:",
+		"typescript": "catalog:",
+		"vite": "^8.3.0"
+	}
+}

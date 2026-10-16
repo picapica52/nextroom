@@ -1,0 +1,302 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@source "../../../../apps/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+/* ダークテーマは持たない。.dark は付かないので dark: は効かない。 */
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+	--font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+	/* smooth: 色の変化・出現 / snap: 位置や大きさの変化 / spring: スイッチなど小さな部品 */
+	--ease-smooth: cubic-bezier(0.22, 0.8, 0.24, 1);
+	--ease-snap: cubic-bezier(0.65, 0, 0.35, 1);
+	--ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+
+	--animate-rise: rise 240ms var(--ease-smooth) both;
+	--animate-pop: pop 220ms var(--ease-spring) both;
+	--animate-slide-in: slide-in 200ms var(--ease-smooth) both;
+	--animate-halo: halo 1.4s var(--ease-smooth) infinite;
+	/* 会話: 吹き出しは弾んで、地の文はにじんで現れる */
+	--animate-bubble: bubble 320ms var(--ease-spring) both;
+	--animate-ink: ink 420ms var(--ease-smooth) both;
+	--animate-hop: hop 1s var(--ease-smooth) infinite;
+	--animate-blink: blink 1s steps(1) infinite;
+	--animate-eq: eq 0.6s ease-in-out infinite alternate;
+	--animate-bob: bob 0.5s var(--ease-smooth) infinite alternate;
+
+	@keyframes rise {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+	}
+	@keyframes pop {
+		from {
+			opacity: 0;
+			transform: scale(0.6);
+		}
+	}
+	@keyframes slide-in {
+		from {
+			opacity: 0;
+			transform: translateX(-4px);
+		}
+	}
+	@keyframes halo {
+		from {
+			transform: scale(1);
+			opacity: 0.5;
+		}
+		to {
+			transform: scale(1.7);
+			opacity: 0;
+		}
+	}
+	@keyframes bubble {
+		from {
+			opacity: 0;
+			transform: scale(0.82) translateY(4px);
+		}
+	}
+	@keyframes ink {
+		from {
+			opacity: 0;
+			filter: blur(3px);
+			letter-spacing: 0.12em;
+		}
+	}
+	@keyframes hop {
+		0%,
+		60%,
+		100% {
+			opacity: 0.5;
+		}
+		30% {
+			opacity: 1;
+			transform: translateY(-4px);
+		}
+	}
+	@keyframes blink {
+		50% {
+			opacity: 0;
+		}
+	}
+	@keyframes eq {
+		from {
+			height: 6px;
+		}
+		to {
+			height: 10px;
+		}
+	}
+	@keyframes bob {
+		to {
+			transform: translateY(-2px);
+		}
+	}
+}
+
+/* 実行中の進み具合バーに流れる斜線 */
+@utility progress-stripes {
+	background-image: repeating-linear-gradient(
+		-45deg,
+		transparent 0 6px,
+		rgb(43 37 64 / 14%) 6px 12px
+	);
+	background-size: 17px 17px;
+	animation: stripes 1s linear infinite;
+}
+
+/* 透過画像の下に敷く市松模様 */
+@utility bg-checker {
+	background-color: var(--background);
+	background-image: conic-gradient(
+		rgb(43 37 64 / 9%) 0 25%,
+		transparent 0 50%,
+		rgb(43 37 64 / 9%) 0 75%,
+		transparent 0
+	);
+	background-size: 16px 16px;
+}
+
+@keyframes stripes {
+	to {
+		background-position: 17px 0;
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-canvas text-sm font-medium text-foreground;
+	}
+	html {
+		@apply font-sans;
+		color-scheme: light;
+	}
+	html {
+		height: 100dvh;
+	}
+	html,
+	body,
+	#root {
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+	body,
+	#root {
+		height: 100%;
+	}
+	body {
+		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+			env(safe-area-inset-left);
+	}
+	h1,
+	h2,
+	h3 {
+		font-weight: 800;
+	}
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
+	}
+	a:not([data-slot]) {
+		@apply font-bold text-primary no-underline transition-colors duration-120 ease-smooth hover:text-primary-hover;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 1ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 1ms !important;
+			transition-delay: 0s !important;
+		}
+	}
+}
+
+@theme inline {
+	--font-heading: var(--font-sans);
+	--font-sans: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic", sans-serif;
+	--font-narration: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+	--shadow-puff-sm: 0 2px 0 0 var(--puff);
+	--shadow-puff: 0 3px 0 0 var(--puff);
+	--shadow-puff-lg: 0 4px 0 0 var(--puff);
+	--shadow-float: 0 4px 0 0 var(--puff), 0 12px 28px rgb(43 37 64 / 8%);
+	--color-pastel-yellow: var(--pastel-yellow);
+	--color-pastel-lilac: var(--pastel-lilac);
+	--color-pastel-mint: var(--pastel-mint);
+	--color-pastel-yellow-edge: var(--pastel-yellow-edge);
+	--color-pastel-yellow-shadow: var(--pastel-yellow-shadow);
+	--color-pastel-lilac-edge: var(--pastel-lilac-edge);
+	--color-pastel-lilac-shadow: var(--pastel-lilac-shadow);
+	--color-pastel-mint-edge: var(--pastel-mint-edge);
+	--color-pastel-mint-shadow: var(--pastel-mint-shadow);
+	--color-pastel-peach: var(--pastel-peach);
+	--color-puff: var(--puff);
+	--color-pastel-sky: var(--pastel-sky);
+	--color-canvas: var(--canvas);
+	--color-hover: var(--hover);
+	--color-pressed: var(--pressed);
+	--color-selected: var(--selected);
+	--color-selected-foreground: var(--selected-foreground);
+	--color-border-strong: var(--border-strong);
+	--color-primary-hover: var(--primary-hover);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+	--color-info: var(--info);
+	--color-mode-none: var(--mode-none);
+	--color-mode-none-bg: var(--mode-none-bg);
+	--color-mode-clone: var(--mode-clone);
+	--color-mode-clone-bg: var(--mode-clone-bg);
+	--color-mode-si: var(--mode-si);
+	--color-mode-si-bg: var(--mode-si-bg);
+	--color-mode-lora: var(--mode-lora);
+	--color-mode-lora-bg: var(--mode-lora-bg);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+	--color-foreground: var(--foreground);
+	--color-background: var(--background);
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * マシュマロ。線は淡い紫の太線で、影は真下に落ちる淡い色（shadow-puff）。浮く部品は shadow-float。
+ * 面は白、地は薄紫。色はパステルの平塗りで、主要な操作は黄、選択中は淡い黄。
+ */
+:root {
+	--pastel-yellow: #ffe58a;
+	--pastel-yellow-edge: #f2cf55;
+	--pastel-yellow-shadow: #e9be2e;
+	--pastel-lilac: #d9d3ff;
+	--pastel-lilac-edge: #bfb6f2;
+	--pastel-lilac-shadow: #aea3ea;
+	--puff: #e4def6;
+	--pastel-mint: #bff0d4;
+	--pastel-mint-edge: #96dcb5;
+	--pastel-mint-shadow: #7fcfa3;
+	--pastel-peach: #ffc9b3;
+	--pastel-sky: #cfe3ff;
+	--canvas: #f3f0fb;
+	--background: #ffffff;
+	--foreground: #2b2540;
+	--card: #ffffff;
+	--card-foreground: #2b2540;
+	--popover: #ffffff;
+	--popover-foreground: #2b2540;
+	--primary: #6550e0;
+	--primary-hover: #5440c8;
+	--primary-foreground: #ffffff;
+	--secondary: #ece8f8;
+	--secondary-foreground: #2b2540;
+	--muted: #f3f0fb;
+	--muted-foreground: #554d6e;
+	--accent: #ece8f8;
+	--accent-foreground: #2b2540;
+	--hover: rgb(43 37 64 / 6%);
+	--pressed: rgb(43 37 64 / 11%);
+	--selected: #fff1b8;
+	--selected-foreground: #2b2540;
+	--destructive: #c43a2f;
+	--border: #e4def6;
+	--border-strong: #b9aee0;
+	--input: #e0daf3;
+	--ring: #6550e0;
+	--success: #1d7a4f;
+	--warning: #9a5408;
+	--info: #6550e0;
+	--mode-none: #4a4362;
+	--mode-none-bg: #ece8f8;
+	--mode-clone: #6b3fc2;
+	--mode-clone-bg: #ebe4ff;
+	--mode-si: #3346d3;
+	--mode-si-bg: #e3e7ff;
+	--mode-lora: #a84c0c;
+	--mode-lora-bg: #ffe6d6;
+	--radius: 0.875rem;
+}

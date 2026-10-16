@@ -1,0 +1,30 @@
+{
+	"name": "Nextroom",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+	"runArgs": ["--add-host=host.docker.internal:host-gateway"],
+	"remoteUser": "vscode",
+	"containerEnv": {
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+	},
+	"mounts": [
+		"source=character-agent-claude,target=/home/vscode/.claude,type=volume",
+		"source=character-agent-gh,target=/home/vscode/.config/gh,type=volume"
+	],
+	"forwardPorts": [8767, 8768, 5175],
+	"portsAttributes": {
+		"8767": { "label": "server (HTTP)" },
+		"8768": { "label": "server (HTTPS)", "protocol": "https" },
+		"5175": { "label": "web (Vite)", "protocol": "https" }
+	},
+	"postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude /home/vscode/.config && bun install",
+	"customizations": {
+		"vscode": {
+			"extensions": ["biomejs.biome", "anthropic.claude-code"]
+		}
+	}
+}

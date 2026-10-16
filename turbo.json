@@ -1,0 +1,34 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"ui": "tui",
+	"agentGuidance": false,
+	"envMode": "loose",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"check-types": {
+			"dependsOn": ["^check-types"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"start": {
+			"cache": false,
+			"persistent": true
+		}
+	},
+	"globalEnv": [
+		"CI",
+		"NODE_ENV",
+		"PORT",
+		"HTTPS_PORT",
+		"DATA_DIR",
+		"WEB_DIST",
+		"VITE_SERVER_URL",
+		"_VARLOCK_ENV_KEY"
+	],
+	"globalDependencies": [".env*", "apps/*/.env*", "packages/*/.env*"]
+}

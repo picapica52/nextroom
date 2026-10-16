@@ -1,0 +1,6 @@
+{
+	"extends": "@nextroom/config/tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true
+	}
+}

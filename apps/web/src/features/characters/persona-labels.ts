@@ -1,0 +1,26 @@
+import type { Persona } from "@nextroom/contracts";
+
+export const FIELD_LABELS: Record<keyof Persona, string> = {
+	name: "名前",
+	nickname: "呼び名",
+	world: "世界観",
+	profile: "プロフィール",
+	appearance: "見た目",
+	personality: "性格",
+	speech: "喋り方",
+	habits: "癖・しぐさ",
+	likes: "好きなもの・苦手なもの",
+	values: "価値観",
+	goals: "目標・夢",
+	worries: "悩み・弱み",
+	secret: "秘密",
+	backstory: "過去",
+	relationships: "交友関係",
+	love: "恋愛観",
+	daily: "生活パターン",
+	recent: "近況",
+	surroundings: "住んでいる場所",
+	belongings: "大事な持ち物",
+	room: "部屋の様子",
+	device: "端末",
+};

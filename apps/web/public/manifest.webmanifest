@@ -1,0 +1,10 @@
+{
+	"name": "Nextroom",
+	"short_name": "Nextroom",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f3f0fb",
+	"theme_color": "#f3f0fb",
+	"icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

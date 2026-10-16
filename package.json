@@ -1,0 +1,47 @@
+{
+	"name": "nextroom",
+	"private": true,
+	"workspaces": {
+		"packages": [
+			"apps/*",
+			"packages/*"
+		],
+		"catalog": {
+			"zod": "^4.5.4",
+			"typescript": "^6.0.3",
+			"@types/bun": "^1.4.2",
+			"varlock": "1.18.0",
+			"hono": "^4.13.7",
+			"lucide-react": "^1.51.0",
+			"react": "^19.2.8",
+			"react-dom": "^19.2.8",
+			"@types/react": "^19.2.18",
+			"@types/react-dom": "^19.2.7",
+			"tailwindcss": "^4.3.3",
+			"@types/node": "^26.4.1",
+			"@tailwindcss/vite": "^4.3.3",
+			"class-variance-authority": "^0.7.1"
+		}
+	},
+	"type": "module",
+	"scripts": {
+		"dev": "turbo run dev",
+		"build": "turbo run build",
+		"check-types": "turbo run check-types",
+		"dev:web": "turbo run dev -F @nextroom/web --",
+		"dev:server": "turbo run dev -F @nextroom/server --",
+		"env:generate": "varlock codegen --path ./apps/server/",
+		"postinstall": "bun run env:generate",
+		"check": "biome check --write .",
+		"start": "turbo run start"
+	},
+	"devDependencies": {
+		"@nextroom/config": "workspace:*",
+		"@biomejs/biome": "^2.5.12",
+		"@types/bun": "catalog:",
+		"turbo": "^2.10.12",
+		"typescript": "catalog:",
+		"varlock": "catalog:"
+	},
+	"packageManager": "bun@1.4.2"
+}
