@@ -64,3 +64,9 @@ export const STYLE_PROMPT = stylePrompt(
 		"in asterisks, parentheses or any other form, and never wrap the words in quotation marks or brackets of any kind, Japanese ones included.",
 	"The spoken words are read aloud by a text-to-speech engine.",
 );
+
+/** Added after the conversation in a Discord voice channel, where a long reply holds up everyone
+ *  in the channel. */
+export const BRIEF_NOTE =
+	"You are talking live in a voice channel. Answer in a word or one short sentence, like a quick back-and-forth in a real conversation. " +
+	"Say one thing at a time. Never give lists, explanations or several topics at once; leave the rest for later turns.";

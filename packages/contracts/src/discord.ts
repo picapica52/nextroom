@@ -10,8 +10,6 @@ export const discordSettingsSchema = z.object({
 	bot_token: z.string().trim(),
 	/** The character the bot talks as; its conversation is the one the app shows. */
 	character_id: z.string().nullable(),
-	/** Someone speaking while the character talks stops it, as in a call in the app. */
-	interrupt: z.boolean(),
 	/** The character speaks first when it joins, if it has something to start with. */
 	greet: z.boolean(),
 	/** How long a pause ends what someone said (ms). */

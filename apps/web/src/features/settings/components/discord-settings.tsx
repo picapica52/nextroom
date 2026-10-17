@@ -189,13 +189,6 @@ function TalkSection({ form, set }: { form: DiscordSettingsView; set: Set }) {
 				<ErrorNote error="「返答のしかた」で読み上げがオフになっているため、ボイスチャンネルでは喋りません" />
 			)}
 			<SwitchRow
-				id="discord-interrupt"
-				label="話しかけたら止まる"
-				description="キャラクターが喋っている途中で誰かが話すと、喋るのをやめてそちらに答えます"
-				checked={form.interrupt}
-				onChange={(interrupt) => set({ interrupt })}
-			/>
-			<SwitchRow
 				id="discord-greet"
 				label="参加したときに話しかける"
 				description="話すきっかけがあれば、キャラクターから先に話します"

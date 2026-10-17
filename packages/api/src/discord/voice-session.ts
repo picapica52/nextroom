@@ -1,8 +1,8 @@
 // The character in a voice channel. What each person says is cut at their pauses, transcribed,
 // and sent to the character's conversation as a turn, the same as speaking in the app; the
 // reply's sentences are played in the channel as soon as each is synthesized. With more than one
-// person in the channel, each line is prefixed with who said it. Someone speaking over the
-// character stops it (when the settings say so); otherwise what they said waits for the reply.
+// person in the channel, each line is prefixed with who said it. From when a line is heard until
+// its reply has been played, what anyone says is not heard.
 
 import { Readable } from "node:stream";
 
@@ -33,6 +33,11 @@ import { loadDiscordSettings } from "./settings";
 /** Shorter sounds (a cough, a click) are not sent to the recognizer. */
 const MIN_UTTERANCE_S = 0.4;
 const MAX_UTTERANCE_S = 30;
+/** Noise is often heard as a word or two; shorter lines are not answered. */
+const MIN_UTTERANCE_CHARS = 5;
+
+/** Characters, leaving out punctuation, symbols and spaces. */
+const charCount = (text: string) => [...text.replace(/[\p{P}\p{S}\s]/gu, "")].length;
 const RETRY_MS = 1500;
 
 interface Turn {
@@ -49,6 +54,7 @@ export class VoiceSession {
 	private readonly listening = new Set<string>();
 	private readonly clips: Buffer[] = [];
 	private pending: string[] = [];
+	private processing = false;
 	private current: Turn | null = null;
 	private retry: ReturnType<typeof setTimeout> | undefined;
 	private closed = false;
@@ -116,7 +122,7 @@ export class VoiceSession {
 	}
 
 	private listen(userId: string) {
-		if (this.closed || this.listening.has(userId)) return;
+		if (this.closed || this.busy || this.listening.has(userId)) return;
 		if (this.guild.members.cache.get(userId)?.user.bot) return;
 		this.listening.add(userId);
 		const silence = loadDiscordSettings().silence_ms;
@@ -133,7 +139,8 @@ export class VoiceSession {
 		});
 		const done = () => {
 			if (!this.listening.delete(userId)) return;
-			if (pcmSeconds(bytes) >= MIN_UTTERANCE_S)
+			// Someone else's line is already being answered.
+			if (!this.busy && pcmSeconds(bytes) >= MIN_UTTERANCE_S)
 				void this.heard(userId, utteranceWav(Buffer.concat(chunks)));
 		};
 		decoder.on("end", done);
@@ -145,7 +152,17 @@ export class VoiceSession {
 		opus.pipe(decoder);
 	}
 
+	/** Nothing else is heard until this line is answered, or found not to need an answer. */
 	private async heard(userId: string, wav: Uint8Array) {
+		this.processing = true;
+		try {
+			await this.answer(userId, wav);
+		} finally {
+			this.processing = false;
+		}
+	}
+
+	private async answer(userId: string, wav: Uint8Array) {
 		let text: string;
 		try {
 			text = (await irodoriVoice.listen(wav)).trim();
@@ -153,24 +170,22 @@ export class VoiceSession {
 			console.warn("Discord: could not transcribe:", messageOf(error));
 			return;
 		}
-		if (!text || this.closed) return;
+		if (charCount(text) < MIN_UTTERANCE_CHARS || this.closed) return;
 		const humans = this.humans();
 		const name = humans.get(userId)?.displayName;
 		const line = humans.size > 1 && name ? `${name}: ${text}` : text;
-		if (this.busy) {
-			if (!loadDiscordSettings().interrupt) {
-				this.pending.push(line);
-				return;
-			}
-			this.stopSpeaking();
-		}
 		this.pending.push(line);
-		void this.sendPending();
+		await this.sendPending();
 	}
 
-	/** A reply is being made or played. */
+	/** A line is being heard or answered, or a reply is being made or played. */
 	private get busy(): boolean {
-		return !!this.current || this.player.state.status !== AudioPlayerStatus.Idle;
+		return (
+			this.processing ||
+			this.pending.length > 0 ||
+			!!this.current ||
+			this.player.state.status !== AudioPlayerStatus.Idle
+		);
 	}
 
 	private stopSpeaking() {
@@ -180,7 +195,7 @@ export class VoiceSession {
 		this.current = null;
 	}
 
-	/** Sends what was said while the character was busy, as one turn. */
+	/** Sends the line heard, as a turn; tried again while the app is replying in the conversation. */
 	private async sendPending() {
 		clearTimeout(this.retry);
 		if (this.closed || this.current || !this.pending.length) return;
@@ -189,7 +204,7 @@ export class VoiceSession {
 		const text = this.pending.join("\n");
 		this.pending = [];
 		try {
-			await this.follow(characterId, await submitTurn(characterId, text, null, true));
+			await this.follow(characterId, await submitTurn(characterId, text, null, true, [], true));
 		} catch (error) {
 			// The app is in the middle of a reply in the same conversation: try again shortly.
 			if (error instanceof ConflictError) {
@@ -203,7 +218,7 @@ export class VoiceSession {
 		const characterId = loadDiscordSettings().character_id;
 		if (!characterId || this.busy) return;
 		try {
-			const turn = await submitOpening(characterId, true);
+			const turn = await submitOpening(characterId, true, true);
 			if (turn) await this.follow(characterId, turn);
 		} catch (error) {
 			console.warn("Discord: could not greet:", messageOf(error));
