@@ -28,6 +28,7 @@ const CHAT_DEFAULTS: ChatSettings = {
 	asr_provider: "parakeet",
 	asr_model: "",
 	tts_enabled: true,
+	face_changes_enabled: true,
 	image_tag_model: "",
 	image_gen_model: "",
 };

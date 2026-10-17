@@ -62,6 +62,13 @@ function ReplyForm({ f: { form, set } }: { f: ChatSettingsForm }) {
 					checked={form.tts_enabled}
 					onChange={(tts_enabled) => set({ tts_enabled })}
 				/>
+				<SwitchRow
+					id="face-changes-enabled"
+					label="通話中に表情を変える"
+					description="Decisions API が返答に合う表情を選びます。オフにすると、通話中の表情は変わりません。"
+					checked={form.face_changes_enabled}
+					onChange={(face_changes_enabled) => set({ face_changes_enabled })}
+				/>
 			</SettingsSection>
 		</>
 	);
