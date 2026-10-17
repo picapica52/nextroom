@@ -49,6 +49,8 @@ export const chatSettingsSchema = z.object({
 	asr_model: z.string(),
 	/** Off: replies are text only, and nothing is synthesized. */
 	tts_enabled: z.boolean(),
+	/** Off: the face in a call does not change with the reply. */
+	face_changes_enabled: z.boolean(),
 	/** The Decisions model that tags expression images and chooses the faces in a call. Empty:
 	 *  images cannot be tagged, and the face does not change. */
 	image_tag_model: z.string(),

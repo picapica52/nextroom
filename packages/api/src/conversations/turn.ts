@@ -281,7 +281,9 @@ async function prepareTurn(
 		.filter(Boolean)
 		.join("\n\n");
 	const faceTags =
-		plan.speaks && canDecide() ? affinity.faces(faceTagsOf(character.expressions)) : [];
+		plan.speaks && plan.settings.face_changes_enabled && canDecide()
+			? affinity.faces(faceTagsOf(character.expressions))
+			: [];
 	const chooseFace = faceTags.length
 		? faceChooser({
 				expressions: character.expressions,
