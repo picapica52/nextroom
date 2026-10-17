@@ -13,7 +13,6 @@ const DISCORD_DEFAULTS: DiscordSettings = {
 	enabled: false,
 	bot_token: "",
 	character_id: null,
-	interrupt: true,
 	greet: true,
 	silence_ms: 800,
 };

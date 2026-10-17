@@ -32,6 +32,7 @@ import {
 	openingEvent,
 	prepareAffinityTurn,
 } from "../affinity/turn";
+import { BRIEF_NOTE } from "../characters/instructions";
 import { conversationPrompt } from "../characters/prompt";
 import { getCharacter } from "../characters/store";
 import { canDecide } from "../decisions/client";
@@ -84,16 +85,19 @@ interface TurnPlan {
 	voice: VoiceSettings;
 	/** The character opens the conversation with this event (the user said nothing). */
 	opening: EventChoice | null;
+	/** Told to answer in a word or a short sentence (in a Discord voice channel). */
+	brief: boolean;
 }
 
 /** Queue one exchange: the user's text or recording (WAV), and any images, in; a reply out
- *  (spoken with `speak`). */
+ *  (spoken with `speak`, kept short with `brief`). */
 export async function submitTurn(
 	sessionId: string,
 	text: string,
 	audio: Uint8Array | null,
 	speak: boolean,
 	images: Uint8Array[] = [],
+	brief = false,
 ) {
 	const typed = text.trim();
 	if (!typed && !audio?.length && !images.length)
@@ -116,12 +120,12 @@ export async function submitTurn(
 		created_at: now(),
 	};
 	if (recording) user.spoken = true;
-	return queueTurn(session, character, user, recording, speak, null);
+	return queueTurn(session, character, user, recording, speak, null, brief);
 }
 
 /** The character speaks first as the conversation opens, when it has an event to start
  *  (null otherwise, or while a turn is under way). */
-export async function submitOpening(sessionId: string, speak: boolean) {
+export async function submitOpening(sessionId: string, speak: boolean, brief = false) {
 	const session = loadSession(sessionId);
 	const character = getCharacter(sessionId);
 	if (turnRunning(sessionId)) return null;
@@ -135,7 +139,7 @@ export async function submitOpening(sessionId: string, speak: boolean) {
 		hidden: true,
 		created_at: now(),
 	};
-	return queueTurn(session, character, user, null, speak, event);
+	return queueTurn(session, character, user, null, speak, event, brief);
 }
 
 function queueTurn(
@@ -145,6 +149,7 @@ function queueTurn(
 	recording: Uint8Array | null,
 	speak: boolean,
 	opening: EventChoice | null,
+	brief: boolean,
 ) {
 	const sessionId = session.id;
 	const reply: ChatMessage = {
@@ -169,6 +174,7 @@ function queueTurn(
 		speaks: speak && speaksWith(character.voice, settings),
 		voice: character.voice,
 		opening,
+		brief,
 	};
 	const title = opening
 		? AFFINITY_EVENT_LABELS[opening.kind]
@@ -271,7 +277,9 @@ async function prepareTurn(
 		settings: plan.settings,
 		signal: job.signal,
 	});
-	prompt.postHistory = [prompt.postHistory, affinity.note].join("\n\n");
+	prompt.postHistory = [prompt.postHistory, affinity.note, plan.brief ? BRIEF_NOTE : ""]
+		.filter(Boolean)
+		.join("\n\n");
 	const faceTags =
 		plan.speaks && canDecide() ? affinity.faces(faceTagsOf(character.expressions)) : [];
 	const chooseFace = faceTags.length
