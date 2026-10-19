@@ -2,13 +2,16 @@
 // and those the character drew with its image tool. Both are named by an id (img_…) that the
 // agent sees, so it can hand any of them to the image tool as a reference. The user's
 // attachments are noted at the end of the text the agent is given (and read back from it).
+// Each is also copied to `photos/` of the character's workspace, so the user finds it in the
+// 「ファイル」 tab: `photos/user/` for the attachments, `photos/character/` for the drawn ones.
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import sharp from "sharp";
 
 import { BadRequestError, NotFoundError } from "../lib/errors";
 import { newId } from "../lib/storage";
+import { workspaceFile } from "../workspaces/store";
 import { imagesDir } from "./sessions";
 
 /** Images one turn may carry. */
@@ -24,8 +27,24 @@ const TYPES: Record<string, string> = {
 
 const ID = /^img_[0-9a-f]+$/;
 
-/** Keeps `image` in the conversation as given when the browser can show it, else as PNG. */
-export async function saveChatImage(sessionId: string, image: Uint8Array): Promise<string> {
+/** Who an image came from: the user's attachment, or the character's photo. */
+export type ImageSender = "user" | "character";
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** `20261019-153012`, in local time, so the folder lists the photos in the order they came. */
+function stamp(date = new Date()): string {
+	const day = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+	return `${day}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+}
+
+/** Keeps `image` in the conversation as given when the browser can show it, else as PNG, with
+ *  a copy in the workspace's `photos/<from>/`. */
+export async function saveChatImage(
+	sessionId: string,
+	image: Uint8Array,
+	from: ImageSender,
+): Promise<string> {
 	if (image.length > MAX_IMAGE_BYTES) throw new BadRequestError("画像は 1 枚 20 MB までです");
 	let format: string | undefined;
 	try {
@@ -37,8 +56,14 @@ export async function saveChatImage(sessionId: string, image: Uint8Array): Promi
 	const id = newId("img_");
 	const dir = imagesDir(sessionId);
 	mkdirSync(dir, { recursive: true });
-	if (ext && ext in TYPES) writeFileSync(join(dir, `${id}.${ext}`), image);
-	else writeFileSync(join(dir, `${id}.png`), await sharp(image).png().toBuffer());
+	const kept =
+		ext && ext in TYPES
+			? { ext, bytes: image }
+			: { ext: "png", bytes: await sharp(image).png().toBuffer() };
+	writeFileSync(join(dir, `${id}.${kept.ext}`), kept.bytes);
+	const copy = workspaceFile(sessionId, `photos/${from}/${stamp()}_${id}.${kept.ext}`);
+	mkdirSync(dirname(copy), { recursive: true });
+	writeFileSync(copy, kept.bytes);
 	return id;
 }
 
