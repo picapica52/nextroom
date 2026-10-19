@@ -110,7 +110,7 @@ export async function submitTurn(
 	if (turnRunning(sessionId)) throw new ConflictError("前の返答を処理中です");
 	const recording = typed || !audio?.length ? null : audio;
 	const imageIds: string[] = [];
-	for (const image of images) imageIds.push(await saveChatImage(sessionId, image));
+	for (const image of images) imageIds.push(await saveChatImage(sessionId, image, "user"));
 	const user: ChatMessage = {
 		id: newId("m_"),
 		role: "user",

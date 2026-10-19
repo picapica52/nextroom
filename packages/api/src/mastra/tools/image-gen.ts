@@ -1,7 +1,8 @@
 // Photos the character takes in its own world and sends to the user. To the character it is a
 // function of its device; the photo is drawn by an image model through OpenRouter, with the character's neutral face
 // (when it is in the shot) and any of the conversation's images (those the user sent, or photos
-// sent before) as references. The photos are kept with the conversation and shown with the reply.
+// sent before) as references. The photos are kept with the conversation and shown with the reply,
+// and copied to the workspace's `photos/character/`.
 
 import type { ToolsInput } from "@mastra/core/agent";
 import { createTool } from "@mastra/core/tools";
@@ -96,7 +97,7 @@ function photoTool(settings: AgentSettings) {
 					context?.abortSignal,
 				);
 				const ids: string[] = [];
-				for (const image of drawn) ids.push(await saveChatImage(sessionId, image));
+				for (const image of drawn) ids.push(await saveChatImage(sessionId, image, "character"));
 				addImages(ids);
 				return `Sent ${ids.length} photo(s) to the user: ${ids.join(", ")}.`;
 			} catch (error) {
