@@ -2,21 +2,18 @@
 // (Instant Voice Clone, Voice Design). Speech comes back as 24 kHz PCM, made into a WAV like the
 // engine's.
 
-import type {
-	ElevenlabsTtsModel,
-	ElevenlabsVoice,
-	ElevenlabsVoicePreview,
+import {
+	type ElevenlabsTtsModel,
+	type ElevenlabsVoice,
+	type ElevenlabsVoicePreview,
+	TTS_SPEED_RANGE,
 } from "@nextroom/contracts";
 
-import { encodeWav } from "../engine/wav";
 import { elevenlabsApiKey } from "../settings/chat";
-import { BadRequestError, Cancelled, ConflictError } from "./errors";
+import { BadRequestError } from "./errors";
+import { clampSpeed, PCM_RATE, speechOf, vendorClient } from "./vendor-http";
 
 const ELEVENLABS_API_URL = "https://api.elevenlabs.io";
-const PCM_RATE = 24000;
-/** The speeds ElevenLabs takes. */
-const MIN_SPEED = 0.7;
-const MAX_SPEED = 1.2;
 /** What Voice Design speaks the candidates with (it takes 100–1000 characters). */
 const DESIGN_TEXT =
 	"こんにちは。今日はいい天気ですね。少し散歩をしてきたのですが、風が気持ちよくて、つい遠くまで歩いてしまいました。" +
@@ -39,27 +36,12 @@ function detailOf(answer: unknown): string | null {
 	return null;
 }
 
-/** The response of `path`; a failed request is a ConflictError, an aborted one Cancelled. */
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
-	const headers = new Headers(init.headers);
-	headers.set("xi-api-key", requireKey());
-	let response: Response;
-	try {
-		response = await fetch(ELEVENLABS_API_URL + path, { ...init, headers });
-	} catch (error) {
-		if (init.signal?.aborted) throw new Cancelled();
-		throw new ConflictError(`ElevenLabs に接続できません: ${(error as Error).message}`);
-	}
-	if (!response.ok) {
-		const detail = detailOf(await response.json().catch(() => null));
-		throw new ConflictError(`ElevenLabs: ${detail ?? `${response.status} ${response.statusText}`}`);
-	}
-	return response;
-}
-
-async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-	return (await request(path, init)).json() as Promise<T>;
-}
+const { request, requestJson } = vendorClient({
+	name: "ElevenLabs",
+	baseUrl: ELEVENLABS_API_URL,
+	auth: () => ["xi-api-key", requireKey()],
+	detailOf,
+});
 
 const jsonBody = (body: unknown): RequestInit => ({
 	method: "POST",
@@ -81,7 +63,7 @@ export async function synthesizeElevenlabs(
 ): Promise<{ audio: Uint8Array; duration: number; seed: number }> {
 	if (!speech.voiceId)
 		throw new BadRequestError("キャラクターの声で ElevenLabs の声を選んでください");
-	const speed = Math.min(Math.max(Number(speech.speed) || 1, MIN_SPEED), MAX_SPEED);
+	const speed = clampSpeed(speech.speed, TTS_SPEED_RANGE.elevenlabs);
 	const body: Record<string, unknown> = {
 		text,
 		model_id: speech.model,
@@ -96,12 +78,7 @@ export async function synthesizeElevenlabs(
 		`/v1/text-to-speech/${encodeURIComponent(speech.voiceId)}?output_format=pcm_${PCM_RATE}`,
 		{ ...jsonBody(body), signal },
 	);
-	const pcm = new Uint8Array(await response.arrayBuffer());
-	return {
-		audio: encodeWav([pcm], PCM_RATE),
-		duration: pcm.length / 2 / PCM_RATE,
-		seed,
-	};
+	return speechOf(response, seed);
 }
 
 /** The text of a recording (Scribe); empty if nothing was said. */

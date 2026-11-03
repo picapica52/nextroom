@@ -98,12 +98,11 @@ export interface PersonaExtract {
 
 /** What a character does differently from the others: its own model, the tools it never uses,
  *  and its standing instructions (added after the custom prompt of the settings). */
-export const characterAgentSchema = z.object({
+const characterAgentSchema = z.object({
 	model: modelChoiceSchema.nullable().default(null),
 	disabled_tools: z.array(z.enum(TOOL_GROUPS)).default([]),
 	instructions: z.string().default(""),
 });
-export type CharacterAgent = z.infer<typeof characterAgentSchema>;
 
 export const characterAgentPatchSchema = z.object({
 	model: modelChoiceSchema.nullable().optional(),

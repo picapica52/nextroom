@@ -19,7 +19,7 @@ const errorBodySchema = z.looseObject({
 });
 
 /** A request the server refused (400): `param` names the input at fault. */
-export class SpeechRefused extends BadRequestError {
+class SpeechRefused extends BadRequestError {
 	constructor(
 		message: string,
 		readonly param: string | null,
@@ -81,9 +81,7 @@ export type ServedModel = z.infer<typeof modelSchema>;
 const modelsSchema = z.looseObject({ data: z.array(z.unknown()) });
 
 /** The models the server holds, by task (synthesis, recognition, detection). */
-export async function servedModels(
-	signal?: AbortSignal,
-): Promise<Partial<Record<string, ServedModel>>> {
+async function servedModels(signal?: AbortSignal): Promise<Partial<Record<string, ServedModel>>> {
 	const response = await speechFetch(
 		"speech.cpp のモデルを確認できません",
 		"/v1/models",

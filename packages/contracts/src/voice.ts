@@ -29,6 +29,15 @@ export type FishAudioTtsModel = (typeof FISH_AUDIO_TTS_MODELS)[number];
 
 /** How a character's voice sounds and what speaks it. Irodori-TTS always speaks with the Voice
  *  Clone voice file in the character's own folder (CharacterVoiceRefs). */
+/** The speeds each service takes. */
+export const TTS_SPEED_RANGE = {
+	elevenlabs: { min: 0.7, max: 1.2 },
+	fish_audio: { min: 0.5, max: 2 },
+} as const;
+
+/** The most reference clips Fish Audio clones a voice from. */
+export const FISH_AUDIO_MAX_CLONE_FILES = 20;
+
 export const characterVoiceSchema = z.object({
 	provider: z.enum(TTS_PROVIDERS).default("irodori"),
 	/** Empty: not chosen yet, and the character cannot speak on that provider. */

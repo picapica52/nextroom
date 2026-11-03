@@ -29,7 +29,7 @@ export const ACTIVE_CHAT_STATUSES: readonly ChatStatus[] = [
 	"speaking",
 ];
 
-export const chatSegmentSchema = z.object({
+const chatSegmentSchema = z.object({
 	text: z.string(),
 	/** Where the sentence is in the reply's text. */
 	start: z.number().int(),
@@ -39,7 +39,7 @@ export const chatSegmentSchema = z.object({
 });
 export type ChatSegment = z.infer<typeof chatSegmentSchema>;
 
-export const chatMessageSchema = z.object({
+const chatMessageSchema = z.object({
 	id: z.string(),
 	role: z.enum(["user", "assistant"]),
 	text: z.string(),

@@ -11,10 +11,19 @@ export interface DockerResult {
 	err: string;
 }
 
-/** A docker command's output, killed after `timeoutMs`. */
-export async function docker(args: string[], timeoutMs = 10_000): Promise<DockerResult> {
+/** A docker command's output, killed after `timeoutMs`; `stdin` is written to it. */
+export async function docker(
+	args: string[],
+	timeoutMs = 10_000,
+	stdin?: Blob,
+): Promise<DockerResult> {
 	const proc = track(
-		Bun.spawn(["docker", ...args], { stdout: "pipe", stderr: "pipe", windowsHide: true }),
+		Bun.spawn(["docker", ...args], {
+			stdin: stdin ?? "ignore",
+			stdout: "pipe",
+			stderr: "pipe",
+			windowsHide: true,
+		}),
 	);
 	const timer = setTimeout(() => proc.kill(), timeoutMs);
 	try {
@@ -24,20 +33,6 @@ export async function docker(args: string[], timeoutMs = 10_000): Promise<Docker
 			proc.exited,
 		]);
 		return { code, out: out.trim(), err: err.trim() };
-	} finally {
-		clearTimeout(timer);
-	}
-}
-
-/** A docker command's raw stdout (an image), or null when it fails. */
-export async function dockerBytes(args: string[], timeoutMs = 15_000): Promise<Uint8Array | null> {
-	const proc = track(
-		Bun.spawn(["docker", ...args], { stdout: "pipe", stderr: "ignore", windowsHide: true }),
-	);
-	const timer = setTimeout(() => proc.kill(), timeoutMs);
-	try {
-		const [out, code] = await Promise.all([new Response(proc.stdout).bytes(), proc.exited]);
-		return code === 0 && out.length ? out : null;
 	} finally {
 		clearTimeout(timer);
 	}

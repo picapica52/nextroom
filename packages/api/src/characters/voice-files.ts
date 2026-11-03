@@ -57,7 +57,7 @@ const clipPath = (characterId: string, clipId: string) => {
 };
 
 /** The files the engine reads; the folder holds one of them. */
-export const VOICE_MAIN_FILES = ["reference.wav", "reference.voice.gguf"] as const;
+const VOICE_MAIN_FILES = ["reference.wav", "reference.voice.gguf"] as const;
 /** The voice files, as paths inside the character's folder. */
 export const VOICE_FILES = VOICE_MAIN_FILES.map((file) => `voice/${file}`);
 export const clipFilePath = (clipId: string) => `voice/refs/${clipId}.wav`;

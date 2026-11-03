@@ -2,7 +2,6 @@ import {
 	type LlmProvider,
 	type ModelChoice,
 	OPENAI_COMPATIBLE,
-	THINKING_LEVELS,
 	type ThinkingLevel,
 } from "@nextroom/contracts";
 import { Field, FieldLabel } from "@nextroom/ui/components/field";
@@ -11,17 +10,7 @@ import { useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
 import { SimpleSelect } from "@/components/simple-select";
 import { useLlmModels, useProviders } from "@/hooks/queries";
-import { useProviderOptions } from "../provider-labels";
-
-const THINKING_LABELS: Record<ThinkingLevel, string> = {
-	off: "オフ",
-	minimal: "最小",
-	low: "低",
-	medium: "中",
-	high: "高",
-	xhigh: "非常に高い",
-	max: "最大",
-};
+import { THINKING_OPTIONS, useProviderOptions } from "../provider-labels";
 
 /** The provider a new choice starts from: one already set up, else the OpenAI-compatible endpoint. */
 function useUsableProvider(): LlmProvider {
@@ -86,10 +75,7 @@ export function ModelChoiceFields({
 					onChange={(next) =>
 						saved ? onChange({ ...saved, thinking: next }) : setDraft({ provider, thinking: next })
 					}
-					options={[
-						{ value: null, label: "モデルの既定" },
-						...THINKING_LEVELS.map((t) => ({ value: t, label: THINKING_LABELS[t] })),
-					]}
+					options={THINKING_OPTIONS}
 				/>
 			</Field>
 		</div>

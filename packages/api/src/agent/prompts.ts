@@ -3,8 +3,6 @@
 
 import type { AgentSettings } from "../settings/agent";
 
-export const OUTSIDE_CONVERSATION = "This tool is only available inside a conversation.";
-
 /** What a tool answers when it does not run. */
 export const DECLINED = {
 	/** The user said no on the screen. */

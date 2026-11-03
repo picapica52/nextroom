@@ -2,7 +2,7 @@
 // forms the routes do not type.
 
 import type { AppType } from "@nextroom/api";
-import type { ElevenlabsTtsModel, FishAudioTtsModel, TtsProvider } from "@nextroom/contracts";
+import type { ElevenlabsTtsModel, FishAudioTtsModel } from "@nextroom/contracts";
 import { type ClientResponse, hc } from "hono/client";
 
 /** The avatar URL, changing whenever the character is saved so the browser does not show a stale one. */
@@ -14,7 +14,7 @@ export const avatarUrl = (c: { id: string; has_avatar: boolean; updated_at: numb
 export const chatImageUrl = (sessionId: string, imageId: string) =>
 	`/api/chat/sessions/${sessionId}/images/${imageId}`;
 
-export class ApiError extends Error {
+class ApiError extends Error {
 	readonly status: number;
 
 	constructor(message: string, status: number) {
@@ -105,10 +105,6 @@ export const FISH_AUDIO_TTS_MODEL_LABELS: Record<FishAudioTtsModel, string> = {
 export const elevenlabsCategoryLabel = (category: string) =>
 	({ premade: "既定", cloned: "複製", generated: "デザイン", professional: "プロ" })[category] ??
 	category;
-
-/** What speaks a character, in short. */
-export const voiceLabel = (provider: TtsProvider) =>
-	({ irodori: "Irodori-TTS", elevenlabs: "ElevenLabs", fish_audio: "Fish Audio" })[provider];
 
 export function formatBytes(n: number | null | undefined): string {
 	if (!n) return "—";

@@ -17,7 +17,7 @@ import { settingsPath } from "../pages";
 import { SettingsRow } from "./settings-layout";
 
 /** Where a key or address comes from: entered here, the server's .env, the default, or nowhere. */
-export function SourceBadge({
+function SourceBadge({
 	source,
 	optional,
 }: {

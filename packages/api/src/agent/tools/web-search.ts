@@ -6,26 +6,12 @@
 import { z } from "zod";
 import type { AgentSettings } from "../../settings/agent";
 import { exaApiKey } from "../../settings/chat";
-import { NO_EXA_KEY, NO_RESULTS, SEARCH_UNREADABLE, searchFailed } from "../prompts";
+import { NO_EXA_KEY, NO_RESULTS } from "../prompts";
 import { defineTool, type ToolSet } from "../tool";
+import { exaSearch } from "./exa";
 
-const EXA_SEARCH_URL = "https://api.exa.ai/search";
 const NUM_RESULTS = 10;
 const HIGHLIGHT_CHARS = 500;
-const TIMEOUT_MS = 30_000;
-
-const exaAnswerSchema = z.looseObject({
-	results: z
-		.array(
-			z.looseObject({
-				title: z.string().nullish(),
-				url: z.string(),
-				publishedDate: z.string().nullish(),
-				highlights: z.array(z.string()).nullish(),
-			}),
-		)
-		.nullish(),
-});
 
 const webSearch = defineTool({
 	name: "web_search",
@@ -38,24 +24,13 @@ const webSearch = defineTool({
 	execute: async ({ query }, call) => {
 		const apiKey = exaApiKey();
 		if (!apiKey) return NO_EXA_KEY;
-		const response = await fetch(EXA_SEARCH_URL, {
-			method: "POST",
-			headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-			body: JSON.stringify({
-				query,
-				type: "instant",
-				numResults: NUM_RESULTS,
-				contents: { highlights: { maxCharacters: HIGHLIGHT_CHARS } },
-			}),
-			signal: AbortSignal.any([call.signal, AbortSignal.timeout(TIMEOUT_MS)]),
-		});
-		if (!response.ok) {
-			const detail = (await response.text().catch(() => "")).slice(0, 300);
-			return searchFailed(response.status, detail);
-		}
-		const answer = exaAnswerSchema.safeParse(await response.json().catch(() => null));
-		if (!answer.success) return SEARCH_UNREADABLE;
-		const results = answer.data.results ?? [];
+		const answer = await exaSearch(
+			apiKey,
+			{ query, numResults: NUM_RESULTS, highlightChars: HIGHLIGHT_CHARS },
+			call.signal,
+		);
+		if ("error" in answer) return answer.error;
+		const { results } = answer;
 		if (!results.length) return NO_RESULTS;
 		return results.map((r) => ({
 			title: r.title ?? "",

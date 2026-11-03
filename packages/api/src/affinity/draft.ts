@@ -8,6 +8,7 @@ import type { AffinityEventKind, CharacterView } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
 import type { Connections } from "../agent/llm";
 import { resourceTalk } from "../conversations/history";
+import { jsonObjectOf } from "../lib/text";
 import { type EventChoice, type EventContext, guideOf, needsHistory } from "./events";
 
 /** How much of the conversations a draft reads: the first talks and the latest. */
@@ -40,17 +41,6 @@ const DRAFT_INSTRUCTIONS = [
 	'Set "from_notes" to true when it comes from the notes. When nothing real fits, answer {"skip": true}.',
 ].join("\n");
 
-function parseDraft(answer: string): Draft | null {
-	const start = answer.indexOf("{");
-	const end = answer.lastIndexOf("}");
-	if (start < 0 || end <= start) return null;
-	try {
-		return JSON.parse(answer.slice(start, end + 1)) as Draft;
-	} catch {
-		return null;
-	}
-}
-
 /** The draft of a history event, or null when nothing real fits. */
 async function draftOf(
 	kind: AffinityEventKind,
@@ -76,12 +66,12 @@ async function draftOf(
 			.join("\n")}\n</messages>`,
 		`<used_topics>\n${used.join("\n") || "(none)"}\n</used_topics>`,
 	].join("\n\n");
-	const draft = parseDraft(
+	const draft = jsonObjectOf(
 		await generateOnce(connection, DRAFT_INSTRUCTIONS, prompt, {
 			temperature: 0.7,
 			signal,
 		}),
-	);
+	) as Draft | undefined;
 	if (!draft || draft.skip || !draft.topic) return null;
 	const ids = new Set(talk.map((m) => m.id));
 	const real = (draft.source_ids ?? []).filter((id) => ids.has(id));

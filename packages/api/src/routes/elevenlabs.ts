@@ -16,10 +16,7 @@ import {
 	saveElevenlabsVoice,
 	synthesizeElevenlabs,
 } from "../lib/elevenlabs";
-import { BadRequestError } from "../lib/errors";
-import { json, ok } from "./inputs";
-
-const SAMPLE_TEXT = "こんにちは。この声でお話しします。よろしくお願いしますね。";
+import { json, ok, voiceSample } from "./inputs";
 
 /** `/api/elevenlabs/*`: the ElevenLabs account's voices, made and heard from a character's voice. */
 export const elevenlabsRouter = new Hono()
@@ -58,16 +55,4 @@ export const elevenlabsRouter = new Hono()
 		await deleteElevenlabsVoice(c.req.param("id"));
 		return c.json(ok);
 	})
-	// A short sentence in the voice, on `model`; kept by the browser, since each one costs credits.
-	.get("/voices/:id/sample", async (c) => {
-		const model = ELEVENLABS_TTS_MODELS.find((m) => m === c.req.query("model"));
-		if (!model) throw new BadRequestError("モデルを選んでください");
-		const speech = await synthesizeElevenlabs(
-			SAMPLE_TEXT,
-			{ voiceId: c.req.param("id"), model, speed: 1 },
-			c.req.raw.signal,
-		);
-		return new Response(speech.audio as Uint8Array<ArrayBuffer>, {
-			headers: { "content-type": "audio/wav", "cache-control": "private, max-age=86400" },
-		});
-	});
+	.get("/voices/:id/sample", (c) => voiceSample(c, ELEVENLABS_TTS_MODELS, synthesizeElevenlabs));

@@ -86,7 +86,7 @@ export async function restartSlackBot(): Promise<void> {
 	}
 }
 
-export async function stopSlackBot(): Promise<void> {
+async function stopSlackBot(): Promise<void> {
 	const current = connection;
 	connection = null;
 	status = { state: "off", bot_name: null, team: null, error: null };

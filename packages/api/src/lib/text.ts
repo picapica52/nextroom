@@ -40,3 +40,16 @@ export class ThinkFilter {
 		return rest;
 	}
 }
+
+/** The JSON object in an answer (from its first `{` to its last `}`), or undefined when there
+ *  is none. */
+export function jsonObjectOf(answer: string): unknown {
+	const start = answer.indexOf("{");
+	const end = answer.lastIndexOf("}");
+	if (start < 0 || end <= start) return undefined;
+	try {
+		return JSON.parse(answer.slice(start, end + 1));
+	} catch {
+		return undefined;
+	}
+}

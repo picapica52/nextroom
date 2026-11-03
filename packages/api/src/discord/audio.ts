@@ -3,7 +3,7 @@
 
 import { encodeWav, readMono } from "../engine/wav";
 
-export const DISCORD_RATE = 48_000;
+const DISCORD_RATE = 48_000;
 const ASR_RATE = 16_000;
 const FRAME_BYTES = 4;
 

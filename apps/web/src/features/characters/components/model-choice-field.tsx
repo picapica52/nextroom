@@ -1,25 +1,15 @@
-import {
-	type LlmProvider,
-	type ModelChoice,
-	THINKING_LEVELS,
-	type ThinkingLevel,
-} from "@nextroom/contracts";
+import type { LlmProvider, ModelChoice, ThinkingLevel } from "@nextroom/contracts";
 import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
 import { useCallback, useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
 import { SimpleSelect } from "@/components/simple-select";
-import { useProviderLabel, useProviderOptions } from "@/features/settings/provider-labels";
+import {
+	THINKING_LABELS,
+	THINKING_OPTIONS,
+	useProviderLabel,
+	useProviderOptions,
+} from "@/features/settings/provider-labels";
 import { useLlmModels } from "@/hooks/queries";
-
-const THINKING_LABELS: Record<ThinkingLevel, string> = {
-	off: "オフ",
-	minimal: "最小",
-	low: "低",
-	medium: "中",
-	high: "高",
-	xhigh: "とても高い",
-	max: "最大",
-};
 
 /** "OpenRouter · model（思考: 高）" */
 export function useModelChoiceText(): (c: ModelChoice) => string {
@@ -121,10 +111,7 @@ function ProviderModel({
 					value={value?.thinking ?? null}
 					disabled={!value}
 					onChange={(thinking) => value && onChange({ ...value, thinking })}
-					options={[
-						{ value: null, label: "モデルの既定" },
-						...THINKING_LEVELS.map((t) => ({ value: t, label: THINKING_LABELS[t] })),
-					]}
+					options={THINKING_OPTIONS}
 				/>
 			</Field>
 		</div>

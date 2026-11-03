@@ -8,7 +8,7 @@ import { client, read, signalled } from "@/lib/api";
 import { POLL } from "@/lib/constants";
 import { qk } from "@/lib/query-keys";
 
-export function useEngineJobs() {
+function useEngineJobs() {
 	return useQuery({
 		queryKey: qk.engineJobs(),
 		queryFn: ({ signal }) => read(client.engine.jobs.$get(undefined, signalled(signal))),

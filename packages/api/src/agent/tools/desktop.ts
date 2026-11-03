@@ -281,7 +281,7 @@ export const hasDesktop = (settings: AgentSettings, connection: LlmConnection) =
 	settings.computer.enabled && seesImages(connection);
 
 /** The character's computer, started when need be. */
-export async function computerFor(call: ToolCall, settings: AgentSettings): Promise<string> {
+async function computerFor(call: ToolCall, settings: AgentSettings): Promise<string> {
 	const { characterId } = call.context;
 	if (!runningComputer(characterId)) call.output("コンピューターを起動しています…\n");
 	await useComputer(characterId, settings.computer);

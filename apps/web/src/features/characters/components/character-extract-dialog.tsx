@@ -24,16 +24,13 @@ import { useState } from "react";
 import { useFileDrop } from "@/components/drop-zone";
 import { Dot, ErrorNote, Meter } from "@/components/status";
 import { useFilePicker } from "@/hooks/use-file-picker";
-import { api } from "@/lib/api";
+import { api, formatBytes } from "@/lib/api";
 import { FIELD_LABELS } from "../persona-labels";
 
 const ACCEPT = PERSONA_SOURCE_EXTENSIONS.join(",");
 
 const accepted = (file: File) =>
 	PERSONA_SOURCE_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext));
-
-const sizeLabel = (bytes: number) =>
-	bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 /** Reads the user's files into the persona with the LLM; the fields chosen go to `onApply`. */
 export function CharacterExtractDialog({
@@ -237,7 +234,7 @@ function ExtractForm({
 						>
 							<span className="min-w-0 flex-1 truncate">{file.name}</span>
 							<span className="text-xs text-muted-foreground tabular-nums">
-								{sizeLabel(file.size)}
+								{formatBytes(file.size)}
 							</span>
 							<Button
 								size="icon-xs"

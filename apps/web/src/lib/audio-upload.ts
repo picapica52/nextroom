@@ -171,25 +171,3 @@ export function useAudioUpload<T>(finish: (uploadId: string) => Promise<T>) {
 	};
 	return { progress, run, cancel };
 }
-
-/** Files picked for upload: audio only, de-duplicated by path. */
-export function usePickedFiles() {
-	const [picked, setPicked] = useState<PickedFile[]>([]);
-	const [ignored, setIgnored] = useState(0);
-	const add = (items: PickedFile[]) => {
-		const audio = items.filter((f) => isAudio(f.file.name));
-		setIgnored((n) => n + items.length - audio.length);
-		setPicked((prev) => {
-			const seen = new Set(prev.map((f) => f.path));
-			return [...prev, ...audio.filter((f) => !seen.has(f.path))];
-		});
-		return audio;
-	};
-	const remove = (path: string) => setPicked((prev) => prev.filter((p) => p.path !== path));
-	const clear = () => {
-		setPicked([]);
-		setIgnored(0);
-	};
-	const totalBytes = picked.reduce((s, f) => s + f.file.size, 0);
-	return { picked, ignored, totalBytes, add, remove, clear };
-}

@@ -57,7 +57,7 @@ function client(): Composio<CharacterToolProvider> {
 }
 
 /** A session limited to `toolkits`, made once for each key and set of toolkits. */
-export function composioSession(toolkits: string[]): Promise<Session> {
+function composioSession(toolkits: string[]): Promise<Session> {
 	const key = `${composioApiKey()}|${[...toolkits].sort().join(",")}`;
 	if (cached?.key === key) return cached.session;
 	const session = client().create(USER_ID, {
