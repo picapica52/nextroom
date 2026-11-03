@@ -2,10 +2,9 @@
 // reply show the transcription's progress, and its failure or cancellation.
 
 import type { ChatMessage, ChatSettings } from "@nextroom/contracts";
-
+import { irodoriVoice } from "../agent";
 import { Cancelled, messageOf } from "../lib/errors";
 import type { Job } from "../lib/jobs";
-import { irodoriVoice } from "../mastra";
 import { updateMessage } from "./live-turn";
 
 /** The text of the turn's recording; empty when nothing intelligible was said. */

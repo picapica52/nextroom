@@ -21,12 +21,11 @@ import {
 } from "@discordjs/voice";
 import type { Guild, VoiceBasedChannel } from "discord.js";
 import prism from "prism-media";
-
+import { irodoriVoice } from "../agent";
 import { onSegment } from "../conversations/live-turn";
 import { submitOpening, submitTurn } from "../conversations/turn";
 import { ConflictError, messageOf } from "../lib/errors";
 import { queue } from "../lib/jobs";
-import { irodoriVoice } from "../mastra";
 import { pcmSeconds, playablePcm, utteranceWav } from "./audio";
 import { loadDiscordSettings } from "./settings";
 

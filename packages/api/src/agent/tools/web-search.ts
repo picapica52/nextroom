@@ -3,12 +3,11 @@
 // It answers with the top results' titles, URLs and highlights; the browser can open a URL
 // when the page needs reading in full.
 
-import type { ToolsInput } from "@mastra/core/agent";
-import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import type { AgentSettings } from "../../settings/agent";
 import { exaApiKey } from "../../settings/chat";
 import { NO_EXA_KEY, NO_RESULTS, SEARCH_UNREADABLE, searchFailed } from "../prompts";
+import { defineTool, type ToolSet } from "../tool";
 
 const EXA_SEARCH_URL = "https://api.exa.ai/search";
 const NUM_RESULTS = 10;
@@ -28,15 +27,15 @@ const exaAnswerSchema = z.looseObject({
 		.nullish(),
 });
 
-const webSearch = createTool({
-	id: "web_search",
+const webSearch = defineTool({
+	name: "web_search",
 	description:
 		"Search the web and get the top results: title, URL, published date and the passages that match. " +
 		"Write the query the way you would type it into a search engine.",
-	inputSchema: z.object({
+	schema: z.object({
 		query: z.string().min(1).describe("What to search for."),
 	}),
-	execute: async ({ query }, context) => {
+	execute: async ({ query }, call) => {
 		const apiKey = exaApiKey();
 		if (!apiKey) return NO_EXA_KEY;
 		const response = await fetch(EXA_SEARCH_URL, {
@@ -48,9 +47,7 @@ const webSearch = createTool({
 				numResults: NUM_RESULTS,
 				contents: { highlights: { maxCharacters: HIGHLIGHT_CHARS } },
 			}),
-			signal: context?.abortSignal
-				? AbortSignal.any([context.abortSignal, AbortSignal.timeout(TIMEOUT_MS)])
-				: AbortSignal.timeout(TIMEOUT_MS),
+			signal: AbortSignal.any([call.signal, AbortSignal.timeout(TIMEOUT_MS)]),
 		});
 		if (!response.ok) {
 			const detail = (await response.text().catch(() => "")).slice(0, 300);
@@ -70,6 +67,6 @@ const webSearch = createTool({
 });
 
 /** The web search tool, when the agent settings turn it on. */
-export function webSearchTools(settings: AgentSettings): ToolsInput {
-	return settings.web_search.enabled ? { [webSearch.id]: webSearch } : {};
+export function webSearchTools(settings: AgentSettings): ToolSet {
+	return settings.web_search.enabled ? { [webSearch.name]: webSearch } : {};
 }

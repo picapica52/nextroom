@@ -1,7 +1,6 @@
-// What the character agent may do, under `agent` in _data/settings.json: the
-// tools it can reach for (a browser through Stagehand, a sandbox through a Mastra workspace,
-// Claude Agent SDK for longer tasks, and apps such as Gmail through Composio). Tools are off
-// until turned on here, since each one needs the LLM to support tool calling and some need more
+// What the character agent may do, under `agent` in the settings (settings/file.ts): the
+// tools it can reach for (a browser through Stagehand, files and commands in its workspace, and
+// apps such as Gmail through Composio). Tools are off until turned on here, since some need more
 // setup (Chrome, Docker, a key).
 
 import {
@@ -12,7 +11,7 @@ import {
 } from "@nextroom/contracts";
 
 import { parseOrBadRequest } from "../lib/errors";
-import { anthropicApiKey, composioApiKey, exaApiKey, loadSettings, openrouterApiKey } from "./chat";
+import { composioApiKey, exaApiKey, loadSettings, openrouterApiKey } from "./chat";
 import { readSettingsSection, writeSettingsSection } from "./file";
 
 export type { AgentSettings };
@@ -30,14 +29,6 @@ const AGENT_DEFAULTS: AgentSettings = {
 		approve_command: true,
 		approve_write: false,
 		approve_delete: true,
-	},
-	claude: {
-		enabled: false,
-		auth: "api_key",
-		model: "",
-		permission_mode: "default",
-		max_turns: 30,
-		allowed_tools: ["Read", "Glob", "Grep", "TodoWrite"],
 	},
 	web_search: { enabled: false },
 	topic_search: { enabled: false },
@@ -63,13 +54,12 @@ function mergeSections(base: AgentSettings, patch: AgentSettingsPatch): AgentSet
 export const loadAgentSettings = (): AgentSettings =>
 	mergeSections(AGENT_DEFAULTS, readSettingsSection("agent") ?? {});
 
-/** Settings for the UI, with whether the Anthropic, Exa, OpenRouter and Composio keys are set and
- *  the image model (all of them in the chat settings). */
+/** Settings for the UI, with whether the Exa, OpenRouter and Composio keys are set and the image
+ *  model (all of them in the chat settings). */
 export function getAgentSettings(): AgentSettingsView {
 	const current = loadAgentSettings();
 	return {
 		...current,
-		claude: { ...current.claude, has_api_key: Boolean(anthropicApiKey()) },
 		web_search: { ...current.web_search, has_api_key: Boolean(exaApiKey()) },
 		topic_search: { ...current.topic_search, has_api_key: Boolean(exaApiKey()) },
 		image_gen: {

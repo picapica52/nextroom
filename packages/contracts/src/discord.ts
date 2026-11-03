@@ -1,5 +1,5 @@
 // The Discord bot: a character that joins a voice channel and talks there, under `discord` in
-// _data/settings.json.
+// the settings.
 
 import { z } from "zod";
 

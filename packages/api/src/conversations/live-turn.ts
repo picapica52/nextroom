@@ -2,9 +2,9 @@
 // are transcribed, thought about and spoken, and the reply's synthesized sentences, which the
 // browser (or the Discord bot) plays as they arrive and which are never written to disk.
 //
-// A turn that ends well is in the Mastra thread from then on, so only its audio stays here,
-// for a few minutes. A turn that fails or is cancelled stays as it is until the next turn,
-// since Mastra may not have saved it. Restarting the server forgets all of it.
+// A turn that ends well is in the conversation log from then on, so only its audio stays here,
+// for a few minutes. A turn that fails or is cancelled stays as it is until the next turn (the
+// log keeps it from then on). Restarting the server forgets all of it.
 
 import {
 	ACTIVE_CHAT_STATUSES,
@@ -20,7 +20,7 @@ import { now } from "../lib/storage";
 const KEEP_AUDIO_MS = 10 * 60 * 1000;
 
 interface LiveTurn {
-	/** Thread messages saved since are this turn's, and hidden while it shows its own. */
+	/** Log messages kept since are this turn's, and hidden while it shows its own. */
 	startedAt: Date;
 	replyId: string;
 	messages: ChatMessage[] | null;
@@ -84,7 +84,7 @@ export function removeMessage(sessionId: string, messageId: string): void {
 	if (turn?.messages) turn.messages = turn.messages.filter((m) => m.id !== messageId);
 }
 
-/** The turn is in the thread now: show the thread's messages, keep the audio a while. */
+/** The turn is in the log now: show the log's messages, keep the audio a while. */
 export function settleTurn(sessionId: string): void {
 	const turn = live.get(sessionId);
 	if (!turn) return;

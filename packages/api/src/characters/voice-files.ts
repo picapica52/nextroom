@@ -1,10 +1,10 @@
-// A character's Voice Clone voice, in its folder:
+// A character's Voice Clone voice: the reference clips (with transcripts) in the database's
+// `voice_refs` table and what is known about the voice file in `voice_files`, with the audio in
+// its folder:
 //
-//     voice/refs.json                   the reference clips (with transcripts)
 //     voice/refs/ref_….wav              the clips
 //     voice/reference.wav               the voice file: the clips joined in list order, or a WAV
 //                                       read in; reference.voice.gguf when speech.cpp made it
-//     voice/voice.json                  what is known about the voice file
 //
 // The speech.cpp server takes the voice file as the reference of a voice. A clip's transcript,
 // filled by speech.cpp or typed by hand, is for reference only.
@@ -33,9 +33,10 @@ import { gpuQueue } from "../engine/queue";
 import { deleteUpload, uploadDir } from "../engine/uploads";
 import { NO_VOICE_FILES, type VoiceFiles } from "../engine/voice";
 import { joinWavs, wavInfo, wavSeconds } from "../engine/wav";
+import { deleteDoc, readDoc, writeDoc } from "../lib/db";
 import { BadRequestError, ConflictError, messageOf, NotFoundError } from "../lib/errors";
 import type { Job } from "../lib/jobs";
-import { newId, now, readJson, writeJson } from "../lib/storage";
+import { newId, now } from "../lib/storage";
 import { characterDir } from "./paths";
 
 const clipSchema = z.object({
@@ -47,24 +48,18 @@ const clipSchema = z.object({
 	edited: z.boolean().default(false),
 });
 type Clip = z.infer<typeof clipSchema>;
-const refsSchema = z.object({ clips: z.array(clipSchema) });
+export const refsSchema = z.object({ clips: z.array(clipSchema) });
 
 const voiceDir = (characterId: string) => join(characterDir(characterId), "voice");
-const refsFile = (characterId: string) => join(voiceDir(characterId), "refs.json");
 const clipPath = (characterId: string, clipId: string) => {
 	if (!/^ref_[0-9a-f]+$/.test(clipId)) throw new NotFoundError("参照音声が見つかりません");
 	return join(voiceDir(characterId), "refs", `${clipId}.wav`);
 };
-const infoFile = (characterId: string) => join(voiceDir(characterId), "voice.json");
 
 /** The files the engine reads; the folder holds one of them. */
 export const VOICE_MAIN_FILES = ["reference.wav", "reference.voice.gguf"] as const;
-/** The voice's files besides the clips, as paths inside the character's folder. */
-export const VOICE_FILES = [
-	"voice/refs.json",
-	...VOICE_MAIN_FILES.map((file) => `voice/${file}`),
-	"voice/voice.json",
-];
+/** The voice files, as paths inside the character's folder. */
+export const VOICE_FILES = VOICE_MAIN_FILES.map((file) => `voice/${file}`);
 export const clipFilePath = (clipId: string) => `voice/refs/${clipId}.wav`;
 
 const mainPath = (characterId: string) =>
@@ -74,16 +69,16 @@ const mainPath = (characterId: string) =>
 
 /** The clips in list order, which is also the order they are joined in the voice file. */
 const loadClips = (characterId: string): Clip[] =>
-	[...(readJson(refsFile(characterId), refsSchema)?.clips ?? [])].sort((a, b) =>
+	[...(readDoc("voice_refs", characterId, refsSchema)?.clips ?? [])].sort((a, b) =>
 		a.name.localeCompare(b.name),
 	);
 const saveClips = (characterId: string, clips: Clip[]) =>
-	writeJson(refsFile(characterId), refsSchema, { clips });
+	writeDoc("voice_refs", characterId, refsSchema, { clips });
 
 function voiceFileInfo(characterId: string): VoiceFileInfo | null {
 	if (!mainPath(characterId)) return null;
 	try {
-		return readJson(infoFile(characterId), voiceFileInfoSchema);
+		return readDoc("voice_files", characterId, voiceFileInfoSchema);
 	} catch {
 		return null;
 	}
@@ -241,7 +236,7 @@ function writeVoiceFile(
 	writeFileSync(join(dir, `${file}.tmp`), data);
 	for (const name of VOICE_MAIN_FILES) rmSync(join(dir, name), { force: true });
 	renameSync(join(dir, `${file}.tmp`), join(dir, file));
-	writeJson(infoFile(characterId), voiceFileInfoSchema, stored);
+	writeDoc("voice_files", characterId, voiceFileInfoSchema, stored);
 	return stored;
 }
 
@@ -301,7 +296,7 @@ export function importVoiceFile(
 export function deleteVoiceFile(characterId: string): CharacterVoiceRefs {
 	const dir = voiceDir(characterId);
 	for (const name of VOICE_MAIN_FILES) rmSync(join(dir, name), { force: true });
-	rmSync(infoFile(characterId), { force: true });
+	deleteDoc("voice_files", characterId);
 	return voiceRefs(characterId);
 }
 

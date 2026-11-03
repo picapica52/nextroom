@@ -2,9 +2,9 @@
 // imagines the voice from the character's persona.
 
 import { type Persona, replyEffortOf } from "@nextroom/contracts";
+import { generateOnce } from "../agent";
+import { connectionOf } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
-import { generateOnce } from "../mastra";
-import { connectionOf } from "../mastra/providers";
 import { loadSettings } from "../settings/chat";
 
 /** The persona fields that tell how the character might sound. */

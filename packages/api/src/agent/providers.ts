@@ -1,0 +1,236 @@
+// The providers the replies can use, through pi (@earendil-works/pi-ai): where each one is, which
+// key it takes, and the model pi calls it with. Any endpoint that speaks OpenAI's Chat Completions
+// (OpenAI, Ollama, LM Studio, llama.cpp server, vLLM, ...) is `openai_compatible`; OpenRouter is
+// one with its own key; Claude goes through Anthropic's Messages API; the subscriptions go
+// through pi's own providers with the credentials the user signed in with (auth.ts).
+
+import type { StreamFn } from "@earendil-works/pi-agent-core";
+import {
+	type Api,
+	type AuthContext,
+	createProvider,
+	type Model,
+	type MutableModels,
+	type ThinkingLevel,
+} from "@earendil-works/pi-ai";
+import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { builtinModels } from "@earendil-works/pi-ai/providers/all";
+import {
+	type ChatSettings,
+	isSubscription,
+	type LlmProvider,
+	replyModelOf,
+	type SubscriptionProvider,
+} from "@nextroom/contracts";
+
+import { BadRequestError } from "../lib/errors";
+import { OPENROUTER_API_URL } from "../lib/openrouter";
+import {
+	anthropicApiKey,
+	openaiCompatibleApiKey,
+	openaiCompatibleUrl,
+	openrouterApiKey,
+} from "../settings/chat";
+import { credentials, isSignedIn, PI_PROVIDERS } from "./auth";
+
+export interface LlmConnection {
+	provider: LlmProvider;
+	/** Without /chat/completions (or /messages for Anthropic); empty for a subscription. */
+	baseUrl: string;
+	/** Empty for an endpoint that wants none, such as Ollama, and for a subscription. */
+	apiKey: string;
+	model: string;
+}
+
+const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1";
+/** pi's provider of the OpenAI-compatible endpoint of the settings. */
+const OPENAI_COMPATIBLE = "nextroom-openai-compatible";
+
+const SUBSCRIPTION_NAMES: Record<SubscriptionProvider, string> = {
+	chatgpt: "ChatGPT",
+	claude: "Claude",
+	copilot: "GitHub Copilot",
+	grok: "SuperGrok",
+};
+
+const baseUrlOf = (connection: LlmConnection) => connection.baseUrl.trim().replace(/\/+$/, "");
+
+/** Credentials only from what is passed or signed in to, never from this process's environment:
+ *  a subscription the user is not signed in to must not fall back to an API key. */
+const noAmbientAuth: AuthContext = {
+	env: async () => undefined,
+	fileExists: async () => false,
+};
+
+let models: MutableModels | null = null;
+
+/** pi's providers and models, with the subscriptions' credentials. */
+export function piModels(): MutableModels {
+	if (models) return models;
+	models = builtinModels({ credentials, authContext: noAmbientAuth });
+	models.setProvider(
+		createProvider({
+			id: OPENAI_COMPATIBLE,
+			name: "OpenAI 互換",
+			auth: {
+				apiKey: {
+					name: "API key",
+					resolve: async ({ credential }) => ({ auth: { apiKey: credential?.key || "none" } }),
+				},
+			},
+			models: [],
+			api: openAICompletionsApi(),
+		}),
+	);
+	return models;
+}
+
+const FREE = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+
+/** OpenAI itself is detected by pi; any other server (Ollama, LM Studio, llama.cpp, vLLM, ...)
+ *  gets the plain Chat Completions fields that all of them take. */
+function openaiCompatibleCompat(baseUrl: string) {
+	if (/^https:\/\/api\.openai\.com\b/.test(baseUrl)) return { supportsReasoningEffort: true };
+	return {
+		supportsReasoningEffort: true,
+		supportsDeveloperRole: false,
+		supportsStore: false,
+		maxTokensField: "max_tokens" as const,
+	};
+}
+
+/** A model pi does not know, called with the API it is served through. */
+function unlistedModel(connection: LlmConnection): Model<Api> {
+	const base = {
+		id: connection.model,
+		name: connection.model,
+		reasoning: true,
+		input: ["text", "image"] as ("text" | "image")[],
+		cost: FREE,
+		contextWindow: 128_000,
+		maxTokens: 16_384,
+	};
+	switch (connection.provider) {
+		case "anthropic":
+			return {
+				...base,
+				api: "anthropic-messages",
+				provider: "anthropic",
+				baseUrl: baseUrlOf(connection).replace(/\/v1$/, ""),
+				contextWindow: 200_000,
+				maxTokens: 64_000,
+			};
+		case "openrouter":
+			return {
+				...base,
+				api: "openai-completions",
+				provider: "openrouter",
+				baseUrl: baseUrlOf(connection),
+				compat: { thinkingFormat: "openrouter" },
+			} as Model<Api>;
+		default:
+			return {
+				...base,
+				api: "openai-completions",
+				provider: OPENAI_COMPATIBLE,
+				baseUrl: baseUrlOf(connection),
+				compat: openaiCompatibleCompat(baseUrlOf(connection)),
+			} as Model<Api>;
+	}
+}
+
+/** The model pi calls for the connection. */
+export function modelOf(connection: LlmConnection): Model<Api> {
+	const { provider, model } = connection;
+	if (isSubscription(provider)) {
+		const known = piModels().getModel(PI_PROVIDERS[provider], model);
+		if (!known)
+			throw new BadRequestError(
+				`${SUBSCRIPTION_NAMES[provider]} のモデル ${model} が見つかりません。設定 → モデル で選び直してください`,
+			);
+		return known;
+	}
+	if (provider === "openai_compatible") return unlistedModel(connection);
+	const known = piModels().getModel(provider, model);
+	if (!known) return unlistedModel(connection);
+	return provider === "anthropic" ? known : { ...known, baseUrl: baseUrlOf(connection) };
+}
+
+/** The key the call is made with; none for a subscription, whose credentials pi reads itself. */
+export const apiKeyOf = (connection: LlmConnection): string | undefined =>
+	isSubscription(connection.provider) ? undefined : connection.apiKey.trim() || "none";
+
+/** pi's thinking level for the effort of the settings; none for the model's default. */
+export function thinkingLevelOf(effort?: string): ThinkingLevel | undefined {
+	if (!effort) return undefined;
+	return (effort === "none" ? "off" : effort) as ThinkingLevel;
+}
+
+/** How a reply's agent calls the connection's model. */
+export function streamFnOf(connection: LlmConnection): StreamFn {
+	const apiKey = apiKeyOf(connection);
+	return (model, context, options) =>
+		piModels().streamSimple(model, context as never, { ...options, apiKey });
+}
+
+const ENDPOINTS: Record<
+	Exclude<LlmProvider, SubscriptionProvider>,
+	{ keyName: string | null; endpoint: () => { baseUrl: string; apiKey: string } }
+> = {
+	openai_compatible: {
+		keyName: null,
+		endpoint: () => ({ baseUrl: openaiCompatibleUrl(), apiKey: openaiCompatibleApiKey() }),
+	},
+	openrouter: {
+		keyName: "OPENROUTER_API_KEY",
+		endpoint: () => ({ baseUrl: `${OPENROUTER_API_URL}/v1`, apiKey: openrouterApiKey() }),
+	},
+	anthropic: {
+		keyName: "ANTHROPIC_API_KEY",
+		endpoint: () => ({ baseUrl: ANTHROPIC_BASE_URL, apiKey: anthropicApiKey() }),
+	},
+};
+
+/** The connection for the chosen provider; `requireModel: false` for listing the models. */
+export function connectionOf(settings: ChatSettings, requireModel = true): LlmConnection {
+	const { provider } = settings;
+	const model = replyModelOf(settings);
+	if (requireModel && !model)
+		throw new BadRequestError("設定 → モデル で 返答モデル を指定してください");
+	if (isSubscription(provider)) {
+		if (!isSignedIn(provider))
+			throw new BadRequestError(
+				`設定 → モデル で ${SUBSCRIPTION_NAMES[provider]} にサインインしてください`,
+			);
+		return { provider, baseUrl: "", apiKey: "", model };
+	}
+	const spec = ENDPOINTS[provider];
+	const { baseUrl, apiKey } = spec.endpoint();
+	if (spec.keyName && !apiKey)
+		throw new BadRequestError(`.env で ${spec.keyName} を設定してください`);
+	return { provider, baseUrl, apiKey, model };
+}
+
+/** The request that lists an API endpoint's models. */
+export function modelsRequest(connection: LlmConnection): {
+	url: string;
+	headers: Record<string, string>;
+} {
+	const url = baseUrlOf(connection);
+	if (connection.provider === "anthropic")
+		return {
+			url: `${url}/models?limit=1000`,
+			headers: {
+				accept: "application/json",
+				"x-api-key": connection.apiKey,
+				"anthropic-version": "2023-06-01",
+			},
+		};
+	return {
+		url: `${url}/models`,
+		headers: {
+			accept: "application/json",
+			...(connection.apiKey ? { authorization: `Bearer ${connection.apiKey}` } : {}),
+		},
+	};
+}

@@ -7,9 +7,9 @@ import {
 	type PersonaGeneratedField,
 	replyEffortOf,
 } from "@nextroom/contracts";
+import { generateOnce } from "../agent";
+import { connectionOf } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
-import { generateOnce } from "../mastra";
-import { connectionOf } from "../mastra/providers";
 import { loadSettings } from "../settings/chat";
 import { FIELD_GUIDE } from "./extract";
 

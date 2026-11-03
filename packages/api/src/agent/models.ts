@@ -1,11 +1,12 @@
-// Calls to the conversation's LLM endpoint outside the AI SDK, and the errors any call to it
-// ends with.
+// The models each provider offers, and the errors any call to the conversation's LLM ends with.
+// An API endpoint lists its own models; a subscription's are pi's catalog of what it may use.
 
-import type { LlmProvider } from "@nextroom/contracts";
+import { isSubscription, type LlmProvider, type SubscriptionProvider } from "@nextroom/contracts";
 
 import { ConflictError, messageOf } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
-import { connectionOf, type LlmConnection, modelsRequest } from "./providers";
+import { PI_PROVIDERS } from "./auth";
+import { connectionOf, type LlmConnection, modelsRequest, piModels } from "./providers";
 
 const LIST_TIMEOUT_MS = 30_000;
 
@@ -96,10 +97,24 @@ export async function listModels(
 		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
+/** The models a subscription may use, from pi's catalog brought up to date when it can be. */
+async function subscriptionModels(provider: SubscriptionProvider): Promise<LlmModel[]> {
+	const id = PI_PROVIDERS[provider];
+	const models = piModels();
+	await models
+		.refresh({ providers: [id], signal: AbortSignal.timeout(LIST_TIMEOUT_MS) })
+		.catch((error) => console.warn(`Could not refresh the models of ${id}:`, error));
+	return (await models.getAvailable(id))
+		.map((m) => ({ id: m.id, name: m.name || m.id }))
+		.sort((a, b) => a.id.localeCompare(b.id));
+}
+
 /** The models of the saved connection, or of `provider`'s connection instead of the chosen one. */
 export function listLlmModels(provider?: LlmProvider): Promise<LlmModel[]> {
 	const s = loadSettings();
-	return listModels(connectionOf({ ...s, provider: provider ?? s.provider }, false));
+	const chosen = provider ?? s.provider;
+	const connection = connectionOf({ ...s, provider: chosen }, false);
+	return isSubscription(chosen) ? subscriptionModels(chosen) : listModels(connection);
 }
 
 /** OpenRouter's models that take an image and give `output`: a drawn image or a Decisions answer. */

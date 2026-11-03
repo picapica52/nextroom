@@ -1,23 +1,21 @@
-// Characters on disk:
+// Characters: each one is a document of the database's `characters` table ({id, created_at,
+// updated_at, persona, voice, expressions, neutral}), with its files in its folder:
 //
-//     characters/<id>/character.json   {id, created_at, updated_at, persona, voice, expressions, neutral}
 //     characters/<id>/reference.png    optional, the image faces are generated from
 //     characters/<id>/voice/           the Voice Clone clips and voice file (voice-files.ts)
 //     characters/<id>/expressions/     <expression id>.png, the faces of the call screen
 //                                      (<expression id>.orig.png: the original of a cut-out face);
 //                                      the neutral one is also the character's picture
-//     characters/<id>/affinity.json    how close it feels to the user (affinity/store.ts)
-//     characters/<id>/chat.json        its conversation (conversations/sessions.ts)
 //     characters/<id>/images/          the conversation's images (conversations/images.ts)
-//     characters/<id>/workspace/       where its file tools and Claude work (workspaces/store.ts)
+//     characters/<id>/workspace/       where its file and command tools work (workspaces/store.ts)
 //
-// The last four are not exported with the character (archive.ts).
+// Its affinity, conversation and memory are in the database too. Neither they nor the last two
+// folders are exported with the character (archive.ts).
 //
 // `voice` holds the TTS settings used for the character's replies, the model included; the
 // files they speak with are the character's own.
 
-import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import {
 	type Character,
 	type CharacterSummary,
@@ -30,23 +28,34 @@ import {
 	personaSchema,
 } from "@nextroom/contracts";
 import { defaultCharacterVoice, withVoice } from "../engine/voice";
-import { charactersDir } from "../lib/config";
+import { type DocTable, deleteDoc, listDocs, readDoc, writeDoc } from "../lib/db";
 import { BadRequestError, NotFoundError, parseOrBadRequest } from "../lib/errors";
-import { newId, now, readJson, writeJson } from "../lib/storage";
-import { characterDir, characterFile, referencePath } from "./paths";
+import { newId, now } from "../lib/storage";
+import { characterDir, referencePath } from "./paths";
 import { stripCardChunks, toPng } from "./png";
 
 export type { Character };
 
+/** The documents kept by character id, which go with the character. */
+const CHARACTER_TABLES: DocTable[] = [
+	"characters",
+	"affinity",
+	"chat_sessions",
+	"voice_refs",
+	"voice_files",
+];
+
 export function loadCharacter(characterId: string): Character {
-	const data = readJson(characterFile(characterDir(characterId)), characterSchema);
+	characterDir(characterId);
+	const data = readDoc("characters", characterId, characterSchema);
 	if (!data) throw new NotFoundError(`キャラクターが見つかりません: ${characterId}`);
 	return data;
 }
 
 export function saveCharacter(character: Character): void {
 	character.updated_at = now();
-	writeJson(characterFile(characterDir(character.id)), characterSchema, character);
+	mkdirSync(characterDir(character.id), { recursive: true });
+	writeDoc("characters", character.id, characterSchema, character);
 }
 
 export const viewOf = (character: Character): CharacterView => ({
@@ -70,13 +79,9 @@ function summary(character: Character): CharacterSummary {
 }
 
 export function listCharacters() {
-	const out = [];
-	for (const name of readdirSync(charactersDir())) {
-		if (!name.startsWith("ch_")) continue;
-		const data = readJson(characterFile(join(charactersDir(), name)), characterSchema);
-		if (data) out.push(summary(data));
-	}
-	return out.sort((a, b) => b.updated_at - a.updated_at);
+	return listDocs("characters", characterSchema)
+		.map((c) => summary(c.data))
+		.sort((a, b) => b.updated_at - a.updated_at);
 }
 
 export const getCharacter = (characterId: string) => viewOf(loadCharacter(characterId));
@@ -120,6 +125,7 @@ export function updateCharacter(
 
 export function deleteCharacter(characterId: string): void {
 	loadCharacter(characterId);
+	for (const table of CHARACTER_TABLES) deleteDoc(table, characterId);
 	rmSync(characterDir(characterId), { recursive: true, force: true });
 }
 

@@ -8,24 +8,21 @@ import { type ReactNode, useState } from "react";
 import { SettingsSection } from "@/components/settings-section";
 import type { SetAgentSection } from "../agent-options";
 import { BrowserToolSettings, browserToolSummary } from "./browser-tool-settings";
-import { ClaudeToolSettings, claudeToolSummary } from "./claude-tool-settings";
 import { ComposioToolSettings, composioToolSummary } from "./composio-tool-settings";
 import { ImageGenToolSettings, imageGenToolSummary } from "./image-gen-tool-settings";
 import { SandboxToolSettings, sandboxToolSummary } from "./sandbox-tool-settings";
 
-type Tool = "browser" | "sandbox" | "claude" | "image_gen" | "composio";
+type Tool = "browser" | "sandbox" | "image_gen" | "composio";
 
 /** The tools the character may use, each with its settings when opened. */
 export function AgentToolsSection({
-	form: { web_search, topic_search, browser, sandbox, claude, image_gen, composio, ask_user },
+	form: { web_search, topic_search, browser, sandbox, image_gen, composio, ask_user },
 	set,
 	docker,
-	hasApiKey,
 }: {
 	form: AgentSettingsView;
 	set: SetAgentSection;
 	docker: DockerStatus | undefined;
-	hasApiKey: boolean;
 }) {
 	const [open, setOpen] = useState<Tool | null>(null);
 	return (
@@ -80,18 +77,6 @@ export function AgentToolsSection({
 				onOpenChange={(o) => setOpen(o ? "sandbox" : null)}
 			>
 				<SandboxToolSettings sandbox={sandbox} docker={docker} set={set} />
-			</ToolRow>
-
-			<ToolRow
-				id="claude"
-				label="Claude に任せる"
-				summary={claudeToolSummary(claude)}
-				enabled={claude.enabled}
-				onEnabledChange={(enabled) => set("claude", { enabled })}
-				open={open === "claude"}
-				onOpenChange={(o) => setOpen(o ? "claude" : null)}
-			>
-				<ClaudeToolSettings claude={claude} hasApiKey={hasApiKey} set={set} />
 			</ToolRow>
 
 			<ToolRow

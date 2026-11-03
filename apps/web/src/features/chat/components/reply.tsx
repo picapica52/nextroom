@@ -92,14 +92,16 @@ function ToolCard({ group, all }: { group: Group; all: AgentStep[] }) {
 	const todo = todoProgress(handoff ? children : group.steps);
 	const subtitle =
 		group.kind === "browser"
-			? `@mastra/stagehand ・ ${group.steps.length} アクション`
+			? `${group.steps.length} アクション`
 			: group.kind === "sandbox"
 				? `Workspace ・ ${group.steps.length} 件`
 				: handoff
 					? `ClaudeSDKAgent ・ ${first?.input ?? ""}`
 					: group.kind === "claude"
 						? `${group.steps.length} アクション`
-						: (first?.tool ?? "");
+						: group.kind === "memory"
+							? `${group.steps.length} 件`
+							: (first?.tool ?? "");
 	return (
 		<div className="overflow-hidden rounded-xl border-2 shadow-puff">
 			<button

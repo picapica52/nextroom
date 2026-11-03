@@ -1,8 +1,8 @@
 // Filesystem layout shared by every module:
 //
-//     settings.json        the settings (settings/file.ts)
-//     characters/<id>/     a character, its one conversation and its workspace (characters/store.ts)
-//     agent/memory.db      Mastra's memory: the conversations' messages and what they recall
+//     nextroom.sqlite      the settings, the characters, their conversations and memory, and the
+//                          subscriptions' credentials (lib/db.ts)
+//     characters/<id>/     a character's images, voice files and workspace (characters/store.ts)
 //     uploads/             audio uploaded before it joins a character's voice (engine/uploads.ts)
 //     transformers/        the models Transformers.js downloads on first use
 //     tls/                 the self-signed certificate of the HTTPS port (apps/server)
@@ -19,8 +19,7 @@ let current: ApiConfig | null = null;
 
 export function configure(config: ApiConfig): void {
 	current = { dataDir: resolve(config.dataDir) };
-	for (const dir of [charactersDir(), agentDir(), uploadsDir()])
-		mkdirSync(dir, { recursive: true });
+	for (const dir of [charactersDir(), uploadsDir()]) mkdirSync(dir, { recursive: true });
 }
 
 function config(): ApiConfig {
@@ -30,10 +29,7 @@ function config(): ApiConfig {
 
 export const dataDir = () => config().dataDir;
 export const charactersDir = () => join(dataDir(), "characters");
-const agentDir = () => join(dataDir(), "agent");
-/** Mastra's storage: memory threads, messages, working memory and recall vectors. */
-export const memoryDbUrl = () => `file:${join(agentDir(), "memory.db")}`;
 /** Audio uploaded from the browser, before it joins a character's voice. */
 export const uploadsDir = () => join(dataDir(), "uploads");
-/** Transformers.js's cache of the models it downloads on first use (embedder, cutout). */
+/** Transformers.js's cache of the models it downloads on first use (cutout). */
 export const modelCacheDir = () => join(dataDir(), "transformers");

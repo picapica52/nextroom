@@ -108,14 +108,14 @@ function TabNote({ children }: { children: ReactNode }) {
 
 function FilesTab({ characterId, steps }: { characterId: string; steps: AgentStep[] }) {
 	const settings = useAgentSettings();
-	const on = !!settings.data?.sandbox.enabled || !!settings.data?.claude.enabled;
+	const on = !!settings.data?.sandbox.enabled;
 	// The workspace changes when a step finishes; list it again then.
 	const finished = steps.filter((s) => s.finished_at).length;
 	return (
 		<div className="flex flex-col gap-2">
 			{!on && (
 				<TabNote>
-					ファイルとコマンドの道具も Claude Agent SDK もオフです。上の「道具」か
+					ファイルとコマンドの道具はオフです。上の「道具」か
 					<Link to="/settings/tools">設定 → 道具と権限</Link>
 					でオンにできます。
 				</TabNote>

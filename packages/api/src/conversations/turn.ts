@@ -1,8 +1,8 @@
-// One exchange: speech in → speech.cpp → the character agent (Mastra) → Irodori-TTS speech out.
-// Listening and speaking go through the agent's voice (IrodoriVoice). The agent keeps the
-// conversation in its memory thread, which is where the conversation is read back from, and
-// may use tools on the way; each tool call is recorded on the reply as a step. While the turn
-// runs, its messages are kept in memory (live-turn).
+// One exchange: speech in → speech.cpp → the character agent (pi) → Irodori-TTS speech out.
+// Listening and speaking go through the agent's voice (irodoriVoice). The turn's messages are
+// kept in the character's conversation log, which is where the conversation is read back from,
+// and the agent may use tools on the way; each tool call is recorded on the reply as a step.
+// While the turn runs, its messages are kept in memory (live-turn).
 //
 // Each user turn runs as one job on this app's queue, with the settings and the character as
 // they were when it was submitted (TurnPlan). Transcription and synthesis are done
@@ -14,6 +14,7 @@
 // the reply's text. In a call, the Decisions API chooses the face the call screen shows with
 // each sentence (expression.ts).
 
+import type { Message } from "@earendil-works/pi-ai";
 import {
 	AFFINITY_EVENT_LABELS,
 	type AgentSettings,
@@ -32,6 +33,12 @@ import {
 	openingEvent,
 	prepareAffinityTurn,
 } from "../affinity/turn";
+import { streamReply, TEXT_BREAK } from "../agent";
+import type { CharacterContext } from "../agent/context";
+import { compactSoon } from "../agent/memory";
+import { emptyReplyError } from "../agent/models";
+import { connectionOf, type LlmConnection } from "../agent/providers";
+import { TurnReporter } from "../agent/steps";
 import { BRIEF_NOTE } from "../characters/instructions";
 import { conversationPrompt } from "../characters/prompt";
 import { getCharacter } from "../characters/store";
@@ -41,20 +48,13 @@ import { BadRequestError, Cancelled, ConflictError, messageOf } from "../lib/err
 import { type Job, queue } from "../lib/jobs";
 import { newId, now } from "../lib/storage";
 import { ThinkFilter } from "../lib/text";
-import { streamReply, TEXT_BREAK } from "../mastra";
-import type { CharacterContext } from "../mastra/context";
-import { characterMemory, characterResource, prepareThread } from "../mastra/memory";
-import { emptyReplyError } from "../mastra/model";
-import { connectionOf, type LlmConnection } from "../mastra/providers";
-import { TurnReporter } from "../mastra/steps";
 import { loadAgentSettings } from "../settings/agent";
 import { loadSettings, speaksWith } from "../settings/chat";
 import { faceChooser, faceTagsOf } from "./expression";
-import { lastTalkedAt, recordTurn } from "./history";
+import { lastTalkedAt, recordBrokenTurn, recordTurn } from "./history";
 import { MAX_TURN_IMAGES, saveChatImage, withImageNote } from "./images";
 import {
 	liveMessage,
-	liveTurn,
 	removeMessage,
 	settleSpeech,
 	settleTurn,
@@ -203,9 +203,10 @@ async function runTurn(job: Job, plan: TurnPlan) {
 	const onCancel = () => stop.abort();
 	job.signal.addEventListener("abort", onCancel);
 	const reply = replyWriter(job, plan, turn.chooseFace, stop);
+	const kept: Message[] = [];
 	try {
-		await streamTurn(plan, turn, userText, reply, stop.signal);
-		return await finishTurn(job, plan, turn, reply);
+		await streamTurn(plan, turn, userText, reply, stop.signal, kept);
+		return await finishTurn(job, plan, turn, reply, kept);
 	} catch (error) {
 		const speakError = await reply.speaker.drain();
 		const reason = job.cancelled ? new Cancelled() : (speakError ?? error);
@@ -217,6 +218,7 @@ async function runTurn(job: Job, plan: TurnPlan) {
 				? { status: "cancelled", text }
 				: { status: "error", error: messageOf(reason), text },
 		);
+		keepBrokenTurn(plan, withImageNote(userText, plan.images));
 		throw reason;
 	} finally {
 		job.signal.removeEventListener("abort", onCancel);
@@ -249,13 +251,12 @@ async function heardText(job: Job, plan: TurnPlan): Promise<string | null> {
 
 interface PreparedTurn {
 	context: CharacterContext;
-	resourceId: string;
 	affinity: AffinityTurn;
 	/** null: the faces do not change. */
 	chooseFace: ReturnType<typeof faceChooser> | null;
 }
 
-/** The agent's context for the reply, and the memory resource it is remembered under. */
+/** The agent's context for the reply. */
 async function prepareTurn(
 	job: Job,
 	plan: TurnPlan,
@@ -263,10 +264,7 @@ async function prepareTurn(
 	userText: string,
 ): Promise<PreparedTurn> {
 	const { sessionId, replyId, character, agentSettings } = plan;
-	const threadId = sessionId;
-	const resourceId = characterResource(sessionId);
-	await prepareThread(characterMemory(), sessionId);
-	const lastTalk = await lastTalkedAt(resourceId);
+	const lastTalk = lastTalkedAt(sessionId);
 	const prompt = conversationPrompt(character, plan.settings, lastTalk);
 	const affinity = await prepareAffinityTurn({
 		character,
@@ -301,7 +299,6 @@ async function prepareTurn(
 			...prompt,
 			connection,
 			sessionId,
-			threadId,
 			characterId: sessionId,
 			settings: agentSettings,
 			reporter,
@@ -310,7 +307,6 @@ async function prepareTurn(
 					images: [...(liveMessage(sessionId, replyId)?.images ?? []), ...ids],
 				}),
 		},
-		resourceId,
 		affinity,
 		chooseFace,
 	};
@@ -369,13 +365,15 @@ async function streamTurn(
 	userText: string,
 	reply: ReplyWriter,
 	signal: AbortSignal,
+	kept: Message[],
 ): Promise<void> {
 	const s = plan.settings;
-	const stream = streamReply(turn.context, withImageNote(userText, plan.images), turn.resourceId, {
+	const stream = streamReply(turn.context, withImageNote(userText, plan.images), {
 		temperature: s.temperature,
 		maxTokens: s.max_tokens ?? undefined,
 		effort: replyEffortOf(s),
 		signal,
+		kept,
 	});
 	for await (const piece of stream) {
 		if (piece === TEXT_BREAK) reply.flush();
@@ -391,8 +389,14 @@ function toolsOutcome(steps: AgentStep[]): "none" | "ok" | "error" {
 	return work.some((s) => s.status === "error") ? "error" : "ok";
 }
 
-/** Once the reply is complete and spoken: it is done, and noted on the thread's messages. */
-async function finishTurn(job: Job, plan: TurnPlan, turn: PreparedTurn, reply: ReplyWriter) {
+/** Once the reply is complete and spoken: it is done, and kept in the conversation log. */
+async function finishTurn(
+	job: Job,
+	plan: TurnPlan,
+	turn: PreparedTurn,
+	reply: ReplyWriter,
+	kept: Message[],
+) {
 	const { sessionId, userId, replyId } = plan;
 	const speakError = await reply.speaker.drain();
 	if (speakError) throw speakError;
@@ -416,10 +420,27 @@ async function finishTurn(job: Job, plan: TurnPlan, turn: PreparedTurn, reply: R
 	} catch (error) {
 		console.warn(`Could not count the affinity of character ${plan.character.id}:`, error);
 	}
-	const startedAt = liveTurn(sessionId)?.startedAt;
 	const user = liveMessage(sessionId, userId);
 	const done = liveMessage(sessionId, replyId);
-	if (startedAt && user && done) await recordTurn(turn.context.threadId, startedAt, user, done);
+	if (user && done) recordTurn(sessionId, user, done, kept);
 	settleTurn(sessionId);
+	compactSoon(sessionId, {
+		connection: turn.context.connection,
+		settings: plan.settings,
+		charName: plan.character.persona.name,
+		userName: plan.settings.user_name,
+	});
 	return { text: full, segments: reply.speaker.spokenCount };
+}
+
+/** A reply that failed or was cut off is kept as far as it got (not the opening's trigger). */
+function keepBrokenTurn(plan: TurnPlan, userText: string) {
+	const user = liveMessage(plan.sessionId, plan.userId);
+	const reply = liveMessage(plan.sessionId, plan.replyId);
+	if (!user || !reply || plan.opening) return;
+	try {
+		recordBrokenTurn(plan.sessionId, user, userText, reply);
+	} catch (error) {
+		console.warn(`Could not keep the broken turn of ${plan.sessionId}:`, error);
+	}
 }

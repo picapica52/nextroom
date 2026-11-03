@@ -1,13 +1,11 @@
-// A character's affinity for the user, kept in its folder as affinity.json and counted by fixed
+// A character's affinity for the user, kept in the database's `affinity` table and counted by fixed
 // rules from how the two talk: each day they talk, each exchange (the first ones of a day count
 // more), and answering an event the character started. It never goes down. A level also needs
 // enough days talked and known. It is not exported with the character, like its memory, and
-// goes when the memory is cleared. The same file keeps how much the character missed the user,
+// goes when the memory is cleared. The same document keeps how much the character missed the user,
 // and what the events need: when the two talked, the relationship, the events so far and the
 // letters.
 
-import { rmSync } from "node:fs";
-import { join } from "node:path";
 import {
 	AFFINITY_EVENT_LABELS,
 	AFFINITY_LEVELS,
@@ -17,8 +15,8 @@ import {
 	affinityLevel,
 	affinitySchema,
 } from "@nextroom/contracts";
-import { characterDir } from "../characters/paths";
-import { now, readJson, writeJson } from "../lib/storage";
+import { deleteDoc, readDoc, writeDoc } from "../lib/db";
+import { now } from "../lib/storage";
 
 const RULES = {
 	talkedDay: 3,
@@ -38,14 +36,12 @@ const KEPT_LATE_DATES = 7;
 /** Talks from midnight until this hour are late at night. */
 const LATE_UNTIL_HOUR = 4;
 
-const affinityPath = (characterId: string) => join(characterDir(characterId), "affinity.json");
-
 export function loadAffinity(characterId: string): Affinity {
-	return readJson(affinityPath(characterId), affinitySchema) ?? affinitySchema.parse({});
+	return readDoc("affinity", characterId, affinitySchema) ?? affinitySchema.parse({});
 }
 
 function saveAffinity(characterId: string, affinity: Affinity): void {
-	writeJson(affinityPath(characterId), affinitySchema, affinity);
+	writeDoc("affinity", characterId, affinitySchema, affinity);
 }
 
 /** Changes the stored affinity with `change`. */
@@ -238,6 +234,6 @@ export function backToFriends(characterId: string): AffinityView {
 
 /** Back to the start, as when the two first met. */
 export function resetAffinity(characterId: string): AffinityView {
-	rmSync(affinityPath(characterId), { force: true });
+	deleteDoc("affinity", characterId);
 	return getAffinity(characterId);
 }

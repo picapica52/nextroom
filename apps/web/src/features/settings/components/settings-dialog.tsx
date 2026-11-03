@@ -70,7 +70,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
 				to: "/settings/tools",
 				label: "道具と権限",
 				summary: "使う道具と確認のしかた",
-				description: "キャラクターが使えるブラウザ・ファイルとコマンド・Claude と、その許可",
+				description: "キャラクターが使えるブラウザ・ファイルとコマンド・アプリ連携と、その許可",
 				icon: Wrench,
 				note: TOOL_CALLING,
 			},

@@ -1,4 +1,4 @@
-// The conversation's settings, under `chat` in _data/settings.json, and the connections (the
+// The conversation's settings, under `chat` in the settings (settings/file.ts), and the connections (the
 // services' addresses and API keys), which are read from the environment (apps/server/.env).
 
 import {
@@ -19,6 +19,10 @@ const CHAT_DEFAULTS: ChatSettings = {
 	model: "",
 	anthropic_model: "",
 	openrouter_model: "",
+	chatgpt_model: "",
+	claude_model: "",
+	copilot_model: "",
+	grok_model: "",
 	custom_prompt: "",
 	temperature: 0.7,
 	max_tokens: null,
@@ -80,7 +84,6 @@ export const openaiCompatibleUrl = url("OPENAI_COMPATIBLE_BASE_URL", "http://127
 /** Empty for an endpoint that wants none, such as Ollama. */
 export const openaiCompatibleApiKey = env("OPENAI_COMPATIBLE_API_KEY");
 export const openrouterApiKey = env("OPENROUTER_API_KEY");
-/** Claude Agent SDK uses it too. */
 export const anthropicApiKey = env("ANTHROPIC_API_KEY");
 /** The character's web search. */
 export const exaApiKey = env("EXA_API_KEY");

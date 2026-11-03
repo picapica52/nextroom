@@ -20,13 +20,13 @@ export interface EventContext {
 	spoken: boolean;
 	/** How much the character missed the user, 0–100. */
 	longing: number;
-	/** The character's notes on the user (working memory), by heading. */
+	/** The character's notes on the user (MEMORY.md), by heading. */
 	notes: Notes;
 	/** Conversations with other characters since the two last talked. */
 	otherTalks: number;
 }
 
-/** The working memory's sections: `- key: value` lines as fields, other lines as items. */
+/** The notes' sections: `- key: value` lines as fields, other lines as items. */
 export interface Notes {
 	fields: Map<string, string>;
 	items: Map<string, string[]>;

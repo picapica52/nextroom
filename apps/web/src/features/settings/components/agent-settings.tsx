@@ -8,7 +8,7 @@ import type { SetAgentSection } from "../agent-options";
 import { AgentApprovalsSection } from "./agent-approvals-section";
 import { AgentToolsSection } from "./agent-tools-section";
 
-/** What the character agent may do: its tools (browser, files and commands, Claude) and
+/** What the character agent may do: its tools (browser, files and commands, apps…) and
  *  when they ask first. A change is saved as soon as it is made. */
 export default function AgentSettingsPage() {
 	const qc = useQueryClient();
@@ -39,12 +39,7 @@ export default function AgentSettingsPage() {
 	return (
 		<>
 			<SettingsBody>
-				<AgentToolsSection
-					form={form}
-					set={set}
-					docker={docker.data}
-					hasApiKey={form.claude.has_api_key}
-				/>
+				<AgentToolsSection form={form} set={set} docker={docker.data} />
 				<AgentApprovalsSection form={form} set={set} />
 			</SettingsBody>
 			<SettingsErrorFooter error={save.error} />

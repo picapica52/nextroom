@@ -91,7 +91,7 @@ const affinityEventSchema = z.object({
 const letterSchema = z.object({ at: z.number(), kind: z.string(), text: z.string() });
 export type AffinityLetter = z.infer<typeof letterSchema>;
 
-/** As stored in the character's folder (affinity.json). Dates are the local `YYYY-MM-DD`. */
+/** As stored in the database (the `affinity` table). Dates are the local `YYYY-MM-DD`. */
 export const affinitySchema = z.object({
 	value: z.number().default(0),
 	/** The level reached; it never goes down. */

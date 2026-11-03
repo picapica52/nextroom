@@ -12,15 +12,39 @@ export type AsrProvider = (typeof ASR_PROVIDERS)[number];
 
 /** openai_compatible: any Chat Completions endpoint (the connection's URL and key / model);
  *  anthropic: Claude through Anthropic's API (ANTHROPIC_API_KEY / anthropic_model);
- *  openrouter: OpenRouter with OPENROUTER_API_KEY. */
-export const LLM_PROVIDERS = ["openai_compatible", "anthropic", "openrouter"] as const;
+ *  openrouter: OpenRouter with OPENROUTER_API_KEY;
+ *  chatgpt / claude / copilot / grok: a subscription the user signs in to (ChatGPT Plus/Pro,
+ *  Claude Pro/Max, GitHub Copilot, SuperGrok / X Premium). */
+export const LLM_PROVIDERS = [
+	"openai_compatible",
+	"anthropic",
+	"openrouter",
+	"chatgpt",
+	"claude",
+	"copilot",
+	"grok",
+] as const;
 export type LlmProvider = (typeof LLM_PROVIDERS)[number];
+
+/** The providers the user signs in to with a subscription instead of an API key. */
+export const SUBSCRIPTION_PROVIDERS = ["chatgpt", "claude", "copilot", "grok"] as const;
+export type SubscriptionProvider = (typeof SUBSCRIPTION_PROVIDERS)[number];
+
+export const isSubscription = (p: LlmProvider): p is SubscriptionProvider =>
+	(SUBSCRIPTION_PROVIDERS as readonly string[]).includes(p);
+
+const CLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
+const OPENAI_EFFORTS = ["none", "minimal", "low", "medium", "high", "xhigh"] as const;
 
 /** The efforts each reply provider takes: Anthropic's `effort`, or `reasoning_effort` elsewhere. */
 export const REASONING_EFFORTS = {
-	anthropic: ["low", "medium", "high", "xhigh", "max"],
-	openai_compatible: ["none", "minimal", "low", "medium", "high", "xhigh"],
-	openrouter: ["none", "minimal", "low", "medium", "high", "xhigh"],
+	anthropic: CLAUDE_EFFORTS,
+	openai_compatible: OPENAI_EFFORTS,
+	openrouter: OPENAI_EFFORTS,
+	chatgpt: OPENAI_EFFORTS,
+	claude: CLAUDE_EFFORTS,
+	copilot: OPENAI_EFFORTS,
+	grok: OPENAI_EFFORTS,
 } as const satisfies Record<LlmProvider, readonly string[]>;
 
 /** The saved effort if the chosen reply provider takes it; otherwise none is sent. */
@@ -35,6 +59,10 @@ export const chatSettingsSchema = z.object({
 	model: z.string(),
 	anthropic_model: z.string(),
 	openrouter_model: z.string(),
+	chatgpt_model: z.string(),
+	claude_model: z.string(),
+	copilot_model: z.string(),
+	grok_model: z.string(),
 	/** Added after the fixed system prompt. */
 	custom_prompt: z.string(),
 	temperature: z.number(),
@@ -64,6 +92,10 @@ export const LLM_MODEL_FIELDS = {
 	openai_compatible: "model",
 	anthropic: "anthropic_model",
 	openrouter: "openrouter_model",
+	chatgpt: "chatgpt_model",
+	claude: "claude_model",
+	copilot: "copilot_model",
+	grok: "grok_model",
 } as const satisfies Record<LlmProvider, keyof ChatSettings>;
 
 /** The model name set for the chosen reply provider. */
@@ -97,6 +129,10 @@ const patchFields = chatSettingsSchema.extend({
 	model: trimmed,
 	anthropic_model: trimmed,
 	openrouter_model: trimmed,
+	chatgpt_model: trimmed,
+	claude_model: trimmed,
+	copilot_model: trimmed,
+	grok_model: trimmed,
 	reasoning_effort: reasoningEffort,
 	user_name: trimmed,
 	asr_model: trimmed,
@@ -111,3 +147,28 @@ export const chatSettingsPatchSchema = z.object(
 	},
 );
 export type ChatSettingsPatch = z.infer<typeof chatSettingsPatchSchema>;
+
+/** A subscription and whether the user is signed in to it. */
+export interface SubscriptionStatus {
+	provider: SubscriptionProvider;
+	signed_in: boolean;
+}
+
+/** A sign-in in progress: what the user is shown (a page to open, a code to enter there, or a
+ *  field to paste the code the page gives back) until it ends. */
+export interface SubscriptionLogin {
+	id: string;
+	provider: SubscriptionProvider;
+	status: "pending" | "done" | "error" | "cancelled";
+	/** The page to open and sign in on. */
+	url: string | null;
+	/** The code to enter on `url` (device code sign-in). */
+	user_code: string | null;
+	/** The page shows a code that is pasted back here. */
+	needs_code: boolean;
+	/** What is happening now, in the provider's words. */
+	message: string | null;
+	error: string | null;
+}
+
+export const subscriptionCodeSchema = z.object({ code: z.string().trim().min(1) });

@@ -8,15 +8,15 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import { resetAffinity } from "../affinity/store";
+import { forgetConversation } from "../agent/cleanup";
+import { memoryOverview } from "../agent/memory";
+import { decide } from "../agent/steps";
+import { browserFrame, browserInput, browserView, closeBrowser } from "../agent/tools/browser";
+import { dockerStatus } from "../agent/tools/sandbox";
 import { getCharacter } from "../characters/store";
 import { composioStatus, connectComposioToolkit } from "../composio/client";
 import { loadSession } from "../conversations/sessions";
 import { NotFoundError } from "../lib/errors";
-import { forgetConversation } from "../mastra/cleanup";
-import { characterMemory, memoryOverview } from "../mastra/memory";
-import { decide } from "../mastra/steps";
-import { browserFrame, browserInput, browserView, closeBrowser } from "../mastra/tools/browser";
-import { dockerStatus } from "../mastra/tools/sandbox";
 import { getAgentSettings, loadAgentSettings, updateAgentSettings } from "../settings/agent";
 import { json, ok, query } from "./inputs";
 
@@ -80,14 +80,14 @@ export const memoryRouter = new Hono()
 	.get("/", characterQuery, async (c) => {
 		const characterId = c.req.valid("query").character_id;
 		getCharacter(characterId);
-		return c.json(await memoryOverview(characterMemory(), characterId));
+		return c.json(memoryOverview(characterId));
 	})
 	.delete("/", characterQuery, async (c) => {
 		const characterId = c.req.valid("query").character_id;
 		getCharacter(characterId);
 		// How close the two are comes from what is remembered, so it starts over with the memory.
 		resetAffinity(characterId);
-		// The conversation's messages are the memory's thread, so the conversation starts over too.
+		// The conversation's messages are part of the memory, so the conversation starts over too.
 		await forgetConversation(characterId);
-		return c.json(await memoryOverview(characterMemory(), characterId));
+		return c.json(memoryOverview(characterId));
 	});
