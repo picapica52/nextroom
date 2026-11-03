@@ -12,8 +12,7 @@
 // `voice` holds the TTS settings used for the character's replies, the model included; the
 // files they speak with are the character's own.
 
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import {
 	type Character,
 	type CharacterSummary,
@@ -25,7 +24,6 @@ import {
 	type Persona,
 	personaSchema,
 } from "@nextroom/contracts";
-import { z } from "zod";
 import { defaultCharacterVoice, withVoice } from "../engine/voice";
 import { type DocTable, deleteDoc, listDocs, readDoc, writeDoc } from "../lib/db";
 import { BadRequestError, NotFoundError, parseOrBadRequest } from "../lib/errors";
@@ -141,31 +139,4 @@ export function removeAvatar(characterId: string): CharacterView {
 	rmSync(avatarPath(characterId), { force: true });
 	saveCharacter(character);
 	return viewOf(character);
-}
-
-/** Characters saved with the faces of the call screen (`expressions` and `neutral`, the faces in
- *  `expressions/`, the image they were drawn from in `reference.png`): the neutral face becomes
- *  the picture and the rest is removed. */
-const legacyFacesSchema = z.object({
-	expressions: z.unknown().optional(),
-	neutral: z.string().nullish(),
-});
-
-export function migrateLegacyFaces(): void {
-	for (const { key, data } of listDocs("characters", legacyFacesSchema)) {
-		if (data.expressions === undefined && data.neutral === undefined) continue;
-		try {
-			const character = loadCharacter(key);
-			const dir = characterDir(key);
-			const { neutral } = data;
-			const face =
-				neutral && /^ex_[0-9a-f]+$/.test(neutral) && join(dir, "expressions", `${neutral}.png`);
-			if (face && existsSync(face)) copyFileSync(face, avatarPath(key));
-			rmSync(join(dir, "expressions"), { recursive: true, force: true });
-			rmSync(join(dir, "reference.png"), { force: true });
-			writeDoc("characters", key, characterSchema, character);
-		} catch (error) {
-			console.warn(`Could not move the faces of ${key}:`, error);
-		}
-	}
 }

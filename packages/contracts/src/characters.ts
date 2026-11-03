@@ -100,16 +100,7 @@ export interface PersonaExtract {
  *  and its standing instructions (added after the custom prompt of the settings). */
 export const characterAgentSchema = z.object({
 	model: modelChoiceSchema.nullable().default(null),
-	/** Groups no longer in TOOL_GROUPS are dropped. */
-	disabled_tools: z
-		.preprocess(
-			(tools) =>
-				Array.isArray(tools)
-					? tools.filter((t) => (TOOL_GROUPS as readonly unknown[]).includes(t))
-					: tools,
-			z.array(z.enum(TOOL_GROUPS)),
-		)
-		.default([]),
+	disabled_tools: z.array(z.enum(TOOL_GROUPS)).default([]),
 	instructions: z.string().default(""),
 });
 export type CharacterAgent = z.infer<typeof characterAgentSchema>;

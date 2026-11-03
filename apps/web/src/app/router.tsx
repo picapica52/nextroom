@@ -10,15 +10,6 @@ import ModelSettings from "@/features/settings/components/model-settings";
 import SettingsDialog from "@/features/settings/components/settings-dialog";
 import VoiceSettings from "@/features/settings/components/voice-settings";
 
-/** Pages that were moved, to where their contents went. */
-const MOVED: Record<string, string> = {
-	connections: "models",
-	reply: "voice",
-	prompt: "general",
-	tools: "computer",
-	discord: "messaging",
-};
-
 export const router = createBrowserRouter([
 	{
 		element: <Layout />,
@@ -40,10 +31,6 @@ export const router = createBrowserRouter([
 					{ path: "messaging", element: <MessagingSettings /> },
 					{ path: "computer", element: <ComputerSettings /> },
 					{ path: "integrations", element: <IntegrationSettings /> },
-					...Object.entries(MOVED).map(([from, to]) => ({
-						path: from,
-						element: <Navigate to={`/settings/${to}`} replace />,
-					})),
 				],
 			},
 			{ path: "*", element: <Navigate to="/chat" replace /> },

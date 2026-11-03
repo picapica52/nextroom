@@ -26,16 +26,6 @@ const {
 	composio,
 	routines,
 } = agentSettingsSchema.shape;
-type ChatShape = typeof chatSettingsSchema.shape;
-/** A stored field that no longer fits (a choice since removed) takes its default. */
-const storedChatSchema = z.object(
-	Object.fromEntries(
-		Object.entries(chatSettingsSchema.shape).map(([key, field]) => [
-			key,
-			(field as z.ZodType).optional().catch(undefined),
-		]),
-	) as { [K in keyof ChatShape]: z.ZodCatch<z.ZodOptional<ChatShape[K]>> },
-);
 const storedAgentSchema = z.object({
 	approvals: approvals.partial().optional(),
 	container: container.partial().optional(),
@@ -54,7 +44,7 @@ const storedConnectionsSchema = z.object(
 ) as z.ZodType<Partial<Record<string, string>>>;
 /** The sections, each as stored. */
 export const SETTINGS_SECTIONS = {
-	chat: storedChatSchema,
+	chat: chatSettingsSchema.partial(),
 	connections: storedConnectionsSchema,
 	agent: storedAgentSchema,
 	discord: discordSettingsSchema.partial(),
