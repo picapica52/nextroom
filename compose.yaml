@@ -1,5 +1,6 @@
 services:
   nextroom:
+    image: ghcr.io/picapica52/nextroom:latest
     build: .
     restart: unless-stopped
     ports:

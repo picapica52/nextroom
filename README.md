@@ -55,7 +55,7 @@ bun run start                 # サーバーを起動し、http://127.0.0.1:8767
 bun run dev                   # 画面・サーバーを開発モード（https://127.0.0.1:5175）で起動
 ```
 
-Docker Compose で起動する場合は [docs/docker.md](docs/docker.md) を見てください（`docker compose up -d --build`）。
+Docker Compose で起動する場合は [docs/docker.md](docs/docker.md) を見てください（`docker compose pull && docker compose up -d`）。
 
 同じネットワークのスマホからは `https://<PC の IP>:8768`（開発モードでは `https://<PC の IP>:5175`）で開きます。ブラウザは HTTPS のページにしかマイクを使わせないため、サーバーが自己署名の証明書を作って HTTPS でも待ち受けます（`_data/tls`）。初めて開くときに出る「安全ではない」という警告を許可して進んでください。
 

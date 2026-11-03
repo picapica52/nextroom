@@ -6,12 +6,10 @@
 //
 // A computer no one has used or watched for a while is stopped; the next use starts it again.
 
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { track } from "../../lib/children";
 import { BadRequestError, ConflictError, messageOf, NotFoundError } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
+import { DESKTOP_DIR, DESKTOP_REPOSITORY, desktopImage } from "./desktop-image";
 import { docker, dockerError, dockerNetwork } from "./docker";
 
 type ContainerSettings = Pick<AgentSettings["computer"], "memory_mb" | "cpus">;
@@ -19,10 +17,8 @@ type ContainerSettings = Pick<AgentSettings["computer"], "memory_mb" | "cpus">;
 /** Where the workspace is in the computer. */
 export const WORKSPACE = "/workspace";
 
-const IMAGE_DIR = join(import.meta.dir, "../../../desktop");
-const IMAGE_FILES = ["Dockerfile", "start.sh", "control.py", "files.py", "view.html"];
 const VNC_PORT = 6080;
-const BUILD_TIMEOUT_MS = 30 * 60_000;
+const IMAGE_TIMEOUT_MS = 30 * 60_000;
 const START_TIMEOUT_MS = 60_000;
 const IDLE_MS = 15 * 60_000;
 const FILES_TIMEOUT_MS = 60_000;
@@ -45,26 +41,22 @@ export const asUser = (characterId: string, cwd = WORKSPACE) => [
 	containerName(characterId),
 ];
 
-/** The image, tagged by its files so that a changed Dockerfile is built again. */
-function imageTag(): string {
-	const hash = createHash("sha256");
-	for (const file of IMAGE_FILES) hash.update(readFileSync(join(IMAGE_DIR, file)));
-	return `nextroom-desktop:${hash.digest("hex").slice(0, 12)}`;
-}
-
 let building: Promise<string> | null = null;
 
 function ensureImage(): Promise<string> {
 	building ??= (async () => {
-		const tag = imageTag();
+		const tag = desktopImage();
 		if ((await docker(["image", "inspect", tag])).code === 0) return tag;
-		const built = await docker(["build", "-t", tag, IMAGE_DIR], BUILD_TIMEOUT_MS);
-		if (built.code !== 0)
-			throw new Error(`Could not build the computer's image: ${dockerError(built)}`);
+		// Published by CI; built here when it is not there yet (changed files, offline).
+		if ((await docker(["pull", tag], IMAGE_TIMEOUT_MS)).code !== 0) {
+			const built = await docker(["build", "-t", tag, DESKTOP_DIR], IMAGE_TIMEOUT_MS);
+			if (built.code !== 0)
+				throw new Error(`Could not build the computer's image: ${dockerError(built)}`);
+		}
 		// Images of earlier versions; one still used by a container stays until it is made again.
 		const images = await docker([
 			"images",
-			"nextroom-desktop",
+			DESKTOP_REPOSITORY,
 			"--format",
 			"{{.Repository}}:{{.Tag}}",
 		]);
