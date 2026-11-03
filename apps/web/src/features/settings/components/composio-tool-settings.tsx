@@ -1,10 +1,13 @@
 import type { AgentSettingsView, ComposioToolkit } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
-import { X } from "lucide-react";
-import { SaveInput } from "@/components/save-field";
+import { useQueryClient } from "@tanstack/react-query";
+import { Plus, X } from "lucide-react";
+import { useState } from "react";
 import { Dot, ErrorNote } from "@/components/status";
 import { useComposioStatus, useConnectComposio } from "@/features/agent/queries";
+import { qk } from "@/lib/query-keys";
 import type { SetAgentSection } from "../agent-options";
+import { ComposioAppPicker } from "./composio-app-picker";
 import { SettingsBlock } from "./settings-layout";
 
 /** The apps the character may use through Composio, and the accounts connected to them. */
@@ -17,15 +20,12 @@ export function ComposioToolSettings({
 }) {
 	const status = useComposioStatus(composio.has_api_key);
 	const connect = useConnectComposio();
-	const setToolkits = (toolkits: string[]) => set("composio", { toolkits });
-	const add = (text: string) => {
-		const slugs = text
-			.split(/[\s,、]+/)
-			.map((s) => s.trim().toLowerCase())
-			.filter(Boolean);
-		if (!slugs.length) return true;
-		return setToolkits([...new Set([...composio.toolkits, ...slugs])]);
+	const qc = useQueryClient();
+	const setToolkits = async (toolkits: string[]) => {
+		if (await set("composio", { toolkits }))
+			await qc.invalidateQueries({ queryKey: qk.composio(), exact: true });
 	};
+	const [picking, setPicking] = useState(false);
 	const toolkitOf = (slug: string): ComposioToolkit | undefined =>
 		status.data?.toolkits.find((t) => t.slug === slug);
 
@@ -66,12 +66,15 @@ export function ComposioToolSettings({
 					})}
 				</div>
 			)}
-			<SaveInput
-				id="composio-toolkit"
-				className="font-mono"
-				value=""
-				placeholder="アプリを追加（gmail, notion, slack など）"
-				onSave={add}
+			<Button variant="outline" size="sm" className="self-start" onClick={() => setPicking(true)}>
+				<Plus />
+				アプリを追加
+			</Button>
+			<ComposioAppPicker
+				open={picking}
+				onOpenChange={setPicking}
+				added={composio.toolkits}
+				onAdd={(slug) => setToolkits([...new Set([...composio.toolkits, slug])])}
 			/>
 			<ErrorNote error={connect.error ?? status.error ?? status.data?.error} />
 		</SettingsBlock>

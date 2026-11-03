@@ -14,7 +14,7 @@ import { decide } from "../agent/steps";
 import { browserFrame, browserInput, browserView, closeBrowser } from "../agent/tools/browser";
 import { dockerStatus } from "../agent/tools/sandbox";
 import { getCharacter } from "../characters/store";
-import { composioStatus, connectComposioToolkit } from "../composio/client";
+import { composioCatalog, composioStatus, connectComposioToolkit } from "../composio/client";
 import { loadSession } from "../conversations/sessions";
 import { NotFoundError } from "../lib/errors";
 import { getAgentSettings, loadAgentSettings, updateAgentSettings } from "../settings/agent";
@@ -29,6 +29,7 @@ export const agentRouter = new Hono()
 	.get("/composio", async (c) =>
 		c.json(await composioStatus(loadAgentSettings().composio.toolkits)),
 	)
+	.get("/composio/catalog", async (c) => c.json(await composioCatalog()))
 	.post("/composio/:toolkit/connect", json(composioConnectSchema), async (c) => {
 		const url = await connectComposioToolkit(
 			loadAgentSettings().composio.toolkits,
