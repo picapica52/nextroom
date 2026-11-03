@@ -2,9 +2,8 @@
 // less the files speech.cpp makes again, with a marker file the import checks for.
 //
 //     nextroom.json   {format, version}
-//     character.json         persona, voice, expressions, neutral
-//     reference.png          optional
-//     expressions/<id>.png   and <id>.orig.png
+//     character.json         persona, voice, agent
+//     avatar.png             optional
 //     voice/                 the reference clips (refs.json, refs/), the voice file and what is
 //                            known about it (voice.json)
 
@@ -30,14 +29,18 @@ const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value
 const REFS_FILE = "voice/refs.json";
 const VOICE_INFO_FILE = "voice/voice.json";
 
+const AVATAR_FILE = "avatar.png";
+
 /** The files besides the documents, as paths inside the folder (and the zip). */
-function filePaths(expressionIds: string[], clipIds: string[]): string[] {
-	return [
-		"reference.png",
-		...expressionIds.flatMap((id) => [`expressions/${id}.png`, `expressions/${id}.orig.png`]),
-		...VOICE_FILES,
-		...clipIds.map(clipFilePath),
-	];
+function filePaths(clipIds: string[]): string[] {
+	return [AVATAR_FILE, ...VOICE_FILES, ...clipIds.map(clipFilePath)];
+}
+
+/** The picture of a zip exported when characters had faces: the neutral one. */
+function legacyAvatar(raw: unknown, files: Record<string, Uint8Array>): Uint8Array | undefined {
+	const neutral = (raw as { neutral?: unknown } | null)?.neutral;
+	if (typeof neutral !== "string" || !/^ex_[0-9a-f]+$/.test(neutral)) return undefined;
+	return files[`expressions/${neutral}.png`];
 }
 
 /** The clip ids of a voice/refs.json, kept only where they are well-formed. */
@@ -64,10 +67,7 @@ export function exportArchive(characterId: string): Uint8Array {
 	if (refs) zip[REFS_FILE] = encode(refs);
 	const info = readDoc("voice_files", characterId, voiceFileInfoSchema);
 	if (info) zip[VOICE_INFO_FILE] = encode(info);
-	for (const path of filePaths(
-		character.expressions.map((e) => e.id),
-		refClipIds(characterId),
-	)) {
+	for (const path of filePaths(refClipIds(characterId))) {
 		const file = join(dir, path);
 		// Stored as they are: the images are compressed already and the voice files hardly shrink.
 		if (existsSync(file)) zip[path] = [readFileSync(file), { level: 0 }];
@@ -108,11 +108,9 @@ export function importArchive(data: Uint8Array): CharacterView {
 	const character = parsed.data;
 	character.id = newId("ch_");
 	character.updated_at = now();
-	character.expressions = character.expressions.filter(
-		(e) => /^ex_[0-9a-f]+$/.test(e.id) && files[`expressions/${e.id}.png`],
-	);
-	if (!character.expressions.some((e) => e.id === character.neutral)) character.neutral = null;
-	if (files["reference.png"] && !isPng(files["reference.png"])) delete files["reference.png"];
+	const avatar = files[AVATAR_FILE] ?? legacyAvatar(raw, files);
+	if (avatar && isPng(avatar)) files[AVATAR_FILE] = avatar;
+	else delete files[AVATAR_FILE];
 
 	// Written aside first, so a half-written character never shows up in the list.
 	const tmp = join(charactersDir(), `.import-${character.id}`);
@@ -120,10 +118,7 @@ export function importArchive(data: Uint8Array): CharacterView {
 	try {
 		mkdirSync(tmp, { recursive: true });
 		const clipIds = clipIdsOf(files[REFS_FILE]);
-		for (const path of filePaths(
-			character.expressions.map((e) => e.id),
-			clipIds,
-		)) {
+		for (const path of filePaths(clipIds)) {
 			const data = files[path];
 			if (!data) continue;
 			mkdirSync(dirname(join(tmp, path)), { recursive: true });

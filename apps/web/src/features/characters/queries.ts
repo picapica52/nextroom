@@ -26,7 +26,7 @@ const keys = {
 /** Query keys to refresh after a character changes. */
 const CHARACTER_KEYS = [qk.characters(), qk.character(), qk.chatSessions()];
 
-/** Image types accepted for the picture and the faces. */
+/** Image types accepted for the picture. */
 export const IMAGE_ACCEPT = "image/png,image/jpeg,image/webp";
 
 export function useCharacters() {

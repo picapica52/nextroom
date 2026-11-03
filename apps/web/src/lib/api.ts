@@ -9,15 +9,8 @@ import { type ClientResponse, hc } from "hono/client";
 export const avatarUrl = (c: { id: string; has_avatar: boolean; updated_at: number }) =>
 	c.has_avatar ? `/api/characters/${c.id}/avatar?v=${c.updated_at}` : null;
 
-/** The image faces are generated from, changing whenever the character is saved. */
-export const referenceUrl = (c: { id: string; has_reference: boolean; updated_at: number }) =>
-	c.has_reference ? `/api/characters/${c.id}/reference?v=${c.updated_at}` : null;
-
-/** A face's URL; a cut-out face is a different URL, so the browser does not show the original. */
-export const expressionUrl = (characterId: string, e: { id: string; cutout: boolean }) =>
-	`/api/characters/${characterId}/expressions/${e.id}${e.cutout ? "?cutout" : ""}`;
-
-/** An image of a conversation: one the user attached, or one the character drew. */
+/** An image of a conversation: one the user attached (or, in older replies, one the character
+ *  drew). */
 export const chatImageUrl = (sessionId: string, imageId: string) =>
 	`/api/chat/sessions/${sessionId}/images/${imageId}`;
 

@@ -24,7 +24,6 @@ export const TOOL_GROUP_LABELS: Record<ToolGroup, string> = {
 	browser: "ブラウザ",
 	desktop: "デスクトップ",
 	workspace: "ファイルとコマンド",
-	send_photo: "写真を送る",
 	ask_user: "選択肢で聞く",
 	apps: "アプリ連携",
 	routines: "ルーティン",

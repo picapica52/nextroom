@@ -1,6 +1,6 @@
 import { AgentSettingsPage } from "./agent-settings";
 import { ComposioToolSettings } from "./composio-tool-settings";
-import { KeyField, MissingKey } from "./connection-fields";
+import { KeyField } from "./connection-fields";
 import { SwitchRow } from "./settings-fields";
 import { SettingsGroup } from "./settings-layout";
 
@@ -43,27 +43,6 @@ export default function IntegrationSettings() {
 					</SettingsGroup>
 
 					<SettingsGroup title="そのほか">
-						<SwitchRow
-							id="image-gen-enabled"
-							label="写真を送る"
-							checked={form.image_gen.enabled}
-							onChange={(enabled) => set("image_gen", { enabled })}
-						>
-							{form.image_gen.enabled && (
-								<>
-									<MissingKey
-										name="openrouter_key"
-										service="OpenRouter"
-										where="設定 → モデル の「プロバイダー」で入力します。"
-									/>
-									{!form.image_gen.model && (
-										<p className="m-0 text-xs text-warning">
-											設定 → モデル で「画像の生成」のモデルを選んでください。
-										</p>
-									)}
-								</>
-							)}
-						</SwitchRow>
 						<SwitchRow
 							id="ask-user-enabled"
 							label="選択肢を出す"

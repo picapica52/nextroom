@@ -1,4 +1,5 @@
 import { startRoutines } from "./agent/routines";
+import { migrateLegacyFaces } from "./characters/store";
 import { runRoutineTurn } from "./conversations/turn";
 import { restartDiscordBot } from "./discord/bot";
 import { type ApiConfig, configure as configureDataDir } from "./lib/config";
@@ -9,6 +10,7 @@ export type { ApiConfig };
  *  start the routines, and log the Discord bot in when it is turned on. */
 export function configure(config: ApiConfig): void {
 	configureDataDir(config);
+	migrateLegacyFaces();
 	startRoutines(runRoutineTurn);
 	void restartDiscordBot();
 }

@@ -6,7 +6,6 @@ export const POLL = {
 	speechModels: 10_000,
 	browserActive: 500,
 	browserIdle: 3000,
-	expressionBatch: 1000,
 	chatReply: 400,
 	subscriptionLogin: 2000,
 } as const;

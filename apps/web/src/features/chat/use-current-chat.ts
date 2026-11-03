@@ -15,12 +15,9 @@ const NO_MESSAGES: ChatMessage[] = [];
 /** The conversation the chat page shows: the character in the address, else the one talked
  *  with last. Each character has one conversation, whose id is the character's. */
 export function useCurrentChat({
-	keepPolling,
 	onSent,
 	onSettled,
 }: {
-	/** Keep refreshing after the reply is done: the faces of the last sentences may come later. */
-	keepPolling: boolean;
 	/** A turn was accepted, before it is added to the conversation. */
 	onSent: (turn: ChatTurn) => void;
 	onSettled: () => void;
@@ -59,8 +56,7 @@ export function useCurrentChat({
 
 	const session = useChatSession(currentId, {
 		enabled: !!currentId,
-		refetchInterval: (q) =>
-			q.state.data?.messages.some(isActive) || keepPolling ? POLL.chatReply : false,
+		refetchInterval: (q) => (q.state.data?.messages.some(isActive) ? POLL.chatReply : false),
 	});
 	const messages = (currentId && session.data?.messages) || NO_MESSAGES;
 	const activeTurn = messages.find((m) => m.role === "assistant" && isActive(m)) ?? null;

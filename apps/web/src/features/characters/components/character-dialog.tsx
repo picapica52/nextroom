@@ -16,7 +16,6 @@ import { useCharacter, useCharacterSaved, useInvalidateCharacters, useSaveVoice 
 import { EDIT_TABS, TAB_INFO, TABS, type Tab } from "../tabs";
 import { AffinitySection } from "./affinity";
 import { CharacterAgentSettings } from "./character-agent-settings";
-import { CharacterExpressions } from "./character-expressions";
 import { CharacterExtractDialog } from "./character-extract-dialog";
 import { CharacterProfileForm } from "./character-profile-form";
 import { CharacterRoutines } from "./character-routines";
@@ -158,8 +157,6 @@ function CharacterDetail({ characterId, tab }: { characterId: string; tab: Tab }
 						</SettingsSection>
 					</>
 				)}
-
-				{tab === "expressions" && <CharacterExpressions character={character} onChange={saved} />}
 
 				{tab === "memory" && (
 					<>

@@ -1,6 +1,6 @@
 // What the character is told of how close the two are, after the conversation: the level as
 // words (never the points), how it shows in speech and in the voice, the relationship, and how
-// much it missed the user. The faces of affection come only as the two grow close.
+// much it missed the user.
 
 import type { Affinity, CharacterView } from "@nextroom/contracts";
 
@@ -32,15 +32,6 @@ const LONGING_NOTES: [number, string][] = [
 	[50, "You missed the user since you last talked, and you are glad to hear from them again."],
 	[20, "You missed the user a little since you last talked."],
 ];
-
-/** Faces that come only from this level on (as friends). */
-const FACE_LEVELS: Record<string, number> = { embarrassed: 3, love: 4 };
-
-/** The faces the character may make at this affinity; all of them for lovers. */
-export function allowedFaces(tags: string[], affinity: Affinity): string[] {
-	if (affinity.relationship === "lover") return tags;
-	return tags.filter((tag) => (FACE_LEVELS[tag] ?? 1) <= affinity.level);
-}
 
 /** The relationship part of the post-history instructions. */
 export function relationshipNote(

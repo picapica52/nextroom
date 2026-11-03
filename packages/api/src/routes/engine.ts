@@ -1,7 +1,6 @@
 import type { JobView } from "@nextroom/contracts";
 import { Hono } from "hono";
 
-import { imageQueue } from "../characters/expression-batch";
 import { gpuQueue } from "../engine/queue";
 import { speechLoads, speechModels } from "../engine/speech-models";
 import { deleteUpload, newUpload, saveUploadFiles } from "../engine/uploads";
@@ -9,8 +8,8 @@ import { NotFoundError } from "../lib/errors";
 import { queue } from "../lib/jobs";
 import { ok } from "./inputs";
 
-/** The queue holding job `id`: the conversation turns', the face batches' or the GPU's. */
-const queueOf = (id: string) => [queue, imageQueue].find((q) => q.get(id)) ?? gpuQueue;
+/** The queue holding job `id`: the conversation turns' or the GPU's. */
+const queueOf = (id: string) => (queue.get(id) ? queue : gpuQueue);
 
 /** `/api/engine/*`: the speech.cpp server's models, the job queues and uploads. */
 export const engineRouter = new Hono()

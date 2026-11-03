@@ -1,6 +1,6 @@
 // A conversation's messages, read back from the character's memory database (agent/memory). What
 // the model's messages do not tell (the screen's message id, that the user spoke, the reply's tool
-// steps and the images it drew) is kept with them as `chat` when the turn ends. The images the
+// steps, and in older replies the images it drew) is kept with them as `chat` when the turn ends. The images the
 // user attached are noted in the user's text itself (images.ts).
 
 import type { Message } from "@earendil-works/pi-ai";

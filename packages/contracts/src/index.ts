@@ -7,7 +7,6 @@ export * from "./characters";
 export * from "./chat";
 export * from "./discord";
 export * from "./engine";
-export * from "./expression-tags";
 export * from "./jobs";
 export * from "./routines";
 export * from "./settings";

@@ -2,8 +2,7 @@ import type { ChatMessage, ChatSegment, ChatSession } from "@nextroom/contracts"
 import { useEffect, useState } from "react";
 import { audioUrl, type ReplyVoice, type useSegmentQueue } from "../conversation";
 
-/** The newest reply's voice: which reply is read aloud, the sentence playing, the face it shows,
- *  and stopping it. `segments`: the player the sentences go to. */
+/** The newest reply's voice: which reply is read aloud, the sentence playing, and stopping it. `segments`: the player the sentences go to. */
 export function useReplyVoice({
 	sessionId,
 	session,
@@ -20,7 +19,6 @@ export function useReplyVoice({
 	const [voicedId, setVoicedId] = useState<string | null>(null);
 	// The captions are still being written out, so more of the voice may follow.
 	const [writing, setWriting] = useState(false);
-	const [face, setFace] = useState<string | null>(null);
 	// The reply stopped with the stop button: what was written of it shows at once.
 	const [skippedId, setSkippedId] = useState<string | null>(null);
 
@@ -29,7 +27,6 @@ export function useReplyVoice({
 	useEffect(() => {
 		player.stop();
 		setVoicedId(null);
-		setFace(null);
 	}, [sessionId, player]);
 
 	const speech = session?.speech ?? null;
@@ -49,25 +46,9 @@ export function useReplyVoice({
 				}
 			: null;
 
-	// The face of the phrase playing; it stays until a later phrase has one of its own.
-	useEffect(() => {
-		const faces = segment?.faces;
-		if (!segment || !faces?.length) return;
-		let frame = 0;
-		const follow = () => {
-			const ratio = segment.duration ? player.elapsed() / segment.duration : 0;
-			const shown = faces.findLast((f) => f.at <= ratio) ?? faces[0];
-			if (shown?.expression !== undefined) setFace(shown.expression);
-			frame = requestAnimationFrame(follow);
-		};
-		follow();
-		return () => cancelAnimationFrame(frame);
-	}, [segment, player]);
-
 	return {
 		reply,
 		voice,
-		face,
 		writing,
 		setWriting,
 		skipped: !!reply && reply.id === skippedId,

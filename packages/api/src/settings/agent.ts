@@ -12,7 +12,7 @@ import {
 } from "@nextroom/contracts";
 
 import { parseOrBadRequest } from "../lib/errors";
-import { composioApiKey, exaApiKey, loadSettings, openrouterApiKey } from "./chat";
+import { composioApiKey, exaApiKey } from "./chat";
 import { readSettingsSection, writeSettingsSection } from "./file";
 
 export type { AgentSettings };
@@ -33,7 +33,6 @@ const AGENT_DEFAULTS: AgentSettings = {
 	web_search: { enabled: false },
 	topic_search: { enabled: false },
 	ask_user: { enabled: false },
-	image_gen: { enabled: false },
 	composio: {
 		enabled: false,
 		toolkits: ["gmail", "googlecalendar"],
@@ -53,19 +52,13 @@ function mergeSections(base: AgentSettings, patch: AgentSettingsPatch): AgentSet
 export const loadAgentSettings = (): AgentSettings =>
 	mergeSections(AGENT_DEFAULTS, readSettingsSection("agent") ?? {});
 
-/** Settings for the UI, with whether the Exa, OpenRouter and Composio keys are set and the image
- *  model (all of them in the chat settings). */
+/** Settings for the UI, with whether the Exa and Composio keys are set (in the chat settings). */
 export function getAgentSettings(): AgentSettingsView {
 	const current = loadAgentSettings();
 	return {
 		...current,
 		web_search: { ...current.web_search, has_api_key: Boolean(exaApiKey()) },
 		topic_search: { ...current.topic_search, has_api_key: Boolean(exaApiKey()) },
-		image_gen: {
-			...current.image_gen,
-			has_api_key: Boolean(openrouterApiKey()),
-			model: loadSettings().image_gen_model,
-		},
 		composio: { ...current.composio, has_api_key: Boolean(composioApiKey()) },
 	};
 }

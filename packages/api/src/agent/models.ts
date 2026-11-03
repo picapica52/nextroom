@@ -51,17 +51,9 @@ function perMillion(value: unknown): number | undefined {
 	return Number.isFinite(n) && n >= 0 ? n * 1e6 : undefined;
 }
 
-/** The models the endpoint lists, sorted by id; `filter` is added to the request's query, and
- *  `imageOutput` prices the output by its image tokens. */
-export async function listModels(
-	connection: LlmConnection,
-	{ filter, imageOutput = false }: { filter?: string; imageOutput?: boolean } = {},
-): Promise<LlmModel[]> {
-	const request = modelsRequest(connection);
-	const { headers } = request;
-	const url = filter
-		? `${request.url}${request.url.includes("?") ? "&" : "?"}${filter}`
-		: request.url;
+/** The models the endpoint lists, sorted by id. */
+export async function listModels(connection: LlmConnection): Promise<LlmModel[]> {
+	const { url, headers } = modelsRequest(connection);
 	let response: Response;
 	try {
 		response = await fetch(url, { headers, signal: AbortSignal.timeout(LIST_TIMEOUT_MS) });
@@ -90,9 +82,7 @@ export async function listModels(
 			if (!id) return [];
 			const p = m.pricing ?? {};
 			const input = perMillion(p.prompt);
-			const output = imageOutput
-				? perMillion(p.image_output ?? p.image_token)
-				: perMillion(p.completion);
+			const output = perMillion(p.completion);
 			return [
 				{
 					id,
@@ -133,13 +123,4 @@ async function piCatalogModels(provider: `pi:${string}`): Promise<LlmModel[]> {
 			`設定 → モデル → その他のプロバイダー で ${piProviderName(provider)} を設定してください`,
 		);
 	return catalogModels(id);
-}
-
-/** OpenRouter's models that take an image and give `output`: a drawn image or a Decisions answer. */
-export function listOpenrouterImageModels(output: "image" | "decisions"): Promise<LlmModel[]> {
-	const connection = providerConnection("openrouter");
-	return listModels(connection, {
-		filter: `output_modalities=${output}&input_modalities=image`,
-		imageOutput: output === "image",
-	});
 }

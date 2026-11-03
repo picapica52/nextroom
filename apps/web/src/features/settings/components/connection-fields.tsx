@@ -216,10 +216,7 @@ export function ConnectionCheck({ provider }: { provider: LlmProvider }) {
 	const qc = useQueryClient();
 	const check = useMutation({
 		mutationFn: () => read(client.chat["llm-models"].$get({ query: { provider } })),
-		onSuccess: (models) => {
-			qc.setQueryData(qk.llmModels(provider), models);
-			if (provider === "openrouter") qc.invalidateQueries({ queryKey: qk.openrouterImageModels() });
-		},
+		onSuccess: (models) => qc.setQueryData(qk.llmModels(provider), models),
 	});
 	return (
 		<CheckRow

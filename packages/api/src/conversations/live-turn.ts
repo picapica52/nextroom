@@ -125,7 +125,6 @@ export function turnRunning(sessionId: string): boolean {
 	});
 }
 
-/** The segment stays changeable: its faces may be chosen after it is added. */
 export function addSegment(
 	sessionId: string,
 	text: string,

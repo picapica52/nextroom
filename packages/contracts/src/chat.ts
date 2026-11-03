@@ -36,10 +36,6 @@ export const chatSegmentSchema = z.object({
 	end: z.number().int(),
 	audio: z.string(),
 	duration: z.number(),
-	/** The faces to show while it plays, one per phrase in order. `at`: where the phrase starts,
-	 *  0–1 of the clip. `expression`: an expression id, or null for the character's avatar;
-	 *  missing while it is being chosen, or when it is not chosen at all. */
-	faces: z.array(z.object({ at: z.number(), expression: z.string().nullish() })).optional(),
 });
 export type ChatSegment = z.infer<typeof chatSegmentSchema>;
 
@@ -50,7 +46,8 @@ export const chatMessageSchema = z.object({
 	status: z.enum(CHAT_STATUSES),
 	/** The user spoke this message (it was transcribed from the microphone). */
 	spoken: z.boolean().optional(),
-	/** Images in the conversation's folder: those the user attached, or those the reply drew. */
+	/** Images in the conversation's folder: those the user attached, or (older replies) those the
+	 *  reply drew. */
 	images: z.array(z.string()).optional(),
 	/** The agent's tool calls during the reply, in order. */
 	steps: z.array(agentStepSchema).optional(),

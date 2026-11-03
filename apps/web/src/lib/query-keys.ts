@@ -16,8 +16,6 @@ export const qk = {
 	agentSettings: () => ["agent-settings"] as const,
 	llmModels: (provider?: string) =>
 		provider === undefined ? ["llm-models"] : ["llm-models", provider],
-	openrouterImageModels: (output?: string) =>
-		output === undefined ? ["openrouter-image-models"] : ["openrouter-image-models", output],
 	docker: () => ["docker"] as const,
 	composio: () => ["composio"] as const,
 	discord: () => ["discord"] as const,
@@ -29,7 +27,6 @@ export const qk = {
 	character: (id?: string | null) => (id === undefined ? ["character"] : ["character", id]),
 	affinity: (characterId?: string | null) =>
 		characterId === undefined ? ["affinity"] : ["affinity", characterId],
-	expressionBatch: (characterId: string) => ["expression-batch", characterId] as const,
 	memory: (characterId: string | null) => ["memory", characterId] as const,
 	voiceRefs: (characterId: string) => ["voice-refs", characterId] as const,
 	workspaceFiles: (characterId: string, version?: number) =>

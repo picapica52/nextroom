@@ -1,5 +1,4 @@
 import {
-	type ChatSettingsView,
 	type ModelChoice,
 	type PiProviderStatus,
 	SUBSCRIPTION_PROVIDERS,
@@ -7,17 +6,11 @@ import {
 import { Button } from "@nextroom/ui/components/button";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { ApiModelPicker } from "@/components/api-model-picker";
 import { Dot } from "@/components/status";
-import {
-	useConnections,
-	useOpenrouterImageModels,
-	usePiProviders,
-	useSubscriptions,
-} from "@/hooks/queries";
+import { useConnections, usePiProviders, useSubscriptions } from "@/hooks/queries";
 import { APP_PROVIDER_LABELS } from "../provider-labels";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
-import { ConnectionCheck, KeyBadge, KeyField, MissingKey, UrlField } from "./connection-fields";
+import { ConnectionCheck, KeyBadge, KeyField, UrlField } from "./connection-fields";
 import { ModelChoiceFields } from "./model-choice";
 import { NumberField } from "./settings-fields";
 import {
@@ -48,7 +41,6 @@ export default function ModelSettings() {
 					{!connected && <ProvidersGroup />}
 					<MainModelGroup f={f} />
 					<ApprovalModelGroup f={f} />
-					<ImageModelGroup f={f} />
 					{connected && <ProvidersGroup />}
 					<AdvancedGroup f={f} />
 				</>
@@ -178,64 +170,6 @@ function ApprovalModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 				/>
 			</SettingsBlock>
 		</SettingsGroup>
-	);
-}
-
-/** One of OpenRouter's models that take an image and give `output`. */
-function OpenrouterModelPicker({
-	output,
-	...props
-}: {
-	id: string;
-	output: "image" | "decisions";
-	value: string;
-	onChange: (model: string) => void;
-}) {
-	const models = useOpenrouterImageModels(output);
-	return <ApiModelPicker {...props} models={models} />;
-}
-
-function ImageModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
-	const row = (
-		id: string,
-		label: string,
-		output: "image" | "decisions",
-		key: keyof Pick<ChatSettingsView, "image_gen_model" | "image_tag_model">,
-	) => (
-		<SettingsRow
-			label={label}
-			htmlFor={id}
-			control={
-				<div className="w-72 max-w-full">
-					<OpenrouterModelPicker
-						id={id}
-						output={output}
-						value={form[key]}
-						onChange={(model) => set({ [key]: model })}
-					/>
-				</div>
-			}
-		/>
-	);
-	return (
-		<SettingsGroup title="画像（OpenRouter）">
-			{row("image-gen-model", "画像の生成", "image", "image_gen_model")}
-			{row("image-tag-model", "表情の判定", "decisions", "image_tag_model")}
-			<MissingKeyBlock />
-		</SettingsGroup>
-	);
-}
-
-/** Hidden (empty) once the key is set. */
-function MissingKeyBlock() {
-	return (
-		<SettingsBlock className="empty:hidden">
-			<MissingKey
-				name="openrouter_key"
-				service="OpenRouter"
-				where="下の「プロバイダー」で入力します。"
-			/>
-		</SettingsBlock>
 	);
 }
 

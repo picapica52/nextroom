@@ -4,14 +4,12 @@ import {
 	CalendarClock,
 	type LucideIcon,
 	SlidersHorizontal,
-	Smile,
 	UserRound,
 } from "lucide-react";
 
 export const TABS = [
 	{ id: "profile", label: "プロフィール" },
 	{ id: "voice", label: "声" },
-	{ id: "expressions", label: "表情" },
 	{ id: "memory", label: "記憶" },
 	{ id: "routines", label: "ルーティン" },
 	{ id: "agent", label: "詳細" },
@@ -30,11 +28,6 @@ export const TAB_INFO: Record<Tab, { icon: LucideIcon; summary: string; descript
 		icon: AudioLines,
 		summary: "モデル・参照音声・試聴",
 		description: "このキャラクターの返答に使う声",
-	},
-	expressions: {
-		icon: Smile,
-		summary: "アイコンと通話で切り替える顔",
-		description: "通話中、セリフに合わせてアイコンを切り替えます",
 	},
 	memory: {
 		icon: Brain,

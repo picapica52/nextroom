@@ -27,6 +27,4 @@ export type CharacterContext = {
 	/** The groups of tools this character does without. */
 	disabledTools: ToolGroup[];
 	reporter: TurnReporter;
-	/** Shows images the reply drew (ids in the conversation's folder) with the reply. */
-	addImages: (ids: string[]) => void;
 };

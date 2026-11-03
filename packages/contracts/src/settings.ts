@@ -1,4 +1,4 @@
-// The conversation's settings: the models, the custom prompt, speech and expression images; and the
+// The conversation's settings: the models, the custom prompt and speech; and the
 // connections to the services the app uses.
 
 import { z } from "zod";
@@ -78,13 +78,6 @@ export const chatSettingsSchema = z.object({
 	asr_model: z.string().trim(),
 	/** Off: replies are text only, and nothing is synthesized. */
 	tts_enabled: z.boolean(),
-	/** Off: the face in a call does not change with the reply. */
-	face_changes_enabled: z.boolean(),
-	/** The Decisions model that tags expression images and chooses the faces in a call. Empty:
-	 *  images cannot be tagged, and the face does not change. */
-	image_tag_model: z.string().trim(),
-	/** OpenRouter's model, for expression images and the image tool. Empty: images cannot be drawn. */
-	image_gen_model: z.string().trim(),
 });
 export type ChatSettings = z.infer<typeof chatSettingsSchema>;
 export type ChatSettingsView = ChatSettings;

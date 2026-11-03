@@ -31,12 +31,6 @@ export default function VoiceSettings() {
 							checked={f.form.tts_enabled}
 							onChange={(tts_enabled) => f.set({ tts_enabled })}
 						/>
-						<SwitchRow
-							id="face-changes-enabled"
-							label="通話中に表情を変える"
-							checked={f.form.face_changes_enabled}
-							onChange={(face_changes_enabled) => f.set({ face_changes_enabled })}
-						/>
 					</SettingsGroup>
 					<SttGroup f={f} />
 					<SettingsGroup title="接続">
