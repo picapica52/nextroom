@@ -10,9 +10,8 @@ export const qk = {
 	fishAudioVoice: (id: string) => ["fish-audio-voices", "one", id] as const,
 	chatSettings: () => ["chat-settings"] as const,
 	connections: () => ["connections"] as const,
-	subscriptions: () => ["subscriptions"] as const,
-	subscriptionLogin: (id: string | null) => ["subscription-login", id] as const,
-	piProviders: () => ["pi-providers"] as const,
+	providers: () => ["providers"] as const,
+	providerLogin: (id: string | null) => ["provider-login", id] as const,
 	agentSettings: () => ["agent-settings"] as const,
 	llmModels: (provider?: string) =>
 		provider === undefined ? ["llm-models"] : ["llm-models", provider],

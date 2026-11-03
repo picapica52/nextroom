@@ -1,42 +1,28 @@
-import {
-	APP_PROVIDERS,
-	type AppProvider,
-	isPiProvider,
-	type LlmProvider,
-} from "@nextroom/contracts";
+import { type LlmProvider, OPENAI_COMPATIBLE } from "@nextroom/contracts";
 import { useCallback, useMemo } from "react";
-import { usePiProviders } from "@/hooks/queries";
+import { useProviders } from "@/hooks/queries";
 
-export const APP_PROVIDER_LABELS: Record<AppProvider, string> = {
-	chatgpt: "ChatGPT（サブスク）",
-	claude: "Claude（サブスク）",
-	copilot: "GitHub Copilot",
-	grok: "SuperGrok",
-	openrouter: "OpenRouter",
-	anthropic: "Anthropic API",
-	openai_compatible: "OpenAI 互換",
-};
-
-/** The provider's name: the app's own, or the one pi gives it. */
+/** The provider's name, as pi gives it. */
 export function useProviderLabel(): (provider: LlmProvider) => string {
-	const pi = usePiProviders().data;
+	const providers = useProviders().data;
 	return useCallback(
 		(provider) =>
-			isPiProvider(provider)
-				? (pi?.find((p) => p.id === provider)?.name ?? provider.slice("pi:".length))
-				: APP_PROVIDER_LABELS[provider],
-		[pi],
+			provider === OPENAI_COMPATIBLE
+				? "OpenAI 互換"
+				: (providers?.find((p) => p.id === provider)?.name ?? provider),
+		[providers],
 	);
 }
 
-/** The providers a model can be chosen from: the app's own, and pi's others that are set up
- *  (and `current`, even when it no longer is). */
+/** The providers a model can be chosen from: those set up, the OpenAI-compatible endpoint, and
+ *  `current`, even when it no longer is. */
 export function useProviderOptions(current?: LlmProvider | null) {
-	const pi = usePiProviders().data;
+	const providers = useProviders().data;
 	const label = useProviderLabel();
 	return useMemo(() => {
-		const others = (pi ?? []).filter((p) => p.configured || p.id === current).map((p) => p.id);
-		if (current && isPiProvider(current) && !others.includes(current)) others.push(current);
-		return [...APP_PROVIDERS, ...others].map((p) => ({ value: p as LlmProvider, label: label(p) }));
-	}, [pi, current, label]);
+		const ids = (providers ?? []).filter((p) => p.configured).map((p) => p.id);
+		ids.push(OPENAI_COMPATIBLE);
+		if (current && !ids.includes(current)) ids.push(current);
+		return ids.map((p) => ({ value: p, label: label(p) }));
+	}, [providers, current, label]);
 }

@@ -77,7 +77,7 @@ export function toolGuide(settings: AgentSettings, desktop: boolean, chief: bool
 			[
 				`- Apps (COMPOSIO_*): through the apps on your device, use the user's own accounts on ${settings.composio.toolkits.join(", ")}, for example to read mail or check their calendar.`,
 				"  - First find the actions you need with COMPOSIO_SEARCH_TOOLS, then run them with COMPOSIO_MULTI_EXECUTE_TOOL.",
-				"  - If an app says no account is connected, ask the user to connect it in 設定 → 道具と権限. Do not try to connect it yourself.",
+				"  - If an app says no account is connected, ask the user to connect it in 設定 → 道具. Do not try to connect it yourself.",
 				"  - Before you send, create, change or delete anything for the user, make sure it is what they want.",
 			].join("\n"),
 		);

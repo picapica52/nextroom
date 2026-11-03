@@ -17,7 +17,7 @@ const MAX_SPEED = 2;
 
 function requireKey(): string {
 	const key = fishAudioApiKey();
-	if (!key) throw new BadRequestError("設定 → 音声 で Fish Audio の API キーを入力してください");
+	if (!key) throw new BadRequestError("設定 → 接続 で Fish Audio の API キーを入力してください");
 	return key;
 }
 

@@ -1,7 +1,7 @@
 // Filesystem layout shared by every module:
 //
 //     nextroom.sqlite      the settings, the characters, their conversations and memory, and the
-//                          subscriptions' credentials (lib/db.ts)
+//                          providers' credentials (lib/db.ts)
 //     characters/<id>/     a character's images and voice files (characters/store.ts)
 //     uploads/             audio uploaded before it joins a character's voice (engine/uploads.ts)
 //     tls/                 the self-signed certificate of the HTTPS port (apps/server)

@@ -60,16 +60,6 @@ function SettingsFooter({ children }: { children: ReactNode }) {
 	);
 }
 
-/** A save that failed, along the bottom of the settings pane. */
-export function SettingsErrorFooter({ error }: { error: unknown }) {
-	if (!error) return null;
-	return (
-		<SettingsFooter>
-			<ErrorNote error={error} />
-		</SettingsFooter>
-	);
-}
-
 /** The settings footer with revert and save, noting unsaved changes. */
 export function SettingsSaveFooter({
 	dirty,

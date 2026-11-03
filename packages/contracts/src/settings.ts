@@ -11,39 +11,13 @@ export const DEFAULT_SPEECH_URL = "http://127.0.0.1:8080";
 export const ASR_PROVIDERS = ["parakeet", "elevenlabs", "fishaudio"] as const;
 export type AsrProvider = (typeof ASR_PROVIDERS)[number];
 
-/** The providers the app sets up itself.
- *  openai_compatible: any Chat Completions endpoint (the connection's URL and key);
- *  anthropic: Claude through Anthropic's API key;
- *  openrouter: OpenRouter with its key;
- *  chatgpt / claude / copilot / grok: a subscription the user signs in to (ChatGPT Plus/Pro,
- *  Claude Pro/Max, GitHub Copilot, SuperGrok / X Premium). */
-export const APP_PROVIDERS = [
-	"openai_compatible",
-	"anthropic",
-	"openrouter",
-	"chatgpt",
-	"claude",
-	"copilot",
-	"grok",
-] as const;
-export type AppProvider = (typeof APP_PROVIDERS)[number];
+/** A provider of the replies, by pi's id ("anthropic", "openai", "openrouter", "groq", ...), each
+ *  signed in to the way pi offers (an API key, or a subscription's sign-in). OPENAI_COMPATIBLE is
+ *  the one the app adds to pi: any Chat Completions endpoint at the connection's URL. */
+export type LlmProvider = string;
+export const llmProviderSchema = z.string().regex(/^[a-z0-9][a-z0-9.-]*$/);
 
-/** Any other provider pi offers, by pi's id: "pi:groq", "pi:opencode", ... */
-export type PiProviderId = `pi:${string}`;
-export const piProviderIdSchema = z
-	.string()
-	.regex(/^pi:[a-z0-9][a-z0-9.-]*$/) as z.ZodType<PiProviderId>;
-export const isPiProvider = (p: string): p is PiProviderId => p.startsWith("pi:");
-
-export type LlmProvider = AppProvider | PiProviderId;
-export const llmProviderSchema = z.union([z.enum(APP_PROVIDERS), piProviderIdSchema]);
-
-/** The providers the user signs in to with a subscription instead of an API key. */
-export const SUBSCRIPTION_PROVIDERS = ["chatgpt", "claude", "copilot", "grok"] as const;
-export type SubscriptionProvider = (typeof SUBSCRIPTION_PROVIDERS)[number];
-
-export const isSubscription = (p: string): p is SubscriptionProvider =>
-	(SUBSCRIPTION_PROVIDERS as readonly string[]).includes(p);
+export const OPENAI_COMPATIBLE = "openai-compatible";
 
 /** How hard the model thinks before it answers; null in a choice: the model's default. pi fits
  *  the level to what the model takes. */
@@ -90,8 +64,6 @@ export type ChatSettingsPatch = z.infer<typeof chatSettingsPatchSchema>;
  *  server's .env. */
 export const CONNECTION_KEYS = [
 	"openai_compatible_key",
-	"openrouter_key",
-	"anthropic_key",
 	"exa_key",
 	"composio_key",
 	"elevenlabs_key",
@@ -124,12 +96,6 @@ export const connectionsPatchSchema = z.object({
 }) as z.ZodType<Partial<Record<ConnectionKey | ConnectionUrl, string>>>;
 export type ConnectionsPatch = Partial<Record<ConnectionKey | ConnectionUrl, string>>;
 
-/** A subscription and whether the user is signed in to it. */
-export interface SubscriptionStatus {
-	provider: SubscriptionProvider;
-	signed_in: boolean;
-}
-
 /** What a sign-in asks the user now: a code the page gave back, an API key or another value, or
  *  one of a few choices (answered with the option's id). */
 export interface LoginPrompt {
@@ -141,9 +107,9 @@ export interface LoginPrompt {
 
 /** A sign-in in progress: what the user is shown (a page to open, a code to enter there, or a
  *  question to answer) until it ends. */
-export interface SubscriptionLogin {
+export interface ProviderLogin {
 	id: string;
-	provider: SubscriptionProvider | PiProviderId;
+	provider: LlmProvider;
 	status: "pending" | "done" | "error" | "cancelled";
 	/** The page to open and sign in on. */
 	url: string | null;
@@ -156,9 +122,9 @@ export interface SubscriptionLogin {
 	error: string | null;
 }
 
-/** One of pi's other providers: how it is signed in to, and whether it can be used now. */
-export interface PiProviderStatus {
-	id: PiProviderId;
+/** One of pi's providers: how it is signed in to, and whether it can be used now. */
+export interface ProviderStatus {
+	id: LlmProvider;
 	name: string;
 	/** The names pi gives its ways of signing in; null for one it does not offer. */
 	auth: { api_key: string | null; oauth: string | null };
@@ -166,10 +132,10 @@ export interface PiProviderStatus {
 	/** Where the credentials come from: entered here ("stored credential"), or the environment's
 	 *  variable that holds them. */
 	source: string | null;
-	/** Entered here, so they can be removed. */
-	stored: boolean;
+	/** What was entered here (a key, or a sign-in), which can be removed; null for none. */
+	stored: "api_key" | "oauth" | null;
 }
 
-export const piLoginSchema = z.object({ type: z.enum(["api_key", "oauth"]) });
+export const providerLoginSchema = z.object({ type: z.enum(["api_key", "oauth"]) });
 
-export const subscriptionCodeSchema = z.object({ code: z.string().trim() });
+export const loginCodeSchema = z.object({ code: z.string().trim() });

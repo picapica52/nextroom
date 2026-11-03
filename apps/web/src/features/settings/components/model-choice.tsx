@@ -1,6 +1,7 @@
 import {
 	type LlmProvider,
 	type ModelChoice,
+	OPENAI_COMPATIBLE,
 	THINKING_LEVELS,
 	type ThinkingLevel,
 } from "@nextroom/contracts";
@@ -9,7 +10,7 @@ import { cn } from "@nextroom/ui/lib/utils";
 import { useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
 import { SimpleSelect } from "@/components/simple-select";
-import { useConnections, useLlmModels, usePiProviders, useSubscriptions } from "@/hooks/queries";
+import { useLlmModels, useProviders } from "@/hooks/queries";
 import { useProviderOptions } from "../provider-labels";
 
 const THINKING_LABELS: Record<ThinkingLevel, string> = {
@@ -22,15 +23,9 @@ const THINKING_LABELS: Record<ThinkingLevel, string> = {
 	max: "最大",
 };
 
-/** The provider a new choice starts from: one already usable (signed in, or its key set). */
+/** The provider a new choice starts from: one already set up, else the OpenAI-compatible endpoint. */
 function useUsableProvider(): LlmProvider {
-	const signedIn = useSubscriptions().data?.find((s) => s.signed_in)?.provider;
-	const keys = useConnections().data?.keys;
-	const pi = usePiProviders().data?.find((p) => p.configured)?.id;
-	if (signedIn) return signedIn;
-	if (keys?.anthropic_key?.set && !keys.openrouter_key?.set) return "anthropic";
-	if (pi && !keys?.openrouter_key?.set) return pi;
-	return "openrouter";
+	return useProviders().data?.find((p) => p.configured)?.id ?? OPENAI_COMPATIBLE;
 }
 
 /** A provider, one of its models and how hard it thinks. Until a model is picked nothing is saved;

@@ -5,7 +5,7 @@ export const POLL = {
 	download: 1000,
 	speechModels: 10_000,
 	chatReply: 400,
-	subscriptionLogin: 2000,
+	providerLogin: 2000,
 } as const;
 
 /** The browser storage keys the app keeps its state under. */

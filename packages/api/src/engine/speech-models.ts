@@ -231,7 +231,7 @@ export async function ensureHeld(name: string, signal: AbortSignal): Promise<voi
 	if (!model) throw new ConflictError(`speech.cpp のカタログに ${label} がありません`);
 	if (model.held) return;
 	const where =
-		model.task === "recognition" ? "「設定 → モデル」の Speech To Text" : "キャラクターの声の画面";
+		model.task === "recognition" ? "「設定 → 音声」の文字起こし" : "キャラクターの声の画面";
 	if (model.loading)
 		throw new ConflictError(`${label} はダウンロード中です。終わってからもう一度試してください`);
 	if (!model.fetched)

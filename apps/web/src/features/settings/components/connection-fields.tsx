@@ -7,12 +7,13 @@ import type {
 import { Button } from "@nextroom/ui/components/button";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
-import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { SaveInput } from "@/components/save-field";
 import { Dot, ErrorNote } from "@/components/status";
-import { useConnections, useSaveConnections } from "@/hooks/queries";
+import { useConnections, useProviders, useSaveConnections } from "@/hooks/queries";
 import { client, read } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
+import { settingsPath } from "../pages";
 import { SettingsRow } from "./settings-layout";
 
 /** Where a key or address comes from: entered here, the server's .env, the default, or nowhere. */
@@ -141,23 +142,24 @@ export function KeyBadge({ name }: { name: ConnectionKey }) {
 	return key.set ? <Dot tone="success">設定済み</Dot> : <Dot tone="muted">未設定</Dot>;
 }
 
-/** A note that a key something needs is not set, and where it is entered; nothing once it is. */
-export function MissingKey({
-	name,
-	service,
-	where,
-}: {
-	name: ConnectionKey;
-	service: string;
-	where: ReactNode;
-}) {
+/** A note that a key something needs is not set, with a link to where it is entered; nothing
+ *  once it is. */
+export function MissingKey({ name, service }: { name: ConnectionKey; service: string }) {
 	const key = useConnections().data?.keys[name];
 	if (!key || key.set) return null;
 	return (
 		<p className="m-0 text-xs text-warning">
-			{service} の API キーが未設定です。{where}
+			{service} の API キーが未設定です。
+			<Link to={settingsPath("connections", name)} className="text-warning">
+				接続で入力する →
+			</Link>
 		</p>
 	);
+}
+
+/** Whether some provider a model can be chosen from is ready (undefined while unknown). */
+export function useHasLlmProvider(): boolean | undefined {
+	return useProviders().data?.some((p) => p.configured);
 }
 
 /** Lists the account's voices to see that the key works. */

@@ -61,7 +61,7 @@ export function CharacterVoiceForm({
 				{settings.data?.tts_enabled === false && (
 					<FieldDescription className="text-xs text-warning">
 						読み上げがオフのため、会話ではこの声を使いません（
-						<Link to="/settings/voice" className="text-warning">
+						<Link to="/settings/voice#tts-enabled" className="text-warning">
 							設定 → 音声
 						</Link>
 						でオンにできます）。
@@ -126,7 +126,9 @@ export function CharacterVoiceForm({
 					connections.data && (
 						<FieldDescription className="text-xs">
 							{fish ? "Fish Audio" : "ElevenLabs"} の API キーを
-							<Link to="/settings/voice">設定 → 音声</Link>
+							<Link to={`/settings/connections#${fish ? "fish_audio_key" : "elevenlabs_key"}`}>
+								設定 → 接続
+							</Link>
 							で入力すると使えます。
 						</FieldDescription>
 					)

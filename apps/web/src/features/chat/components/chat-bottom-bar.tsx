@@ -34,7 +34,7 @@ export function ChatBottomBar({
 		<div className="flex shrink-0 flex-col gap-2 px-3 pt-3 pb-3 sm:px-3.5 sm:pb-4">
 			{needsModel && (
 				<p className="m-0 text-sm text-warning">
-					<Link to="/settings/models" className="text-warning">
+					<Link to="/settings/models#main-model" className="text-warning">
 						設定 → モデル
 					</Link>
 					でメインモデルを選んでください。
