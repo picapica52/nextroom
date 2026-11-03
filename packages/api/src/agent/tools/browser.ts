@@ -12,7 +12,6 @@ import { z } from "zod";
 import { messageOf } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
 import { complete, replyText } from "../llm";
-import { DECLINED } from "../prompts";
 import { type LlmConnection, modelOf } from "../providers";
 import { defineTool, type ToolCall, type ToolSet } from "../tool";
 import { StagehandLlm } from "./stagehand-llm";
@@ -377,13 +376,12 @@ async function tabs(stagehand: Stagehand, input: Tabs) {
 /** Stagehand's tools for the agent, asking first where the settings say so. */
 export function browserTools(settings: AgentSettings, connection: LlmConnection): ToolSet {
 	if (!settings.browser.enabled) return {};
-	const s = settings.browser;
 
 	const browserTool = <S extends z.ZodType>(tool: {
 		name: string;
 		description: string;
 		schema: S;
-		asks?: (input: z.infer<S>) => boolean;
+		changes?: (input: z.infer<S>) => boolean;
 		run: (input: z.infer<S>, stagehand: Stagehand, call: ToolCall) => Promise<unknown>;
 		action: string;
 	}) =>
@@ -392,9 +390,8 @@ export function browserTools(settings: AgentSettings, connection: LlmConnection)
 			description: tool.description,
 			schema: tool.schema,
 			sequential: true,
+			changes: tool.changes as ((input: unknown) => boolean) | undefined,
 			async execute(input, call) {
-				if (tool.asks?.(input) && !(await call.context.reporter.approve(call.id, tool.name, input)))
-					return DECLINED.browser;
 				const { sessionId } = call.context;
 				const browser = await open(sessionId, settings, connection);
 				browser.llm.signal = call.signal;
@@ -417,7 +414,7 @@ export function browserTools(settings: AgentSettings, connection: LlmConnection)
 				'Perform an action on the page using natural language. Examples: "click the login button", "type hello into the search box", "scroll down".',
 			schema: actSchema,
 			action: "Act",
-			asks: () => s.approve_act,
+			changes: () => true,
 			run: async (input, stagehand) => {
 				const page = await pageOf(stagehand);
 				const result = await stagehand.act(input.instruction, {
@@ -487,7 +484,6 @@ export function browserTools(settings: AgentSettings, connection: LlmConnection)
 			description: "Navigate the browser to a URL.",
 			schema: navigateSchema,
 			action: "Navigate",
-			asks: () => s.approve_navigate,
 			run: async (input, stagehand) => {
 				const page = await pageOf(stagehand);
 				await page.goto(input.url, { waitUntil: input.waitUntil ?? "domcontentloaded" });
@@ -505,7 +501,6 @@ export function browserTools(settings: AgentSettings, connection: LlmConnection)
 				'Manage browser tabs. Actions: "list" shows all tabs, "new" opens a tab (optionally with URL), "switch" changes to tab by index, "close" closes a tab.',
 			schema: tabsSchema,
 			action: "Tabs",
-			asks: (input) => s.approve_navigate && !!input.url,
 			run: (input, stagehand) => tabs(stagehand, input),
 		}),
 		stagehand_screenshot: browserTool({

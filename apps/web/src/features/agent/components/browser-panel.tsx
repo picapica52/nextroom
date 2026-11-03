@@ -41,8 +41,8 @@ export function BrowserPanel({ sessionId, steps }: { sessionId: string; steps: A
 			{settings.data && !settings.data.browser.enabled && (
 				<p className="m-0 text-sm text-warning">
 					ブラウザは今オフです。上の「道具」か
-					<Link to="/settings/tools" className="text-warning">
-						設定 → 道具と権限
+					<Link to="/settings/computer" className="text-warning">
+						設定 → コンピューター
 					</Link>
 					でオンにすると、キャラクターが Web ページを開いて調べられるようになります。
 				</p>

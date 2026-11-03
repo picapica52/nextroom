@@ -6,6 +6,7 @@ export const qk = {
 	speechModels: () => ["speech-models"] as const,
 	elevenlabsVoices: () => ["elevenlabs-voices"] as const,
 	chatSettings: () => ["chat-settings"] as const,
+	connections: () => ["connections"] as const,
 	subscriptions: () => ["subscriptions"] as const,
 	subscriptionLogin: (id: string | null) => ["subscription-login", id] as const,
 	agentSettings: () => ["agent-settings"] as const,

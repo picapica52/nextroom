@@ -1,4 +1,5 @@
-// The conversation's settings: the reply's LLM, the custom prompt, speech and expression images.
+// The conversation's settings: the models, the custom prompt, speech and expression images; and the
+// connections to the services the app uses.
 
 import { z } from "zod";
 
@@ -10,9 +11,9 @@ export const DEFAULT_SPEECH_URL = "http://127.0.0.1:8080";
 export const ASR_PROVIDERS = ["parakeet", "elevenlabs"] as const;
 export type AsrProvider = (typeof ASR_PROVIDERS)[number];
 
-/** openai_compatible: any Chat Completions endpoint (the connection's URL and key / model);
- *  anthropic: Claude through Anthropic's API (ANTHROPIC_API_KEY / anthropic_model);
- *  openrouter: OpenRouter with OPENROUTER_API_KEY;
+/** openai_compatible: any Chat Completions endpoint (the connection's URL and key);
+ *  anthropic: Claude through Anthropic's API key;
+ *  openrouter: OpenRouter with its key;
  *  chatgpt / claude / copilot / grok: a subscription the user signs in to (ChatGPT Plus/Pro,
  *  Claude Pro/Max, GitHub Copilot, SuperGrok / X Premium). */
 export const LLM_PROVIDERS = [
@@ -33,120 +34,90 @@ export type SubscriptionProvider = (typeof SUBSCRIPTION_PROVIDERS)[number];
 export const isSubscription = (p: LlmProvider): p is SubscriptionProvider =>
 	(SUBSCRIPTION_PROVIDERS as readonly string[]).includes(p);
 
-const CLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"] as const;
-const OPENAI_EFFORTS = ["none", "minimal", "low", "medium", "high", "xhigh"] as const;
+/** How hard the model thinks before it answers; null in a choice: the model's default. pi fits
+ *  the level to what the model takes. */
+export const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
-/** The efforts each reply provider takes: Anthropic's `effort`, or `reasoning_effort` elsewhere. */
-export const REASONING_EFFORTS = {
-	anthropic: CLAUDE_EFFORTS,
-	openai_compatible: OPENAI_EFFORTS,
-	openrouter: OPENAI_EFFORTS,
-	chatgpt: OPENAI_EFFORTS,
-	claude: CLAUDE_EFFORTS,
-	copilot: OPENAI_EFFORTS,
-	grok: OPENAI_EFFORTS,
-} as const satisfies Record<LlmProvider, readonly string[]>;
-
-/** The saved effort if the chosen reply provider takes it; otherwise none is sent. */
-export const replyEffortOf = (s: { provider: LlmProvider; reasoning_effort: string }) =>
-	(REASONING_EFFORTS[s.provider] as readonly string[]).includes(s.reasoning_effort)
-		? s.reasoning_effort
-		: undefined;
+/** A model of a provider, with how hard it thinks. */
+export const modelChoiceSchema = z.object({
+	provider: z.enum(LLM_PROVIDERS),
+	model: z.string().trim().min(1),
+	thinking: z.enum(THINKING_LEVELS).nullable(),
+});
+export type ModelChoice = z.infer<typeof modelChoiceSchema>;
 
 /** The conversation's settings as stored. */
 export const chatSettingsSchema = z.object({
-	provider: z.enum(LLM_PROVIDERS),
-	model: z.string(),
-	anthropic_model: z.string(),
-	openrouter_model: z.string(),
-	chatgpt_model: z.string(),
-	claude_model: z.string(),
-	copilot_model: z.string(),
-	grok_model: z.string(),
-	/** Added after the fixed system prompt. */
+	/** What every character replies with unless it has a model of its own. Null: none chosen yet. */
+	main_model: modelChoiceSchema.nullable(),
+	/** Tried in order when the main model fails before it says anything. */
+	fallback_models: z.array(modelChoiceSchema).max(5),
+	/** Checks the characters' actions in the Auto approval mode. Null: Auto asks like Ask. */
+	approval_model: modelChoiceSchema.nullable(),
+	/** Added after the fixed system prompt, for every character. */
 	custom_prompt: z.string(),
 	temperature: z.number(),
 	/** null: the model's (or the endpoint's) default. */
 	max_tokens: z.number().int().nullable(),
-	/** Empty: the model's default. */
-	reasoning_effort: z.string(),
 	/** {{user}} in the characters' settings. */
-	user_name: z.string(),
+	user_name: z.string().trim(),
 	asr_provider: z.enum(ASR_PROVIDERS),
 	/** A recognition model of the speech.cpp server's catalog. Empty: the one the server holds. */
-	asr_model: z.string(),
+	asr_model: z.string().trim(),
 	/** Off: replies are text only, and nothing is synthesized. */
 	tts_enabled: z.boolean(),
 	/** Off: the face in a call does not change with the reply. */
 	face_changes_enabled: z.boolean(),
 	/** The Decisions model that tags expression images and chooses the faces in a call. Empty:
 	 *  images cannot be tagged, and the face does not change. */
-	image_tag_model: z.string(),
+	image_tag_model: z.string().trim(),
 	/** OpenRouter's model, for expression images and the image tool. Empty: images cannot be drawn. */
-	image_gen_model: z.string(),
+	image_gen_model: z.string().trim(),
 });
 export type ChatSettings = z.infer<typeof chatSettingsSchema>;
+export type ChatSettingsView = ChatSettings;
 
-/** The field that holds each reply provider's model name. */
-export const LLM_MODEL_FIELDS = {
-	openai_compatible: "model",
-	anthropic: "anthropic_model",
-	openrouter: "openrouter_model",
-	chatgpt: "chatgpt_model",
-	claude: "claude_model",
-	copilot: "copilot_model",
-	grok: "grok_model",
-} as const satisfies Record<LlmProvider, keyof ChatSettings>;
-
-/** The model name set for the chosen reply provider. */
-export const replyModelOf = (s: ChatSettings) => s[LLM_MODEL_FIELDS[s.provider]];
-
-/** The settings as the API answers them, with the connections of the server's .env: the
- *  addresses, and only whether each key is set. */
-export type ChatSettingsView = ChatSettings & {
-	base_url: string;
-	speech_url: string;
-	has_api_key: boolean;
-	has_anthropic_api_key: boolean;
-	has_openrouter_api_key: boolean;
-	has_exa_api_key: boolean;
-	has_composio_api_key: boolean;
-	has_elevenlabs_api_key: boolean;
-};
-
-const trimmed = z.string().trim();
-const reasoningEffort = z
-	.string()
-	.trim()
-	.refine(
-		(v) =>
-			v === "" ||
-			Object.values(REASONING_EFFORTS).some((e) => (e as readonly string[]).includes(v)),
-		"不明な effort",
-	);
-
-const patchFields = chatSettingsSchema.extend({
-	model: trimmed,
-	anthropic_model: trimmed,
-	openrouter_model: trimmed,
-	chatgpt_model: trimmed,
-	claude_model: trimmed,
-	copilot_model: trimmed,
-	grok_model: trimmed,
-	reasoning_effort: reasoningEffort,
-	user_name: trimmed,
-	asr_model: trimmed,
-	image_tag_model: trimmed,
-	image_gen_model: trimmed,
-}).shape;
-
-/** A change to the settings; a missing field stays as it is, and so does a null one except the max_tokens it clears. */
-export const chatSettingsPatchSchema = z.object(
-	Object.fromEntries(Object.entries(patchFields).map(([k, v]) => [k, z.nullish(v)])) as {
-		[K in keyof typeof patchFields]: z.ZodOptional<z.ZodNullable<(typeof patchFields)[K]>>;
-	},
-);
+/** A change to the settings; a missing field stays as it is. */
+export const chatSettingsPatchSchema = chatSettingsSchema.partial();
 export type ChatSettingsPatch = z.infer<typeof chatSettingsPatchSchema>;
+
+/** The services' API keys, entered on the settings screens; an empty one falls back to the
+ *  server's .env. */
+export const CONNECTION_KEYS = [
+	"openai_compatible_key",
+	"openrouter_key",
+	"anthropic_key",
+	"exa_key",
+	"composio_key",
+	"elevenlabs_key",
+] as const;
+export type ConnectionKey = (typeof CONNECTION_KEYS)[number];
+
+/** The services' addresses, entered the same way. */
+export const CONNECTION_URLS = ["openai_compatible_url", "speech_url"] as const;
+export type ConnectionUrl = (typeof CONNECTION_URLS)[number];
+
+/** Where a connection's value comes from. */
+export type ConnectionSource = "settings" | "env" | "default" | null;
+
+/** The connections as the API answers them: never the keys themselves, only whether each is set. */
+export interface ConnectionsView {
+	keys: Record<ConnectionKey, { set: boolean; source: ConnectionSource }>;
+	urls: Record<ConnectionUrl, { value: string; source: ConnectionSource }>;
+}
+
+/** A change to the connections; an empty value clears what was entered (the .env applies again). */
+export const connectionsPatchSchema = z.object({
+	...Object.fromEntries(CONNECTION_KEYS.map((k) => [k, z.string().trim().optional()])),
+	...Object.fromEntries(
+		CONNECTION_URLS.map((k) => [
+			k,
+			z.union([z.literal(""), z.url({ protocol: /^https?$/ })]).optional(),
+		]),
+	),
+}) as z.ZodType<Partial<Record<ConnectionKey | ConnectionUrl, string>>>;
+export type ConnectionsPatch = Partial<Record<ConnectionKey | ConnectionUrl, string>>;
 
 /** A subscription and whether the user is signed in to it. */
 export interface SubscriptionStatus {

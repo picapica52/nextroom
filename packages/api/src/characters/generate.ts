@@ -1,14 +1,9 @@
 // Writes one field of the persona: the conversation's LLM makes it up from the user's note and
 // the other fields the user chose, or rewrites what the field already says.
 
-import {
-	PERSONA_FIELDS,
-	type Persona,
-	type PersonaGeneratedField,
-	replyEffortOf,
-} from "@nextroom/contracts";
+import { PERSONA_FIELDS, type Persona, type PersonaGeneratedField } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import { connectionOf } from "../agent/providers";
+import { replyConnections } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
 import { FIELD_GUIDE } from "./extract";
@@ -67,7 +62,7 @@ export async function generatePersonaField(
 	signal?: AbortSignal,
 ): Promise<string> {
 	const settings = loadSettings();
-	const connection = connectionOf(settings);
+	const connection = replyConnections(settings);
 	const references = Object.fromEntries(
 		PERSONA_FIELDS.filter((k) => k !== field && reference.includes(k) && persona[k].trim()).map(
 			(k) => [k, persona[k]],
@@ -87,7 +82,6 @@ export async function generatePersonaField(
 
 	const answer = await generateOnce(connection, instructionsOf(field), prompt, {
 		temperature: 0.8,
-		effort: replyEffortOf(settings),
 		signal,
 	});
 	const value = plain(answer);

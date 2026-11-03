@@ -1,9 +1,27 @@
-import type { AffinityView, CharacterView, CharacterVoice } from "@nextroom/contracts";
+import type {
+	AffinityView,
+	CharacterAgentPatch,
+	CharacterView,
+	CharacterVoice,
+	ConnectionsView,
+	InstructionRevision,
+	RoutineCreate,
+	RoutinePatch,
+	RoutineView,
+} from "@nextroom/contracts";
 import { type UseQueryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, client, fileForm, read, signalled } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
+
+/** Query keys of this feature's own data. */
+const keys = {
+	connections: () => ["connections"] as const,
+	instructionHistory: (characterId: string) => ["instruction-history", characterId] as const,
+	routines: (characterId: string) => ["routines", characterId] as const,
+	routineRuns: (routineId: string) => ["routine-runs", routineId] as const,
+};
 
 /** Query keys to refresh after a character changes. */
 const CHARACTER_KEYS = [qk.characters(), qk.character(), qk.chatSessions()];
@@ -139,4 +157,88 @@ export function useImportArchive() {
 			api.post<CharacterView>("/api/characters/import/archive", fileForm(file)),
 		onSuccess: open,
 	});
+}
+
+/** Whether each service's key is set (on the connection settings or in the .env). */
+export function useConnections() {
+	return useQuery({
+		queryKey: keys.connections(),
+		queryFn: ({ signal }): Promise<ConnectionsView> =>
+			read(client.chat.connections.$get(undefined, signalled(signal))),
+	});
+}
+
+/** Saves a change to the character's own model, tools or instructions. */
+export function useSaveAgent(characterId: string) {
+	const qc = useQueryClient();
+	const saved = useCharacterSaved(characterId);
+	return useMutation({
+		mutationFn: (changes: CharacterAgentPatch) =>
+			read(client.characters[":id"].agent.$patch({ param: { id: characterId }, json: changes })),
+		onSuccess: (data) => {
+			saved(data);
+			void qc.invalidateQueries({ queryKey: keys.instructionHistory(characterId) });
+		},
+	});
+}
+
+export function useInstructionHistory(characterId: string) {
+	return useQuery({
+		queryKey: keys.instructionHistory(characterId),
+		queryFn: ({ signal }): Promise<InstructionRevision[]> =>
+			read(
+				client.characters[":id"].instructions.history.$get(
+					{ param: { id: characterId } },
+					signalled(signal),
+				),
+			),
+	});
+}
+
+export function useRoutines(characterId: string) {
+	return useQuery({
+		queryKey: keys.routines(characterId),
+		queryFn: ({ signal }): Promise<RoutineView[]> =>
+			read(client.routines.$get({ query: { character_id: characterId } }, signalled(signal))),
+		// A routine may start, finish or be made by the character at any time.
+		refetchInterval: (q) => (q.state.data?.some((r) => r.running) ? 2000 : 15_000),
+	});
+}
+
+export function useRoutineRuns(routineId: string, running: boolean) {
+	return useQuery({
+		queryKey: keys.routineRuns(routineId),
+		queryFn: ({ signal }) =>
+			read(client.routines[":id"].runs.$get({ param: { id: routineId } }, signalled(signal))),
+		refetchInterval: running ? 2000 : false,
+	});
+}
+
+/** Creating, changing, deleting and running the character's routines. */
+export function useRoutineActions(characterId: string) {
+	const qc = useQueryClient();
+	const refresh = (routineId?: string) => {
+		void qc.invalidateQueries({ queryKey: keys.routines(characterId) });
+		if (routineId) void qc.invalidateQueries({ queryKey: keys.routineRuns(routineId) });
+	};
+	return {
+		create: useMutation({
+			mutationFn: (input: Omit<RoutineCreate, "character_id">) =>
+				read(client.routines.$post({ json: { ...input, character_id: characterId } })),
+			onSuccess: () => refresh(),
+		}),
+		update: useMutation({
+			mutationFn: ({ id, patch }: { id: string; patch: RoutinePatch }) =>
+				read(client.routines[":id"].$patch({ param: { id }, json: patch })),
+			onSuccess: (r) => refresh(r.id),
+		}),
+		remove: useMutation({
+			mutationFn: (id: string) => read(client.routines[":id"].$delete({ param: { id } })),
+			onSuccess: () => refresh(),
+		}),
+		run: useMutation({
+			mutationFn: (id: string) => read(client.routines[":id"].run.$post({ param: { id } })),
+			onSuccess: (r) => refresh(r.id),
+		}),
+	};
 }

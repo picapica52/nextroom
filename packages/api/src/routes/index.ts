@@ -7,6 +7,7 @@ import { chatRouter } from "./chat";
 import { discordRouter } from "./discord";
 import { elevenlabsRouter } from "./elevenlabs";
 import { engineRouter } from "./engine";
+import { routinesRouter } from "./routines";
 import { systemRouter } from "./system";
 import { workspacesRouter } from "./workspaces";
 
@@ -22,6 +23,7 @@ export const apiRouter = new Hono()
 	.route("/browser", browserRouter)
 	.route("/workspaces", workspacesRouter)
 	.route("/memory", memoryRouter)
+	.route("/routines", routinesRouter)
 	.all("/*", (c) => c.json({ detail: "見つかりません" }, 404))
 	.onError((error, c) => {
 		if (isApiError(error)) return c.json({ detail: error.message }, error.status);

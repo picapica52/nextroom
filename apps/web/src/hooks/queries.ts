@@ -1,4 +1,9 @@
-import type { LlmProvider, SubscriptionLogin, SubscriptionProvider } from "@nextroom/contracts";
+import type {
+	ConnectionsPatch,
+	LlmProvider,
+	SubscriptionLogin,
+	SubscriptionProvider,
+} from "@nextroom/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { client, read, signalled } from "@/lib/api";
 import { POLL } from "@/lib/constants";
@@ -16,6 +21,35 @@ export function useChatSettings() {
 	return useQuery({
 		queryKey: qk.chatSettings(),
 		queryFn: ({ signal }) => read(client.chat.settings.$get(undefined, signalled(signal))),
+	});
+}
+
+/** The services' keys (whether each is set, and where from) and addresses. */
+export function useConnections() {
+	return useQuery({
+		queryKey: qk.connections(),
+		queryFn: ({ signal }) => read(client.chat.connections.$get(undefined, signalled(signal))),
+	});
+}
+
+/** Saves keys or addresses; what lists or checks with them is read again. */
+export function useSaveConnections() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (patch: ConnectionsPatch) => read(client.chat.connections.$patch({ json: patch })),
+		onSuccess: (data) => {
+			qc.setQueryData(qk.connections(), data);
+			for (const queryKey of [
+				qk.llmModels(),
+				qk.openrouterImageModels(),
+				qk.agentSettings(),
+				qk.composio(),
+				qk.elevenlabsVoices(),
+				qk.speechModels(),
+				qk.status(),
+			])
+				qc.invalidateQueries({ queryKey });
+		},
 	});
 }
 

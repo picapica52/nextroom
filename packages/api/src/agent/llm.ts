@@ -11,10 +11,11 @@ export interface CallOptions {
 	temperature: number;
 	/** Undefined: the model's default. */
 	maxTokens?: number;
-	/** Undefined: the model's default. */
-	effort?: string;
 	signal?: AbortSignal;
 }
+
+/** One connection, or the connections to try in order (the main model and its fallbacks). */
+export type Connections = LlmConnection | LlmConnection[];
 
 /** Whatever the call failed with, in words the screen can show. */
 export function llmFailure(error: unknown): Error {
@@ -37,43 +38,56 @@ export function replyText(message: AssistantMessage): string {
 	return (filter.feed(raw) + filter.flush()).trim();
 }
 
-/** The LLM's answer to `messages` under `instructions`. */
-export async function complete(
+/** One call to one model; it throws whatever the call failed with. */
+async function completeWith(
 	connection: LlmConnection,
+	context: Context,
+	options: CallOptions,
+): Promise<AssistantMessage> {
+	const message = await piModels().completeSimple(modelOf(connection), context, {
+		apiKey: apiKeyOf(connection),
+		temperature: options.temperature,
+		maxTokens: options.maxTokens,
+		reasoning: thinkingLevelOf(connection),
+		signal: options.signal,
+		maxRetries: 0,
+	});
+	if (message.stopReason === "aborted") throw options.signal?.reason ?? new Error("中断されました");
+	const failed = assistantError(message);
+	if (failed) throw failed;
+	return message;
+}
+
+/** The LLM's answer to `messages` under `instructions`, from the first connection that answers. */
+export async function complete(
+	connections: Connections,
 	instructions: string,
 	messages: Message[],
 	options: CallOptions,
 ): Promise<AssistantMessage> {
 	const context: Context = { systemPrompt: instructions, messages };
-	try {
-		const message = await piModels().completeSimple(modelOf(connection), context, {
-			apiKey: apiKeyOf(connection),
-			temperature: options.temperature,
-			maxTokens: options.maxTokens,
-			reasoning: thinkingLevelOf(options.effort),
-			signal: options.signal,
-			maxRetries: 0,
-		});
-		if (message.stopReason === "aborted")
-			throw options.signal?.reason ?? new Error("中断されました");
-		const failed = assistantError(message);
-		if (failed) throw failed;
-		return message;
-	} catch (error) {
-		if (options.signal?.aborted) throw error;
-		throw llmFailure(error);
+	const tries = [connections].flat();
+	let last: unknown = new Error("モデルがありません");
+	for (const connection of tries) {
+		try {
+			return await completeWith(connection, context, options);
+		} catch (error) {
+			if (options.signal?.aborted) throw error;
+			last = error;
+		}
 	}
+	throw llmFailure(last);
 }
 
 /** One answer from the conversation's LLM to `prompt`. */
 export async function generateOnce(
-	connection: LlmConnection,
+	connections: Connections,
 	instructions: string,
 	prompt: string,
 	options: CallOptions,
 ): Promise<string> {
 	const message = await complete(
-		connection,
+		connections,
 		instructions,
 		[{ role: "user", content: prompt, timestamp: Date.now() }],
 		options,

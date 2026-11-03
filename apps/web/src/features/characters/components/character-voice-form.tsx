@@ -15,6 +15,7 @@ import { ErrorNote } from "@/components/status";
 import { CaptionField, SpeedField } from "@/components/voice-fields";
 import { useChatSettings } from "@/hooks/queries";
 import { ELEVENLABS_TTS_MODEL_LABELS } from "@/lib/api";
+import { useConnections } from "../queries";
 import { ElevenlabsClone, ElevenlabsDesign, ElevenlabsVoiceField } from "./elevenlabs-voice";
 import { VoiceFileField, VoiceRefs } from "./voice-refs";
 
@@ -41,7 +42,8 @@ export function CharacterVoiceForm({
 }) {
 	const settings = useChatSettings();
 	const elevenlabs = value.provider === "elevenlabs";
-	const hasKey = settings.data?.has_elevenlabs_api_key ?? false;
+	const connections = useConnections();
+	const hasKey = connections.data?.keys.elevenlabs_key.set ?? false;
 
 	return (
 		<>
@@ -54,8 +56,8 @@ export function CharacterVoiceForm({
 				{settings.data?.tts_enabled === false && (
 					<FieldDescription className="text-xs text-warning">
 						読み上げがオフのため、会話ではこの声を使いません（
-						<Link to="/settings/reply" className="text-warning">
-							設定 → 返答のしかた
+						<Link to="/settings/voice" className="text-warning">
+							設定 → 音声
 						</Link>
 						でオンにできます）。
 					</FieldDescription>
@@ -125,11 +127,11 @@ export function CharacterVoiceForm({
 						/>
 					</>
 				) : (
-					settings.data && (
+					connections.data && (
 						<FieldDescription className="text-xs">
-							.env で ELEVENLABS_API_KEY を設定すると使えます（
-							<Link to="/settings/connections">設定 → 接続</Link>
-							で確認）。
+							ElevenLabs の API キーを
+							<Link to="/settings/voice">設定 → 音声</Link>
+							で入力すると使えます。
 						</FieldDescription>
 					)
 				)}

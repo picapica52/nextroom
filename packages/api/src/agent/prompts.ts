@@ -5,12 +5,14 @@ import type { AgentSettings } from "../settings/agent";
 
 export const OUTSIDE_CONVERSATION = "This tool is only available inside a conversation.";
 
-/** What a tool answers when the user declines the call, by tool. */
+/** What a tool answers when it does not run. */
 export const DECLINED = {
-	browser: "The user did not allow this action. Find another way or check with the user.",
-	sandbox: "The user did not allow this to run. Find another way or check with the user.",
-	photo: "The user did not want this photo sent. Check with the user.",
-	app: "The user did not allow this. Find another way or check with the user.",
+	/** The user said no on the screen. */
+	user: "The user did not allow this. Find another way or check with the user.",
+	/** The user blocked it in the settings. */
+	blocked: "The user does not allow this action at all. Do not try it again; find another way.",
+	/** No one was there to say yes (a routine). */
+	away: "This needs the user's go-ahead, and the user is not here now, so it was not done. Tell them what you would have done.",
 } as const;
 
 export const NO_EXA_KEY =
@@ -88,6 +90,11 @@ export function toolGuide(settings: AgentSettings): string {
 	if (settings.sandbox.enabled) {
 		tools.push(
 			"- Workspace (workspace_*): through your device, read and write files and run commands in your own workspace on the user's computer. The user sees its files and can add some.",
+		);
+	}
+	if (settings.routines.enabled) {
+		tools.push(
+			"- Routines (schedule_routine, list_routines, cancel_routine): when the user asks you to do something at a set time or regularly (wake them, remind them, check something every morning), set it up. When the time comes you will be asked to do it, and what you say waits in the conversation for them.",
 		);
 	}
 	if (settings.ask_user.enabled) {

@@ -4,9 +4,8 @@
 import { isSubscription, type LlmProvider, type SubscriptionProvider } from "@nextroom/contracts";
 
 import { ConflictError, messageOf } from "../lib/errors";
-import { loadSettings } from "../settings/chat";
 import { PI_PROVIDERS } from "./auth";
-import { connectionOf, type LlmConnection, modelsRequest, piModels } from "./providers";
+import { type LlmConnection, modelsRequest, piModels, providerConnection } from "./providers";
 
 const LIST_TIMEOUT_MS = 30_000;
 
@@ -109,17 +108,15 @@ async function subscriptionModels(provider: SubscriptionProvider): Promise<LlmMo
 		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** The models of the saved connection, or of `provider`'s connection instead of the chosen one. */
-export function listLlmModels(provider?: LlmProvider): Promise<LlmModel[]> {
-	const s = loadSettings();
-	const chosen = provider ?? s.provider;
-	const connection = connectionOf({ ...s, provider: chosen }, false);
-	return isSubscription(chosen) ? subscriptionModels(chosen) : listModels(connection);
+/** The models `provider` offers. */
+export function listLlmModels(provider: LlmProvider): Promise<LlmModel[]> {
+	const connection = providerConnection(provider);
+	return isSubscription(provider) ? subscriptionModels(provider) : listModels(connection);
 }
 
 /** OpenRouter's models that take an image and give `output`: a drawn image or a Decisions answer. */
 export function listOpenrouterImageModels(output: "image" | "decisions"): Promise<LlmModel[]> {
-	const connection = connectionOf({ ...loadSettings(), provider: "openrouter" }, false);
+	const connection = providerConnection("openrouter");
 	return listModels(connection, {
 		filter: `output_modalities=${output}&input_modalities=image`,
 		imageOutput: output === "image",

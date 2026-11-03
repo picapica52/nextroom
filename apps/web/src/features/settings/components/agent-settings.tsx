@@ -1,27 +1,25 @@
 import type { AgentSettingsPatch, AgentSettingsView } from "@nextroom/contracts";
 import { useQueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { SettingsBody, SettingsErrorFooter } from "@/components/settings-section";
 import { ErrorNote } from "@/components/status";
-import { useAgentSettings, useDockerStatus, useSaveAgentSettings } from "@/features/agent/queries";
+import { useAgentSettings, useSaveAgentSettings } from "@/features/agent/queries";
 import { qk } from "@/lib/query-keys";
 import type { SetAgentSection } from "../agent-options";
-import { AgentApprovalsSection } from "./agent-approvals-section";
-import { AgentToolsSection } from "./agent-tools-section";
 
-/** What the character agent may do: its tools (browser, files and commands, apps…) and
- *  when they ask first. A change is saved as soon as it is made. */
-export default function AgentSettingsPage() {
+export type AgentSettingsForm = { form: AgentSettingsView; set: SetAgentSection };
+
+/** One page of the agent settings. A change is saved as soon as it is made. */
+export function AgentSettingsPage({ children }: { children: (f: AgentSettingsForm) => ReactNode }) {
 	const qc = useQueryClient();
 	const saved = useAgentSettings();
 	const save = useSaveAgentSettings();
-	const docker = useDockerStatus();
 	if (!saved.data)
 		return (
 			<SettingsBody>
 				<ErrorNote error={saved.error} />
 			</SettingsBody>
 		);
-	const form = saved.data;
 	const set: SetAgentSection = (section, changes) => {
 		qc.setQueryData<AgentSettingsView>(
 			qk.agentSettings(),
@@ -38,10 +36,7 @@ export default function AgentSettingsPage() {
 
 	return (
 		<>
-			<SettingsBody>
-				<AgentToolsSection form={form} set={set} docker={docker.data} />
-				<AgentApprovalsSection form={form} set={set} />
-			</SettingsBody>
+			<SettingsBody>{children({ form: saved.data, set })}</SettingsBody>
 			<SettingsErrorFooter error={save.error} />
 		</>
 	);

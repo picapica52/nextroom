@@ -186,7 +186,7 @@ function TalkSection({ form, set }: { form: DiscordSettingsView; set: Set }) {
 				/>
 			</Field>
 			{silent && (
-				<ErrorNote error="「返答のしかた」で読み上げがオフになっているため、ボイスチャンネルでは喋りません" />
+				<ErrorNote error="「音声」で読み上げがオフになっているため、ボイスチャンネルでは喋りません" />
 			)}
 			<SwitchRow
 				id="discord-greet"

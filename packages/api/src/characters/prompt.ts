@@ -1,4 +1,5 @@
-// The prompt for a conversation: the fixed system prompt, the user's custom prompt and the fixed style prompt, then the setting (the voice-call device) and the character's persona before the
+// The prompt for a conversation: the fixed system prompt, the user's custom prompt, the character's
+// own instructions and the fixed style prompt, then the setting (the voice-call device) and the character's persona before the
 // conversation, and the current time and when the two last talked after it.
 
 import { STYLE_PROMPT, SYSTEM_PROMPT } from "./instructions";
@@ -21,7 +22,7 @@ function expandMacros(text: string, charName: string, userName: string): string 
 }
 
 interface ConversationPrompt {
-	/** The main prompt, the custom prompt, then the style prompt. */
+	/** The main prompt, the custom prompt, the character's own instructions, then the style prompt. */
 	system: string;
 	/** System messages between the main prompt and the conversation: the character's persona. */
 	beforeHistory: string[];
@@ -112,6 +113,7 @@ export function conversationPrompt(
 	const system = joined([
 		expand(SYSTEM_PROMPT),
 		expand(settings.custom_prompt),
+		expand(character?.agent.instructions ?? ""),
 		expand(STYLE_PROMPT),
 	]);
 	const now = new Date();

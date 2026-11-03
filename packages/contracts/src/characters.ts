@@ -3,8 +3,10 @@
 
 import { z } from "zod";
 
+import { TOOL_GROUPS } from "./agent";
 import { currentExpressionTag, EXPRESSION_TAG_VALUES } from "./expression-tags";
 import type { JobStatus } from "./jobs";
+import { modelChoiceSchema } from "./settings";
 import { characterVoiceSchema, type TtsProvider } from "./voice";
 
 export const PERSONA_FIELDS = [
@@ -164,6 +166,29 @@ export interface ExpressionTagGuess {
 }
 
 /** A character as stored. */
+/** What a character does differently from the others: its own model, the tools it never uses,
+ *  and its standing instructions (added after the custom prompt of the settings). */
+export const characterAgentSchema = z.object({
+	model: modelChoiceSchema.nullable().default(null),
+	disabled_tools: z.array(z.enum(TOOL_GROUPS)).default([]),
+	instructions: z.string().default(""),
+});
+export type CharacterAgent = z.infer<typeof characterAgentSchema>;
+
+export const characterAgentPatchSchema = z.object({
+	model: modelChoiceSchema.nullable().optional(),
+	disabled_tools: z.array(z.enum(TOOL_GROUPS)).optional(),
+	instructions: z.string().max(20_000).optional(),
+});
+export type CharacterAgentPatch = z.infer<typeof characterAgentPatchSchema>;
+
+/** An earlier version of a character's instructions, which can be restored. */
+export interface InstructionRevision {
+	revision: number;
+	instructions: string;
+	created_at: number;
+}
+
 export const characterSchema = z.object({
 	id: z.string(),
 	created_at: z.number(),
@@ -174,6 +199,7 @@ export const characterSchema = z.object({
 	expressions: z.array(expressionSchema).default([]),
 	/** The expression shown when no feeling is shown, also the character's picture. It has no tag. */
 	neutral: z.string().nullable().default(null),
+	agent: characterAgentSchema.default({ model: null, disabled_tools: [], instructions: "" }),
 });
 export type Character = z.infer<typeof characterSchema>;
 

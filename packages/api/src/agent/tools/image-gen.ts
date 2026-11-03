@@ -13,7 +13,7 @@ import { drawWithOpenrouter } from "../../images/client";
 import { BadRequestError, isApiError } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
 import { loadSettings } from "../../settings/chat";
-import { DECLINED, PHOTO_FAILED } from "../prompts";
+import { PHOTO_FAILED } from "../prompts";
 import { defineTool, type ToolSet } from "../tool";
 
 /** What the image model is asked for: the scene as a photo, keeping the references' look. */
@@ -34,8 +34,7 @@ function photoPrompt(scene: string, self: boolean, others: number): string {
 	].join("\n");
 }
 
-function photoTool(settings: AgentSettings) {
-	const { approve } = settings.image_gen;
+function photoTool() {
 	return defineTool({
 		name: "send_photo",
 		description:
@@ -69,7 +68,6 @@ function photoTool(settings: AgentSettings) {
 		execute: async (input, call) => {
 			const { sessionId, characterId, addImages, reporter } = call.context;
 			const { id } = call;
-			if (approve && !(await reporter.approve(id, "send_photo", input))) return DECLINED.photo;
 			try {
 				const model = loadSettings().image_gen_model;
 				if (!model)
@@ -106,6 +104,6 @@ function photoTool(settings: AgentSettings) {
 /** The photo tool, when the agent settings turn it on. */
 export function imageGenTools(settings: AgentSettings): ToolSet {
 	if (!settings.image_gen.enabled) return {};
-	const tool = photoTool(settings);
+	const tool = photoTool();
 	return { [tool.name]: tool };
 }

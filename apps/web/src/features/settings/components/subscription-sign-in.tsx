@@ -45,7 +45,7 @@ export function SubscriptionStatusRow({ provider }: { provider: SubscriptionProv
 	};
 
 	return (
-		<div className="-mt-3 flex flex-col gap-2">
+		<div className="flex flex-col gap-2">
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
 				{status.isPending ? (
 					<Spinner className="size-3.5 text-muted-foreground" />

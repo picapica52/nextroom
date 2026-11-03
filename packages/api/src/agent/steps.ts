@@ -101,8 +101,6 @@ interface Pending {
 }
 
 const pending = new Map<string, Pending>();
-/** Tools the user allowed for the rest of a conversation, by session. */
-const allowed = new Map<string, Set<string>>();
 
 /** The user's answer to a question asked by `TurnReporter.approve()`; false if it is gone. */
 export function decide(sessionId: string, approvalId: string, decision: Decision): boolean {
@@ -112,8 +110,6 @@ export function decide(sessionId: string, approvalId: string, decision: Decision
 	waiting.resolve(decision);
 	return true;
 }
-
-export const forgetSession = (sessionId: string) => allowed.delete(sessionId);
 
 /** Where the steps go as they change, with the reply's status while a question is open. */
 export type StepsListener = (steps: AgentStep[], status?: ChatMessage["status"]) => void;
@@ -131,6 +127,8 @@ export class TurnReporter {
 		/** Aborted when the turn is cancelled; a question still open is then declined. */
 		readonly signal: AbortSignal,
 		private readonly onChange: StepsListener,
+		/** No one is there to answer (a routine's run): every question is declined at once. */
+		readonly unattended = false,
 	) {}
 
 	private find(id: string): AgentStep | undefined {
@@ -177,13 +175,26 @@ export class TurnReporter {
 		this.flush(true);
 	}
 
-	/** Ask the user whether the call may run; true once they allow it. */
-	async approve(id: string, tool: string, input: unknown, parent?: string): Promise<boolean> {
-		if (allowed.get(this.sessionId)?.has(tool)) return true;
-		this.start(id, tool, input, parent);
+	/** The call is refused without asking (a blocked tool, or no one to ask). */
+	decline(id: string, tool: string, input: unknown): void {
+		this.start(id, tool, input);
+		const step = this.find(id);
+		if (!step) return;
+		step.status = "declined";
+		step.finished_at = now();
+		this.flush(true);
+	}
+
+	/** Ask the user whether the call may run; true once they allow it. `onAlways` is told when
+	 *  they allow it from now on. */
+	async approve(id: string, tool: string, input: unknown, onAlways?: () => void): Promise<boolean> {
+		this.start(id, tool, input);
 		const step = this.find(id);
 		if (!step) return false;
-		if (this.signal.aborted) return false;
+		if (this.signal.aborted || this.unattended) {
+			this.decline(id, tool, input);
+			return false;
+		}
 		const approvalId = newId("ap_");
 		step.status = "awaiting";
 		step.approval = approvalId;
@@ -197,11 +208,7 @@ export class TurnReporter {
 			);
 		});
 		delete step.approval;
-		if (decision.approved && decision.always) {
-			const tools = allowed.get(this.sessionId) ?? new Set<string>();
-			tools.add(tool);
-			allowed.set(this.sessionId, tools);
-		}
+		if (decision.approved && decision.always) onAlways?.();
 		step.status = decision.approved ? "running" : "declined";
 		if (!decision.approved) step.finished_at = now();
 		this.flush(true);

@@ -3,7 +3,6 @@
 import { clearSession } from "../conversations/sessions";
 import { loadAgentSettings } from "../settings/agent";
 import { clearMemory } from "./memory";
-import { forgetSession } from "./steps";
 import { closeBrowser } from "./tools/browser";
 import { resetSandbox } from "./tools/sandbox";
 
@@ -11,7 +10,6 @@ import { resetSandbox } from "./tools/sandbox";
  *  approvals, and the files beside it. The workspace's files stay, as the user's work. */
 export async function forgetConversation(characterId: string) {
 	clearSession(characterId);
-	forgetSession(characterId);
 	try {
 		clearMemory(characterId);
 	} catch (error) {

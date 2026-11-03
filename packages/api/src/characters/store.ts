@@ -95,6 +95,7 @@ export function createCharacter(name = ""): CharacterView {
 		voice: defaultCharacterVoice(),
 		expressions: [],
 		neutral: null,
+		agent: { model: null, disabled_tools: [], instructions: "" },
 	};
 	saveCharacter(character);
 	return viewOf(character);

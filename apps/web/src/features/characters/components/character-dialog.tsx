@@ -15,9 +15,11 @@ import { client, read } from "@/lib/api";
 import { useCharacter, useCharacterSaved, useInvalidateCharacters, useSaveVoice } from "../queries";
 import { EDIT_TABS, TAB_INFO, TABS, type Tab } from "../tabs";
 import { AffinitySection } from "./affinity";
+import { CharacterAgentSettings } from "./character-agent-settings";
 import { CharacterExpressions } from "./character-expressions";
 import { CharacterExtractDialog } from "./character-extract-dialog";
 import { CharacterProfileForm } from "./character-profile-form";
+import { CharacterRoutines } from "./character-routines";
 import { CharacterSidebar } from "./character-sidebar";
 import { CharacterVoiceForm } from "./character-voice-form";
 
@@ -165,6 +167,12 @@ function CharacterDetail({ characterId, tab }: { characterId: string; tab: Tab }
 						<MemoryView characterId={characterId} />
 					</>
 				)}
+
+				{tab === "routines" && (
+					<CharacterRoutines characterId={characterId} name={character.persona.name} />
+				)}
+
+				{tab === "agent" && <CharacterAgentSettings character={character} />}
 			</SettingsBody>
 
 			{EDIT_TABS.includes(tab) && (

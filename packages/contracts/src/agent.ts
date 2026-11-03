@@ -3,14 +3,44 @@
 
 import { z } from "zod";
 
+/** The groups of tools a character can be kept from using (in its own settings). Its memory tool
+ *  is always at hand. */
+export const TOOL_GROUPS = [
+	"web_search",
+	"topic_search",
+	"browser",
+	"workspace",
+	"send_photo",
+	"ask_user",
+	"apps",
+	"routines",
+] as const;
+export type ToolGroup = (typeof TOOL_GROUPS)[number];
+
+/** How much a character may do without asking: never ask, let the approval model decide (it asks
+ *  when an action is off the request or cannot be undone), or ask before any action that changes
+ *  something. */
+export const APPROVAL_MODES = ["never", "auto", "ask"] as const;
+export type ApprovalMode = (typeof APPROVAL_MODES)[number];
+
+/** An action always allowed (it never asks) or blocked (refused without asking), in every mode.
+ *  `tool` is the tool's name, or the app action for an app's tools. */
+export const approvalRuleSchema = z.object({
+	tool: z.string().trim().min(1),
+	decision: z.enum(["allow", "block"]),
+});
+export type ApprovalRule = z.infer<typeof approvalRuleSchema>;
+
 /** The agent settings as stored; the server checks every change against it. */
 export const agentSettingsSchema = z.object({
+	approvals: z.object({
+		mode: z.enum(APPROVAL_MODES),
+		rules: z.array(approvalRuleSchema),
+	}),
 	browser: z.object({
 		enabled: z.boolean(),
 		/** Hide Chrome's window; the page also streams to the app either way. */
 		headless: z.boolean(),
-		approve_act: z.boolean(),
-		approve_navigate: z.boolean(),
 	}),
 	sandbox: z.object({
 		enabled: z.boolean(),
@@ -21,12 +51,9 @@ export const agentSettingsSchema = z.object({
 		cpus: z.number().min(0.25).max(64),
 		network: z.boolean(),
 		timeout_sec: z.number().int().min(5).max(3600),
-		approve_command: z.boolean(),
-		approve_write: z.boolean(),
-		approve_delete: z.boolean(),
 	}),
 	web_search: z.object({
-		/** Search the web through Exa's API (its key is in the connection settings). */
+		/** Search the web through Exa's API (its key is in the integrations' settings). */
 		enabled: z.boolean(),
 	}),
 	topic_search: z.object({
@@ -39,20 +66,19 @@ export const agentSettingsSchema = z.object({
 	}),
 	image_gen: z.object({
 		/** Draw images through OpenRouter's Images API, with the model of the chat settings'
-		 *  `image_gen_model` (its key is in the connection settings). */
+		 *  `image_gen_model`. */
 		enabled: z.boolean(),
-		approve: z.boolean(),
 	}),
 	composio: z.object({
-		/** Apps such as Gmail or Google Calendar through Composio (its key is in the connection
-		 *  settings); accounts are connected from the agent settings. */
+		/** Apps such as Gmail or Google Calendar through Composio; accounts are connected from the
+		 *  integrations' settings. */
 		enabled: z.boolean(),
 		/** Composio's toolkit slugs the character may use, e.g. gmail, googlecalendar. */
 		toolkits: z.array(z.string().trim().toLowerCase().min(1)),
-		/** Ask before calls that only read (list, get, search…). */
-		approve_read: z.boolean(),
-		/** Ask before calls that send, create, change or delete. */
-		approve_write: z.boolean(),
+	}),
+	routines: z.object({
+		/** The character can set up, list and cancel routines in the conversation. */
+		enabled: z.boolean(),
 	}),
 });
 
@@ -62,6 +88,7 @@ const { shape } = agentSettingsSchema;
 
 /** A change to the settings: any fields of any section. */
 export const agentSettingsPatchSchema = z.object({
+	approvals: shape.approvals.partial().optional(),
 	browser: shape.browser.partial().optional(),
 	sandbox: shape.sandbox.partial().optional(),
 	web_search: shape.web_search.partial().optional(),
@@ -69,6 +96,7 @@ export const agentSettingsPatchSchema = z.object({
 	ask_user: shape.ask_user.partial().optional(),
 	image_gen: shape.image_gen.partial().optional(),
 	composio: shape.composio.partial().optional(),
+	routines: shape.routines.partial().optional(),
 });
 export type AgentSettingsPatch = z.infer<typeof agentSettingsPatchSchema>;
 
@@ -154,7 +182,7 @@ export type AgentStep = z.infer<typeof agentStepSchema>;
 /** The user's answer to a step waiting for the go-ahead. */
 export const approvalSchema = z.object({
 	approved: z.boolean(),
-	/** Allow this tool for the rest of the conversation. */
+	/** Always allow this tool from now on (it is added to the approval rules). */
 	always: z.boolean().default(false),
 });
 

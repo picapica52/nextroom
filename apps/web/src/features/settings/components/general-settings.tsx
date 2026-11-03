@@ -3,8 +3,8 @@ import { SaveInput, SaveTextarea } from "@/components/save-field";
 import { SettingsSection } from "@/components/settings-section";
 import { ChatSettingsPage } from "./chat-settings";
 
-/** The user's name and the instructions sent with every conversation. */
-export default function PromptSettings() {
+/** The user's name and the instructions sent to every character. */
+export default function GeneralSettings() {
 	return (
 		<ChatSettingsPage>
 			{({ form, set }) => (
@@ -26,10 +26,10 @@ export default function PromptSettings() {
 
 					<SettingsSection className="gap-5">
 						<Field>
-							<FieldLabel htmlFor="custom-prompt">カスタムプロンプト</FieldLabel>
+							<FieldLabel htmlFor="custom-prompt">すべてのキャラクターへの指示</FieldLabel>
 							<SaveTextarea
 								id="custom-prompt"
-								rows={4}
+								rows={5}
 								className="resize-y text-sm leading-relaxed"
 								value={form.custom_prompt}
 								onSave={(custom_prompt) => set({ custom_prompt })}

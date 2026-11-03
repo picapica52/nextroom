@@ -6,16 +6,6 @@ import { Dot } from "@/components/status";
 import type { SetAgentSection } from "../agent-options";
 import { NumberField, SwitchRow } from "./settings-fields";
 
-export const sandboxToolSummary = (
-	sandbox: AgentSettingsView["sandbox"],
-	docker: DockerStatus | undefined,
-) =>
-	sandbox.provider === "local"
-		? "この PC で直接実行（隔離なし）"
-		: docker?.ok
-			? `Docker の中で実行 ・ Docker ${docker.version} に接続済み`
-			: "Docker の中で実行 ・ Docker に接続できません";
-
 export function SandboxToolSettings({
 	sandbox,
 	docker,

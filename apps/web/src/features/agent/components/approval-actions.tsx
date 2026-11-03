@@ -4,7 +4,7 @@ import { ErrorNote } from "@/components/status";
 import { useApprove } from "../queries";
 import { clipText } from "./step-detail";
 
-/** What a waiting call would run, then: allow once, allow for the rest of the conversation, or decline. */
+/** What a waiting call would run, then: allow once, always allow (added to Settings → 承認), or decline. */
 export function ApprovalActions({
 	sessionId,
 	step,
@@ -30,7 +30,7 @@ export function ApprovalActions({
 					disabled={approve.isPending}
 					onClick={() => answer(true, true)}
 				>
-					この会話では常に許可
+					常に許可
 				</Button>
 				<Button
 					size="sm"

@@ -94,9 +94,10 @@ function ToolsPanel() {
 			</div>
 			<ErrorNote error={save.error} />
 			<Separator />
-			<Link to="/settings/tools" className="text-xs">
-				確認の要否など、詳しい設定 →
-			</Link>
+			<div className="flex flex-wrap justify-between gap-2 text-xs">
+				<Link to="/settings/computer">詳しい設定 →</Link>
+				<Link to="/settings/approvals">確認のしかた →</Link>
+			</div>
 		</>
 	);
 }
