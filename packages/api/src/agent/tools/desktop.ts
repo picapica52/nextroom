@@ -127,7 +127,11 @@ async function prepareDesktop(characterId: string, s: DesktopSettings): Promise<
 	if (info.code === 0) {
 		const [label, isRunning] = info.out.split(" ");
 		if (label === hash) {
-			ready = isRunning === "true" || (await docker(["start", name], START_TIMEOUT_MS)).code === 0;
+			// A running one whose screen is down is made again rather than trusted.
+			ready =
+				isRunning === "true"
+					? await screenUp(name)
+					: (await docker(["start", name], START_TIMEOUT_MS)).code === 0;
 		}
 		if (!ready) await docker(["rm", "-f", name], 60_000);
 	}
@@ -175,18 +179,33 @@ async function addressOf(name: string): Promise<string> {
 	return `127.0.0.1:${published.split(":").at(-1)}`;
 }
 
+/** Whether the display and both VNC servers (watching and taking over) answer. */
+async function screenUp(name: string): Promise<boolean> {
+	const check = await docker([
+		"exec",
+		"-u",
+		"user",
+		name,
+		"bash",
+		"-c",
+		"xdpyinfo -display :1 >/dev/null && exec 3<>/dev/tcp/127.0.0.1/5900 4<>/dev/tcp/127.0.0.1/5901",
+	]);
+	return check.code === 0;
+}
+
 async function waitUntilUp(name: string, address: string): Promise<void> {
 	const until = Date.now() + START_TIMEOUT_MS;
 	while (Date.now() < until) {
-		const x = await docker(["exec", "-u", "user", name, "xdpyinfo", "-display", ":1"]);
 		const web = await fetch(`http://${address}/nextroom.html`).then(
 			(r) => r.ok,
 			() => false,
 		);
-		if (x.code === 0 && web) return;
+		if (web && (await screenUp(name))) return;
 		await Bun.sleep(500);
 	}
-	throw new Error("The desktop did not come up in time.");
+	// Left running, it would look started with nothing on its screen.
+	await docker(["stop", name], 60_000);
+	throw new Error("The desktop's screen did not come up in time.");
 }
 
 let sweeper: ReturnType<typeof setInterval> | null = null;
@@ -229,17 +248,13 @@ export async function desktopView(
 	const enabled = settings.desktop.enabled;
 	if (!Bun.which("docker"))
 		return { enabled, running: false, starting, error: "Docker が見つかりません" };
-	const state = await docker([
-		"inspect",
-		"--format",
-		"{{.State.Running}}",
-		containerName(characterId),
-	]);
-	const running = !starting && state.code === 0 && state.out === "true";
-	if (!running && !starting) desktops.delete(characterId);
-	if (running && !desktops.has(characterId)) {
+	const name = containerName(characterId);
+	const state = await docker(["inspect", "--format", "{{.State.Running}}", name]);
+	const up = !starting && state.code === 0 && state.out === "true" && (await screenUp(name));
+	if (!up && !starting) desktops.delete(characterId);
+	if (up && !desktops.has(characterId)) {
 		// Left running from before the app restarted.
-		const address = await addressOf(containerName(characterId)).catch(() => null);
+		const address = await addressOf(name).catch(() => null);
 		if (address) {
 			desktops.set(characterId, { address, lastUsed: Date.now() });
 			startSweeping();
@@ -247,7 +262,7 @@ export async function desktopView(
 	}
 	return {
 		enabled,
-		running,
+		running: up && desktops.has(characterId),
 		starting,
 		error: failures.get(characterId) ?? null,
 	};
