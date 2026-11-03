@@ -2,7 +2,7 @@
 // forms the routes do not type.
 
 import type { AppType } from "@nextroom/api";
-import type { ElevenlabsTtsModel, TtsProvider } from "@nextroom/contracts";
+import type { ElevenlabsTtsModel, FishAudioTtsModel, TtsProvider } from "@nextroom/contracts";
 import { type ClientResponse, hc } from "hono/client";
 
 /** The avatar URL, changing whenever the character is saved so the browser does not show a stale one. */
@@ -100,6 +100,14 @@ export const ELEVENLABS_TTS_MODEL_LABELS: Record<ElevenlabsTtsModel, string> = {
 	eleven_flash_v2_5: "Flash v2.5（低遅延）",
 };
 
+export const FISH_AUDIO_TTS_MODEL_LABELS: Record<FishAudioTtsModel, string> = {
+	"s2.1-pro": "S2.1 Pro",
+	"s2-pro": "S2 Pro",
+	s1: "S1",
+	"drama-3": "Drama 3",
+	"s2.1-pro-free": "S2.1 Pro Free（無料プラン）",
+};
+
 /** What an ElevenLabs voice is, by its category. */
 export const elevenlabsCategoryLabel = (category: string) =>
 	({ premade: "既定", cloned: "複製", generated: "デザイン", professional: "プロ" })[category] ??
@@ -107,7 +115,7 @@ export const elevenlabsCategoryLabel = (category: string) =>
 
 /** What speaks a character, in short. */
 export const voiceLabel = (provider: TtsProvider) =>
-	({ irodori: "Irodori-TTS", elevenlabs: "ElevenLabs" })[provider];
+	({ irodori: "Irodori-TTS", elevenlabs: "ElevenLabs", fish_audio: "Fish Audio" })[provider];
 
 export function formatBytes(n: number | null | undefined): string {
 	if (!n) return "—";

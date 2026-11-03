@@ -173,6 +173,19 @@ export function ElevenlabsCheck() {
 	);
 }
 
+/** Lists the account's own voices to see that the key works. */
+export function FishAudioCheck() {
+	const check = useMutation({ mutationFn: () => read(client["fish-audio"].voices.$get()) });
+	return (
+		<CheckRow
+			pending={check.isPending}
+			onCheck={() => check.mutate()}
+			done={check.data && `接続できました · 自分の声 ${check.data.length} 件`}
+			error={check.error}
+		/>
+	);
+}
+
 /** Asks the speech.cpp server which models it holds. */
 export function SpeechCheck() {
 	const qc = useQueryClient();

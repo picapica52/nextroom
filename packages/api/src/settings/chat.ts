@@ -55,7 +55,12 @@ export function updateSettings(patch: ChatSettingsPatch) {
 /** Whether replies in `voice` can be spoken: speech is on, and an ElevenLabs voice is chosen when
  *  ElevenLabs speaks. */
 export const speaksWith = (voice: CharacterVoice | undefined, s = loadSettings()) =>
-	s.tts_enabled && (voice?.provider !== "elevenlabs" || Boolean(voice.elevenlabs_voice_id));
+	s.tts_enabled &&
+	(voice?.provider === "elevenlabs"
+		? Boolean(voice.elevenlabs_voice_id)
+		: voice?.provider === "fish_audio"
+			? Boolean(voice.fish_audio_voice_id)
+			: true);
 
 /** Each connection's variable in the environment, and the default of the addresses. */
 const ENV_NAMES: Record<ConnectionKey | ConnectionUrl, string> = {
@@ -65,6 +70,7 @@ const ENV_NAMES: Record<ConnectionKey | ConnectionUrl, string> = {
 	exa_key: "EXA_API_KEY",
 	composio_key: "COMPOSIO_API_KEY",
 	elevenlabs_key: "ELEVENLABS_API_KEY",
+	fish_audio_key: "FISH_AUDIO_API_KEY",
 	openai_compatible_url: "OPENAI_COMPATIBLE_BASE_URL",
 	speech_url: "SPEECH_URL",
 };
@@ -103,6 +109,8 @@ export const exaApiKey = key("exa_key");
 export const composioApiKey = key("composio_key");
 /** Speech in and out, and the characters' ElevenLabs voices. */
 export const elevenlabsApiKey = key("elevenlabs_key");
+/** The characters' Fish Audio voices. */
+export const fishAudioApiKey = key("fish_audio_key");
 /** The speech.cpp server, which speaks and transcribes for the local providers. */
 export const speechUrl = url("speech_url");
 

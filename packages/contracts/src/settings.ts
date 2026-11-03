@@ -91,6 +91,7 @@ export const CONNECTION_KEYS = [
 	"exa_key",
 	"composio_key",
 	"elevenlabs_key",
+	"fish_audio_key",
 ] as const;
 export type ConnectionKey = (typeof CONNECTION_KEYS)[number];
 

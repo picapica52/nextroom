@@ -45,6 +45,7 @@ export function useSaveConnections() {
 				qk.agentSettings(),
 				qk.composio(),
 				qk.elevenlabsVoices(),
+				qk.fishAudioVoices(),
 				qk.speechModels(),
 				qk.status(),
 			])
@@ -135,6 +136,39 @@ export function useOpenrouterImageModels(output: "image" | "decisions") {
 			read(client.chat["openrouter-image-models"].$get({ query: { output } }, signalled(signal))),
 		retry: false,
 		staleTime: 5 * 60_000,
+	});
+}
+
+/** The Fish Audio account's own voices; only asked for when `enabled` (a key is set). */
+export function useFishAudioVoices(enabled = true) {
+	return useQuery({
+		queryKey: qk.fishAudioVoices(),
+		queryFn: ({ signal }) => read(client["fish-audio"].voices.$get(undefined, signalled(signal))),
+		enabled,
+		staleTime: 60_000,
+	});
+}
+
+/** Voices shared on Fish Audio whose title has `title`; asked for only once something is typed. */
+export function useFishAudioSearch(title: string) {
+	return useQuery({
+		queryKey: qk.fishAudioSearch(title),
+		queryFn: ({ signal }) =>
+			read(client["fish-audio"].voices.search.$get({ query: { title } }, signalled(signal))),
+		enabled: title.trim().length > 0,
+		staleTime: 5 * 60_000,
+	});
+}
+
+/** One Fish Audio voice by its id, such as a shared one chosen before. */
+export function useFishAudioVoice(id: string, enabled = true) {
+	return useQuery({
+		queryKey: qk.fishAudioVoice(id),
+		queryFn: ({ signal }) =>
+			read(client["fish-audio"].voices[":id"].$get({ param: { id } }, signalled(signal))),
+		enabled: enabled && Boolean(id),
+		staleTime: 5 * 60_000,
+		retry: false,
 	});
 }
 
