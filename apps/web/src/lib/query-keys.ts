@@ -9,6 +9,7 @@ export const qk = {
 	connections: () => ["connections"] as const,
 	subscriptions: () => ["subscriptions"] as const,
 	subscriptionLogin: (id: string | null) => ["subscription-login", id] as const,
+	piProviders: () => ["pi-providers"] as const,
 	agentSettings: () => ["agent-settings"] as const,
 	llmModels: (provider?: string) =>
 		provider === undefined ? ["llm-models"] : ["llm-models", provider],

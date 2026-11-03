@@ -1,16 +1,24 @@
 import {
 	type ChatSettingsView,
 	type ModelChoice,
+	type PiProviderStatus,
 	SUBSCRIPTION_PROVIDERS,
 } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
-import { useConnections, useOpenrouterImageModels, useSubscriptions } from "@/hooks/queries";
+import { Dot } from "@/components/status";
+import {
+	useConnections,
+	useOpenrouterImageModels,
+	usePiProviders,
+	useSubscriptions,
+} from "@/hooks/queries";
+import { APP_PROVIDER_LABELS } from "../provider-labels";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
 import { ConnectionCheck, KeyBadge, KeyField, MissingKey, UrlField } from "./connection-fields";
-import { LLM_LABELS, ModelChoiceFields } from "./model-choice";
+import { ModelChoiceFields } from "./model-choice";
 import { NumberField } from "./settings-fields";
 import {
 	SettingsBlock,
@@ -19,7 +27,7 @@ import {
 	SettingsInset,
 	SettingsRow,
 } from "./settings-layout";
-import { SubscriptionStatusRow } from "./subscription-sign-in";
+import { PiProviderRow, SubscriptionStatusRow } from "./subscription-sign-in";
 
 const MAX_FALLBACKS = 5;
 
@@ -30,8 +38,9 @@ export default function ModelSettings() {
 	// Until a provider is connected the models cannot be listed, so the providers come first.
 	const signedIn = useSubscriptions().data?.some((s) => s.signed_in);
 	const keys = useConnections().data?.keys;
+	const pi = usePiProviders().data?.some((p) => p.configured);
 	const connected =
-		signedIn || keys?.openrouter_key?.set || keys?.anthropic_key?.set || keys === undefined;
+		signedIn || pi || keys?.openrouter_key?.set || keys?.anthropic_key?.set || keys === undefined;
 	return (
 		<ChatSettingsPage>
 			{(f) => (
@@ -236,7 +245,7 @@ function ProvidersGroup() {
 			{SUBSCRIPTION_PROVIDERS.map((p) => (
 				<SettingsRow
 					key={p}
-					label={LLM_LABELS[p]}
+					label={APP_PROVIDER_LABELS[p]}
 					control={<SubscriptionStatusRow provider={p} />}
 				/>
 			))}
@@ -263,8 +272,35 @@ function ProvidersGroup() {
 					<ConnectionCheck provider="openai_compatible" />
 				</SettingsInset>
 			</SettingsDisclosure>
+			<PiProvidersDisclosure />
 		</SettingsGroup>
 	);
+}
+
+/** Every other provider pi offers (Groq, Gemini, Mistral, OpenCode, Meta, ...). */
+function PiProvidersDisclosure() {
+	const providers = usePiProviders().data ?? [];
+	const configured = providers.filter((p) => p.configured).length;
+	return (
+		<SettingsDisclosure
+			label="その他のプロバイダー"
+			status={configured > 0 && <Dot tone="success">{configured} 件設定済み</Dot>}
+		>
+			<p className="m-0 text-xs text-muted-foreground">
+				API キーを入力するかサインインすると、モデルの選択に出てきます。apps/server/.env
+				にあるキーも使われます。
+			</p>
+			<SettingsInset>
+				{providers.map((p) => (
+					<PiProviderSettings key={p.id} provider={p} />
+				))}
+			</SettingsInset>
+		</SettingsDisclosure>
+	);
+}
+
+function PiProviderSettings({ provider }: { provider: PiProviderStatus }) {
+	return <SettingsRow label={provider.name} control={<PiProviderRow provider={provider} />} />;
 }
 
 function AdvancedGroup({ f: { form, set } }: { f: ChatSettingsForm }) {

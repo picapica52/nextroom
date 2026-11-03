@@ -16,7 +16,7 @@ import { EmptyNote, ErrorNote } from "@/components/status";
 import { useChatSettings } from "@/hooks/queries";
 import { formatDate } from "@/lib/api";
 import { useInstructionHistory, useSaveAgent } from "../queries";
-import { ModelChoiceField, modelChoiceText } from "./model-choice-field";
+import { ModelChoiceField, useModelChoiceText } from "./model-choice-field";
 
 export const TOOL_GROUP_LABELS: Record<ToolGroup, string> = {
 	web_search: "Web 検索",
@@ -75,6 +75,7 @@ function ModelSection({
 }) {
 	const settings = useChatSettings();
 	const main = settings.data?.main_model;
+	const modelChoiceText = useModelChoiceText();
 	return (
 		<SettingsSection
 			title="モデル"

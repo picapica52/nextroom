@@ -1,25 +1,15 @@
 import {
-	LLM_PROVIDERS,
 	type LlmProvider,
 	type ModelChoice,
 	THINKING_LEVELS,
 	type ThinkingLevel,
 } from "@nextroom/contracts";
 import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
 import { SimpleSelect } from "@/components/simple-select";
+import { useProviderLabel, useProviderOptions } from "@/features/settings/provider-labels";
 import { useLlmModels } from "@/hooks/queries";
-
-export const PROVIDER_LABELS: Record<LlmProvider, string> = {
-	anthropic: "Claude（Anthropic）",
-	openai_compatible: "OpenAI 互換",
-	openrouter: "OpenRouter",
-	chatgpt: "ChatGPT（サブスク）",
-	claude: "Claude（サブスク）",
-	copilot: "GitHub Copilot",
-	grok: "SuperGrok",
-};
 
 const THINKING_LABELS: Record<ThinkingLevel, string> = {
 	off: "オフ",
@@ -32,8 +22,14 @@ const THINKING_LABELS: Record<ThinkingLevel, string> = {
 };
 
 /** "OpenRouter · model（思考: 高）" */
-export const modelChoiceText = (c: ModelChoice) =>
-	`${PROVIDER_LABELS[c.provider]} · ${c.model}${c.thinking ? `（思考: ${THINKING_LABELS[c.thinking]}）` : ""}`;
+export function useModelChoiceText(): (c: ModelChoice) => string {
+	const label = useProviderLabel();
+	return useCallback(
+		(c) =>
+			`${label(c.provider)} · ${c.model}${c.thinking ? `（思考: ${THINKING_LABELS[c.thinking]}）` : ""}`,
+		[label],
+	);
+}
 
 /** A model of its own, or none (null) to use `fallback`. A provider is only saved once a model
  *  of it is picked. */
@@ -54,6 +50,7 @@ export function ModelChoiceField({
 	// A provider picked before its model.
 	const [picking, setPicking] = useState<LlmProvider | null>(null);
 	const provider = picking ?? value?.provider ?? null;
+	const options = useProviderOptions(provider);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -70,10 +67,7 @@ export function ModelChoiceField({
 						} else if (p !== value?.provider) setPicking(p);
 						else setPicking(null);
 					}}
-					options={[
-						{ value: null, label: `${fallback}を使う` },
-						...LLM_PROVIDERS.map((p) => ({ value: p, label: PROVIDER_LABELS[p] })),
-					]}
+					options={[{ value: null, label: `${fallback}を使う` }, ...options]}
 				/>
 			</Field>
 			{provider && (

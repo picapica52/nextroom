@@ -1,11 +1,19 @@
 // The models each provider offers, and the errors any call to the conversation's LLM ends with.
-// An API endpoint lists its own models; a subscription's are pi's catalog of what it may use.
+// An API endpoint lists its own models; a subscription's, and those of pi's other providers, are
+// pi's catalog of what they may use.
 
-import { isSubscription, type LlmProvider, type SubscriptionProvider } from "@nextroom/contracts";
+import { isPiProvider, isSubscription, type LlmProvider } from "@nextroom/contracts";
 
-import { ConflictError, messageOf } from "../lib/errors";
+import { BadRequestError, ConflictError, messageOf } from "../lib/errors";
 import { PI_PROVIDERS } from "./auth";
-import { type LlmConnection, modelsRequest, piModels, providerConnection } from "./providers";
+import {
+	type LlmConnection,
+	modelsRequest,
+	piIdOf,
+	piModels,
+	piProviderName,
+	providerConnection,
+} from "./providers";
 
 const LIST_TIMEOUT_MS = 30_000;
 
@@ -96,9 +104,8 @@ export async function listModels(
 		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** The models a subscription may use, from pi's catalog brought up to date when it can be. */
-async function subscriptionModels(provider: SubscriptionProvider): Promise<LlmModel[]> {
-	const id = PI_PROVIDERS[provider];
+/** The models pi's provider `id` may use, from its catalog brought up to date when it can be. */
+async function catalogModels(id: string): Promise<LlmModel[]> {
 	const models = piModels();
 	await models
 		.refresh({ providers: [id], signal: AbortSignal.timeout(LIST_TIMEOUT_MS) })
@@ -111,7 +118,21 @@ async function subscriptionModels(provider: SubscriptionProvider): Promise<LlmMo
 /** The models `provider` offers. */
 export function listLlmModels(provider: LlmProvider): Promise<LlmModel[]> {
 	const connection = providerConnection(provider);
-	return isSubscription(provider) ? subscriptionModels(provider) : listModels(connection);
+	if (isSubscription(provider)) return catalogModels(PI_PROVIDERS[provider]);
+	if (isPiProvider(provider)) return piCatalogModels(provider);
+	return listModels(connection);
+}
+
+async function piCatalogModels(provider: `pi:${string}`): Promise<LlmModel[]> {
+	const id = piIdOf(provider);
+	const auth = await piModels()
+		.checkAuth(id)
+		.catch(() => undefined);
+	if (!auth)
+		throw new BadRequestError(
+			`設定 → モデル → その他のプロバイダー で ${piProviderName(provider)} を設定してください`,
+		);
+	return catalogModels(id);
 }
 
 /** OpenRouter's models that take an image and give `output`: a drawn image or a Decisions answer. */
