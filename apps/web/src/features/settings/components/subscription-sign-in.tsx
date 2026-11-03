@@ -45,14 +45,12 @@ export function SubscriptionStatusRow({ provider }: { provider: SubscriptionProv
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+		<div className="flex flex-col items-end gap-2">
+			<div className="flex flex-wrap items-center gap-2">
 				{status.isPending ? (
 					<Spinner className="size-3.5 text-muted-foreground" />
-				) : signedIn ? (
-					<Dot tone="success">{name} にサインイン済み</Dot>
 				) : (
-					<Dot tone="warning">{name} にサインインしていません</Dot>
+					signedIn && <Dot tone="success">サインイン済み</Dot>
 				)}
 				{signedIn ? (
 					<Button

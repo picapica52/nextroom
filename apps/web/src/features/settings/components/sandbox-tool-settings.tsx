@@ -1,61 +1,56 @@
-import type { AgentSettingsView, DockerStatus } from "@nextroom/contracts";
-import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
+import type { AgentSettingsView } from "@nextroom/contracts";
+import type { ReactNode } from "react";
 import { SaveInput } from "@/components/save-field";
-import { SimpleSelect } from "@/components/simple-select";
-import { Dot } from "@/components/status";
 import type { SetAgentSection } from "../agent-options";
-import { NumberField, SwitchRow } from "./settings-fields";
+import { NumberField, Segmented, SwitchRow } from "./settings-fields";
+import { SettingsDisclosure, SettingsInset, SettingsRow } from "./settings-layout";
 
 export function SandboxToolSettings({
 	sandbox,
-	docker,
+	dockerRow,
 	set,
 }: {
 	sandbox: AgentSettingsView["sandbox"];
-	docker: DockerStatus | undefined;
+	/** Whether Docker answers, as a row. */
+	dockerRow: ReactNode;
 	set: SetAgentSection;
 }) {
+	const docker = sandbox.provider === "docker";
 	return (
 		<>
-			<Field>
-				<FieldLabel htmlFor="provider">実行場所</FieldLabel>
-				<SimpleSelect
-					id="provider"
-					value={sandbox.provider}
-					onChange={(provider) => provider && set("sandbox", { provider })}
-					options={[
-						{ value: "docker", label: "Docker（コンテナの中・おすすめ）" },
-						{ value: "local", label: "この PC で直接（隔離なし）" },
-					]}
-				/>
-				{sandbox.provider === "docker" ? (
-					<FieldDescription>
-						{docker?.ok ? (
-							<Dot tone="success">Docker {docker.version} に接続できます</Dot>
-						) : (
-							<Dot tone="destructive">
-								Docker に接続できません。Docker Desktop を起動してください
-							</Dot>
-						)}
-					</FieldDescription>
-				) : (
-					<FieldDescription className="text-warning">
-						Windows では隔離されません。キャラクターのコマンドがこの PC 上でそのまま動きます。
-					</FieldDescription>
-				)}
-			</Field>
-			{sandbox.provider === "docker" && (
-				<>
-					<Field>
-						<FieldLabel htmlFor="image">イメージ</FieldLabel>
-						<SaveInput
-							id="image"
-							className="font-mono"
-							value={sandbox.image}
-							onSave={(image) => set("sandbox", { image })}
+			<SettingsRow
+				label="実行場所"
+				hint={docker ? undefined : "隔離されません。コマンドがこの PC でそのまま動きます"}
+				control={
+					<Segmented
+						label="実行場所"
+						options={[
+							{ value: "docker", label: "Docker" },
+							{ value: "local", label: "この PC" },
+						]}
+						value={sandbox.provider}
+						onChange={(provider) => set("sandbox", { provider })}
+					/>
+				}
+			/>
+			{docker && dockerRow}
+			{docker && (
+				<SettingsDisclosure label="コンテナの詳細">
+					<SettingsInset>
+						<SettingsRow
+							label="イメージ"
+							htmlFor="image"
+							control={
+								<div className="flex w-64 max-w-full">
+									<SaveInput
+										id="image"
+										className="font-mono"
+										value={sandbox.image}
+										onSave={(image) => set("sandbox", { image })}
+									/>
+								</div>
+							}
 						/>
-					</Field>
-					<div className="grid grid-cols-3 gap-3">
 						<NumberField
 							id="mem"
 							label="メモリ上限（MB）"
@@ -74,21 +69,20 @@ export function SandboxToolSettings({
 						/>
 						<NumberField
 							id="timeout"
-							label="コマンドの制限時間（秒）"
+							label="制限時間（秒）"
 							value={sandbox.timeout_sec}
 							min={5}
 							step={30}
 							onChange={(timeout_sec) => set("sandbox", { timeout_sec })}
 						/>
-					</div>
-					<SwitchRow
-						id="network"
-						label="ネットワークを使う"
-						description="オフにするとコンテナからインターネットに出られません（パッケージのインストールもできなくなります）。"
-						checked={sandbox.network}
-						onChange={(network) => set("sandbox", { network })}
-					/>
-				</>
+						<SwitchRow
+							id="network"
+							label="ネットワークを使う"
+							checked={sandbox.network}
+							onChange={(network) => set("sandbox", { network })}
+						/>
+					</SettingsInset>
+				</SettingsDisclosure>
 			)}
 		</>
 	);

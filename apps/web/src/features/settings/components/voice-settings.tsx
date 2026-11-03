@@ -1,113 +1,104 @@
 import { ASR_PROVIDERS, type AsrProvider, DEFAULT_SPEECH_URL } from "@nextroom/contracts";
-import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
-import { ProviderToggle } from "@/components/provider-toggle";
-import { SettingsSection } from "@/components/settings-section";
 import { SpeechModelPicker } from "@/components/speech-model";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
-import { ElevenlabsCheck, KeyField, KeyStatus, SpeechCheck, UrlField } from "./connection-fields";
-import { SwitchRow } from "./settings-fields";
+import {
+	ElevenlabsCheck,
+	KeyBadge,
+	KeyField,
+	MissingKey,
+	SpeechCheck,
+	UrlField,
+} from "./connection-fields";
+import { Segmented, SwitchRow } from "./settings-fields";
+import { SettingsDisclosure, SettingsGroup, SettingsInset, SettingsRow } from "./settings-layout";
 
 const ASR_LABELS: Record<AsrProvider, string> = {
 	parakeet: "speech.cpp",
-	elevenlabs: "ElevenLabs Scribe",
+	elevenlabs: "ElevenLabs",
 };
 
-/** Where speech is made and heard: the speech.cpp server, ElevenLabs, and what is spoken. */
+/** What is spoken and heard, and where: the speech.cpp server and ElevenLabs. */
 export default function VoiceSettings() {
 	return (
 		<ChatSettingsPage>
 			{(f) => (
 				<>
-					<SettingsSection
-						title="speech.cpp"
-						description={
-							<>
-								ローカルの読み上げ（Irodori-TTS）・文字起こしとボイスクローンに使う、別に起動した
-								speech.cpp サーバー（speech serve --open）です。
-								<a href="https://github.com/nyosegawa/speech.cpp" target="_blank" rel="noreferrer">
-									speech.cpp（GitHub）
-								</a>
-							</>
-						}
-						className="gap-5"
-					>
-						<UrlField
-							name="speech_url"
-							label="サーバーの URL"
-							placeholder={DEFAULT_SPEECH_URL}
-							description="空にして保存すると、.env の値か既定の URL に戻ります。"
-						/>
-						<SpeechCheck />
-					</SettingsSection>
-
-					<SettingsSection
-						title="ElevenLabs"
-						description="文字起こしで「ElevenLabs Scribe」を選んだときと、キャラクターの声で ElevenLabs の声を使うときに使います。"
-						className="gap-5"
-					>
-						<KeyField name="elevenlabs_key" />
-						<ElevenlabsCheck />
-					</SettingsSection>
-
-					<SttSection f={f} />
-
-					<SettingsSection>
+					<SettingsGroup title="読み上げ">
 						<SwitchRow
 							id="tts-enabled"
 							label="返答を読み上げる"
-							description="オフにすると、すべての会話がテキストだけで返答します。"
 							checked={f.form.tts_enabled}
 							onChange={(tts_enabled) => f.set({ tts_enabled })}
 						/>
 						<SwitchRow
 							id="face-changes-enabled"
 							label="通話中に表情を変える"
-							description="「表情の判定」のモデルが返答に合う表情を選びます。オフにすると、通話中の表情は変わりません。"
 							checked={f.form.face_changes_enabled}
 							onChange={(face_changes_enabled) => f.set({ face_changes_enabled })}
 						/>
-					</SettingsSection>
+					</SettingsGroup>
+					<SttGroup f={f} />
+					<SettingsGroup title="接続">
+						<SettingsDisclosure label="speech.cpp サーバー">
+							<SettingsInset>
+								<UrlField name="speech_url" label="URL" placeholder={DEFAULT_SPEECH_URL} />
+								<SpeechCheck />
+							</SettingsInset>
+						</SettingsDisclosure>
+						<SettingsDisclosure label="ElevenLabs" status={<KeyBadge name="elevenlabs_key" />}>
+							<SettingsInset>
+								<KeyField name="elevenlabs_key" />
+								<ElevenlabsCheck />
+							</SettingsInset>
+						</SettingsDisclosure>
+					</SettingsGroup>
 				</>
 			)}
 		</ChatSettingsPage>
 	);
 }
 
-function SttSection({ f: { form, set } }: { f: ChatSettingsForm }) {
+function SttGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 	const local = form.asr_provider === "parakeet";
 	return (
-		<SettingsSection
-			title="文字起こし"
-			description="チャットのマイクに使います。"
-			className="gap-5"
-		>
-			<ProviderToggle
+		<SettingsGroup title="文字起こし">
+			<SettingsRow
 				label="実行先"
-				providers={ASR_PROVIDERS}
-				labels={ASR_LABELS}
-				value={form.asr_provider}
-				onChange={(asr_provider) => set({ asr_provider })}
-			/>
-			<Field>
-				<FieldLabel htmlFor={local ? "asr-model" : undefined}>モデル</FieldLabel>
-				{local ? (
-					<SpeechModelPicker
-						task="asr"
-						id="asr-model"
-						value={form.asr_model}
-						onChange={(asr_model) => set({ asr_model })}
+				control={
+					<Segmented
+						label="文字起こしの実行先"
+						options={ASR_PROVIDERS.map((p) => ({ value: p, label: ASR_LABELS[p] }))}
+						value={form.asr_provider}
+						onChange={(asr_provider) => set({ asr_provider })}
 					/>
-				) : (
-					<>
-						<FieldDescription className="text-xs">Scribe v2（日本語）</FieldDescription>
-						<KeyStatus
-							name="elevenlabs_key"
-							service="ElevenLabs"
-							where="上の「ElevenLabs」で API キーを入力してください"
-						/>
-					</>
+				}
+			/>
+			<SettingsRow
+				label="モデル"
+				htmlFor={local ? "asr-model" : undefined}
+				control={
+					local ? (
+						<div className="w-72 max-w-full">
+							<SpeechModelPicker
+								task="asr"
+								id="asr-model"
+								value={form.asr_model}
+								onChange={(asr_model) => set({ asr_model })}
+							/>
+						</div>
+					) : (
+						<span className="text-sm text-muted-foreground">Scribe v2</span>
+					)
+				}
+			>
+				{!local && (
+					<MissingKey
+						name="elevenlabs_key"
+						service="ElevenLabs"
+						where="下の「接続」で入力します。"
+					/>
 				)}
-			</Field>
-		</SettingsSection>
+			</SettingsRow>
+		</SettingsGroup>
 	);
 }

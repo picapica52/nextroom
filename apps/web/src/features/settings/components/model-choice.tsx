@@ -10,7 +10,7 @@ import { cn } from "@nextroom/ui/lib/utils";
 import { useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
 import { SimpleSelect } from "@/components/simple-select";
-import { useLlmModels } from "@/hooks/queries";
+import { useConnections, useLlmModels, useSubscriptions } from "@/hooks/queries";
 
 export const LLM_LABELS: Record<LlmProvider, string> = {
 	chatgpt: "ChatGPT（サブスク）",
@@ -32,6 +32,15 @@ const THINKING_LABELS: Record<ThinkingLevel, string> = {
 	max: "最大",
 };
 
+/** The provider a new choice starts from: one already usable (signed in, or its key set). */
+function useUsableProvider(): LlmProvider {
+	const signedIn = useSubscriptions().data?.find((s) => s.signed_in)?.provider;
+	const keys = useConnections().data?.keys;
+	if (signedIn) return signedIn;
+	if (keys?.anthropic_key?.set && !keys.openrouter_key?.set) return "anthropic";
+	return "openrouter";
+}
+
 /** A provider, one of its models and how hard it thinks. Until a model is picked nothing is saved;
  *  a new provider waits for its model the same way. */
 export function ModelChoiceFields({
@@ -46,7 +55,8 @@ export function ModelChoiceFields({
 	className?: string;
 }) {
 	const [draft, setDraft] = useState<{ provider: LlmProvider; thinking: ThinkingLevel | null }>();
-	const provider = draft?.provider ?? value?.provider ?? "openrouter";
+	const usable = useUsableProvider();
+	const provider = draft?.provider ?? value?.provider ?? usable;
 	const saved = value && value.provider === provider ? value : null;
 	const thinking = saved ? saved.thinking : (draft?.thinking ?? value?.thinking ?? null);
 	const models = useLlmModels(provider);

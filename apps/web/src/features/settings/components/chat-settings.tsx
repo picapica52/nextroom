@@ -1,11 +1,12 @@
 import type { ChatSettingsPatch, ChatSettingsView } from "@nextroom/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { SettingsBody, SettingsErrorFooter } from "@/components/settings-section";
+import { SettingsErrorFooter } from "@/components/settings-section";
 import { ErrorNote } from "@/components/status";
 import { useChatSettings } from "@/hooks/queries";
 import { client, read } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
+import { SettingsPageBody as SettingsBody } from "./settings-layout";
 
 export type ChatSettingsForm = {
 	form: ChatSettingsView;

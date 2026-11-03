@@ -48,6 +48,14 @@ export const defineTool = <S extends z.ZodType>(tool: ZodTool<S>): CharacterTool
 /** The tools a reply has, by name. */
 export type ToolSet = Record<string, CharacterTool>;
 
+/** A result the model also sees as images (a screenshot). Only the text is kept for the screen. */
+export class ImageResult {
+	constructor(
+		readonly text: string,
+		readonly images: { data: string; mimeType: string }[],
+	) {}
+}
+
 const textOf = (result: unknown) =>
 	typeof result === "string" ? result : (JSON.stringify(result) ?? "");
 
@@ -80,6 +88,14 @@ export function toAgentTool(tool: CharacterTool, context: CharacterContext): Age
 			const input = "jsonSchema" in tool ? params : tool.schema.parse(params);
 			const allowed = await mayRun(tool, input, call);
 			const result = allowed === true ? await tool.execute(input as never, call) : allowed;
+			if (result instanceof ImageResult)
+				return {
+					content: [
+						{ type: "text", text: result.text },
+						...result.images.map((image) => ({ type: "image" as const, ...image })),
+					],
+					details: result.text,
+				};
 			return { content: [{ type: "text", text: textOf(result) }], details: result };
 		},
 	};

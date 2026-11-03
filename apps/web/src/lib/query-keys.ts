@@ -20,6 +20,7 @@ export const qk = {
 	chatSessions: () => ["chat-sessions"] as const,
 	chat: (id?: string | null) => (id === undefined ? ["chat"] : ["chat", id]),
 	browser: (sessionId: string | null) => ["browser", sessionId] as const,
+	desktop: (characterId: string | null) => ["desktop", characterId] as const,
 	characters: () => ["characters"] as const,
 	character: (id?: string | null) => (id === undefined ? ["character"] : ["character", id]),
 	affinity: (characterId?: string | null) =>

@@ -17,6 +17,7 @@ import { readDoc, writeDoc } from "../lib/db";
 const {
 	approvals,
 	browser,
+	desktop,
 	sandbox,
 	web_search,
 	topic_search,
@@ -38,6 +39,7 @@ const storedChatSchema = z.object(
 const storedAgentSchema = z.object({
 	approvals: approvals.partial().optional(),
 	browser: browser.partial().optional(),
+	desktop: desktop.partial().optional(),
 	sandbox: sandbox.partial().optional(),
 	web_search: web_search.partial().optional(),
 	topic_search: topic_search.partial().optional(),

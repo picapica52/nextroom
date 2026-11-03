@@ -19,6 +19,7 @@ function stepKind(tool: string): StepKind {
 	if (tool.startsWith("stagehand_") || tool === "web_search" || tool === "find_topic")
 		return "browser";
 	if (tool.startsWith("workspace_")) return "sandbox";
+	if (tool.startsWith("computer_")) return "desktop";
 	if (tool === "send_photo") return "image";
 	if (tool === "ask_user") return "ask";
 	if (tool === "update_memory") return "memory";

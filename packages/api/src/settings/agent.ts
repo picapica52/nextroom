@@ -20,6 +20,7 @@ export type { AgentSettings };
 const AGENT_DEFAULTS: AgentSettings = {
 	approvals: { mode: "auto", rules: [] },
 	browser: { enabled: false, headless: false },
+	desktop: { enabled: false, memory_mb: 4096, cpus: 2 },
 	sandbox: {
 		enabled: false,
 		provider: "docker",

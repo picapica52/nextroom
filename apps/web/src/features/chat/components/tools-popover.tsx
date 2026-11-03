@@ -45,6 +45,13 @@ const TOOLS: {
 		patch: (enabled) => ({ browser: { enabled } }),
 	},
 	{
+		key: "desktop",
+		label: "デスクトップ",
+		description: "自分の Linux デスクトップを画面を見ながら操作する",
+		on: (s) => s.desktop.enabled,
+		patch: (enabled) => ({ desktop: { enabled } }),
+	},
+	{
 		key: "sandbox",
 		label: "ファイルとコマンド",
 		description: "ワークスペースでファイル作成・コマンド実行",

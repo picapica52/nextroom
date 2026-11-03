@@ -5,6 +5,7 @@ import {
 	LayoutGrid,
 	type LucideIcon,
 	MessageCircleQuestionMark,
+	Monitor,
 	NotebookPen,
 	Sparkles,
 	SquareTerminal,
@@ -14,6 +15,7 @@ import {
 /** How each kind of tool call is shown: its icon, name and the icon's color. */
 export const KINDS: Record<StepKind, { icon: LucideIcon; title: string; tone: string }> = {
 	browser: { icon: Globe, title: "ブラウザ", tone: "text-info" },
+	desktop: { icon: Monitor, title: "デスクトップ", tone: "text-info" },
 	sandbox: { icon: SquareTerminal, title: "ファイルとコマンド", tone: "text-warning" },
 	claude: { icon: Sparkles, title: "Claude Agent SDK", tone: "text-mode-lora" },
 	image: { icon: ImageIcon, title: "画像生成", tone: "text-mode-lora" },
@@ -48,6 +50,8 @@ const LABELS: Record<string, string> = {
 	stagehand_tabs: "タブを操作",
 	stagehand_screenshot: "スクリーンショット",
 	stagehand_close: "ブラウザを閉じる",
+	computer_observe: "画面を見る",
+	computer_act: "画面を操作",
 	delegate_to_claude: "Claude に任せる",
 	send_photo: "写真を送る",
 	ask_user: "質問",
