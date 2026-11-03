@@ -12,9 +12,6 @@ export function characterDir(characterId: string): string {
 	return path;
 }
 
-/** The character's own file (persona, voice and expressions) in its folder `dir`. */
-export const characterFile = (dir: string) => join(dir, "character.json");
-
 /** The image faces are generated from. */
 export const referencePath = (characterId: string) =>
 	join(characterDir(characterId), "reference.png");

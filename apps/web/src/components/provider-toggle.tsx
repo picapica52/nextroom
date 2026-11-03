@@ -23,7 +23,14 @@ export function ProviderToggle<P extends string>({
 				aria-label={label}
 				variant="outline"
 				spacing={1}
-				className={cn("grid w-full", providers.length > 2 ? "sm:grid-cols-3" : "grid-cols-2")}
+				className={cn(
+					"grid w-full",
+					providers.length > 4
+						? "grid-cols-2 sm:grid-cols-4"
+						: providers.length > 2
+							? "sm:grid-cols-3"
+							: "grid-cols-2",
+				)}
 				value={[value]}
 				onValueChange={(next) => next[0] && onChange(next[0] as P)}
 			>

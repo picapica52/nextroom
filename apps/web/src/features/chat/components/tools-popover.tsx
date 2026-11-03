@@ -52,13 +52,6 @@ const TOOLS: {
 		patch: (enabled) => ({ sandbox: { enabled } }),
 	},
 	{
-		key: "claude",
-		label: "Claude Agent SDK",
-		description: "手間のかかる作業を Claude に任せる",
-		on: (s) => s.claude.enabled,
-		patch: (enabled) => ({ claude: { enabled } }),
-	},
-	{
 		key: "ask_user",
 		label: "選択肢を出す",
 		description: "決めてほしいことがあるとき、返答の最後に選択肢を出す",

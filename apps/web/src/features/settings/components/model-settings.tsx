@@ -2,6 +2,7 @@ import {
 	ASR_PROVIDERS,
 	type AsrProvider,
 	type ChatSettingsView,
+	isSubscription,
 	LLM_MODEL_FIELDS,
 	LLM_PROVIDERS,
 	type LlmProvider,
@@ -16,11 +17,16 @@ import { SettingsSection } from "@/components/settings-section";
 import { SpeechModelPicker } from "@/components/speech-model";
 import { useLlmModels, useOpenrouterImageModels } from "@/hooks/queries";
 import { type ChatSettingsForm, ChatSettingsPage, ConnectionStatus } from "./chat-settings";
+import { SubscriptionStatusRow } from "./subscription-sign-in";
 
 const LLM_LABELS: Record<LlmProvider, string> = {
 	anthropic: "Claude（Anthropic）",
 	openai_compatible: "OpenAI 互換",
 	openrouter: "OpenRouter",
+	chatgpt: "ChatGPT（サブスク）",
+	claude: "Claude（サブスク）",
+	copilot: "GitHub Copilot",
+	grok: "SuperGrok",
 };
 
 const ASR_LABELS: Record<AsrProvider, string> = {
@@ -97,7 +103,9 @@ function ReplyModelSection({ f: { form, set } }: { f: ChatSettingsForm }) {
 				value={form.provider}
 				onChange={(provider) => set({ provider })}
 			/>
-			{service ? (
+			{isSubscription(form.provider) ? (
+				<SubscriptionStatusRow key={form.provider} provider={form.provider} />
+			) : service ? (
 				<ConnectionStatus {...service} />
 			) : (
 				<FieldDescription className="-mt-3 text-xs">

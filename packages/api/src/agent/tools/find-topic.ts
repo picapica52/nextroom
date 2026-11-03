@@ -3,12 +3,11 @@
 // from a field picked at random, so the user also hears about things they did not know.
 // Nothing is kept but the URLs given lately, so the same story does not come back.
 
-import type { ToolsInput } from "@mastra/core/agent";
-import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import type { AgentSettings } from "../../settings/agent";
 import { exaApiKey } from "../../settings/chat";
 import { NO_EXA_KEY, NO_TOPICS, SEARCH_UNREADABLE, searchFailed, TOPICS_NOTE } from "../prompts";
+import { defineTool, type ToolSet } from "../tool";
 
 const EXA_SEARCH_URL = "https://api.exa.ai/search";
 const NUM_RESULTS = 6;
@@ -111,12 +110,12 @@ async function search(slot: Slot, apiKey: string, abortSignal?: AbortSignal) {
 		);
 }
 
-const findTopic = createTool({
-	id: "find_topic",
+const findTopic = defineTool({
+	name: "find_topic",
 	description:
 		"Recall a few things you came across on your phone lately, to talk about. " +
 		"Use it only when the user asks you to say something or to bring up a topic.",
-	inputSchema: z.object({
+	schema: z.object({
 		interest: z
 			.string()
 			.optional()
@@ -124,7 +123,7 @@ const findTopic = createTool({
 				"One thing the user likes, from your notes on them, in a few words. Leave it out when you know none.",
 			),
 	}),
-	execute: async ({ interest }, context) => {
+	execute: async ({ interest }, call) => {
 		const apiKey = exaApiKey();
 		if (!apiKey) return NO_EXA_KEY;
 		const liked = interest?.trim();
@@ -148,7 +147,7 @@ const findTopic = createTool({
 			})),
 		];
 		const settled = await Promise.allSettled(
-			slots.map((slot) => search(slot, apiKey, context?.abortSignal)),
+			slots.map((slot) => search(slot, apiKey, call.signal)),
 		);
 		const topics = settled.flatMap((s) => (s.status === "fulfilled" ? s.value : []));
 		if (!topics.length) {
@@ -161,6 +160,6 @@ const findTopic = createTool({
 });
 
 /** The topic tool, when the agent settings turn it on. */
-export function findTopicTools(settings: AgentSettings): ToolsInput {
-	return settings.topic_search.enabled ? { [findTopic.id]: findTopic } : {};
+export function findTopicTools(settings: AgentSettings): ToolSet {
+	return settings.topic_search.enabled ? { [findTopic.name]: findTopic } : {};
 }

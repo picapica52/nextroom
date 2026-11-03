@@ -8,6 +8,7 @@ export const POLL = {
 	browserIdle: 3000,
 	expressionBatch: 1000,
 	chatReply: 400,
+	subscriptionLogin: 2000,
 } as const;
 
 /** The browser storage keys the app keeps its state under. */

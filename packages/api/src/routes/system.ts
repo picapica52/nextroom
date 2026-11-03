@@ -1,10 +1,9 @@
 import type { EngineStatus } from "@nextroom/contracts";
 import { Hono } from "hono";
-
+import { openBrowsers } from "../agent/tools/browser";
 import { gpuQueue } from "../engine/queue";
 import { speechStatus } from "../engine/speech";
 import { queue } from "../lib/jobs";
-import { openBrowsers } from "../mastra/tools/browser";
 
 export const systemRouter = new Hono()
 	// The speech.cpp server, the GPU job, this app's running turn and the open browsers.

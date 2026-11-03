@@ -7,9 +7,9 @@ import type {
 	ChatSettings,
 	EventDelivery,
 } from "@nextroom/contracts";
+import { readNotes } from "../agent/memory";
+import type { LlmConnection } from "../agent/providers";
 import { otherCharactersTalks } from "../conversations/sessions";
-import { characterMemory, characterResource, memoryOverview } from "../mastra/memory";
-import type { LlmConnection } from "../mastra/providers";
 import { confessionAnswer, type PreparedEvent, prepareEvent } from "./draft";
 import { chooseEvent, type EventChoice, type EventContext, parseNotes } from "./events";
 import { allowedFaces, relationshipNote } from "./prompt";
@@ -28,8 +28,7 @@ export const OPENING_TRIGGER = "（端末がつながった）";
 async function contextOf(character: CharacterView, spoken: boolean) {
 	const affinity = loadAffinity(character.id);
 	const today = new Date();
-	const resourceId = characterResource(character.id);
-	const notes = (await memoryOverview(characterMemory(), character.id)).working_memory;
+	const notes = readNotes(character.id);
 	const context: EventContext = {
 		affinity,
 		now: today,
@@ -38,7 +37,7 @@ async function contextOf(character: CharacterView, spoken: boolean) {
 		notes: parseNotes(notes),
 		otherTalks: otherCharactersTalks(character.id, affinity.last_at ?? Number.POSITIVE_INFINITY),
 	};
-	return { context, notes, resourceId };
+	return { context, notes };
 }
 
 /** The event the character opens a conversation with, if one is due. */
@@ -77,22 +76,15 @@ export async function prepareAffinityTurn(options: {
 		else if (Date.now() / 1000 - confessed > CONFESSION_WAIT_SECONDS)
 			answerConfession(character.id, false);
 	}
-	const { context, notes, resourceId } = await contextOf(character, options.spoken);
+	const { context, notes } = await contextOf(character, options.spoken);
 	const choice = opening ?? chooseEvent(context, ["reply"]);
 	const event = choice
-		? await prepareEvent(
-				choice,
-				context,
-				character,
-				notes,
-				resourceId,
-				connection,
-				settings,
-				signal,
-			).catch((error) => {
-				console.warn(`Could not prepare the event ${choice.kind}:`, error);
-				return null;
-			})
+		? await prepareEvent(choice, context, character, notes, connection, settings, signal).catch(
+				(error) => {
+					console.warn(`Could not prepare the event ${choice.kind}:`, error);
+					return null;
+				},
+			)
 		: null;
 	return {
 		note: [

@@ -2,9 +2,8 @@
 // conversation screen can show each tool call as it runs, and ask before the ones that
 // need the user's go-ahead.
 //
-// Asking works the same for every tool: the browser and sandbox tools, and Claude Agent
-// SDK's own tools (through its canUseTool callback), wait on `TurnReporter.approve()`
-// until the user answers on the screen. The reply's stream simply stays open meanwhile,
+// Asking works the same for every tool: the browser, workspace, photo and app tools wait on
+// `TurnReporter.approve()` until the user answers on the screen. The reply's stream simply stays open meanwhile,
 // so nothing has to be suspended and resumed.
 
 import type { AgentStep, ChatMessage, StepKind } from "@nextroom/contracts";
@@ -19,10 +18,10 @@ const FLUSH_MS = 250;
 function stepKind(tool: string): StepKind {
 	if (tool.startsWith("stagehand_") || tool === "web_search" || tool === "find_topic")
 		return "browser";
-	if (tool.startsWith("mastra_workspace_")) return "sandbox";
+	if (tool.startsWith("workspace_")) return "sandbox";
 	if (tool === "send_photo") return "image";
-	if (tool.startsWith("claude") || tool === "delegate_to_claude") return "claude";
 	if (tool === "ask_user") return "ask";
+	if (tool === "update_memory") return "memory";
 	if (/^[A-Z0-9]+_[A-Z0-9_]+$/.test(tool)) return "app";
 	return "other";
 }

@@ -1,9 +1,6 @@
-// Every setting the app keeps, in _data/settings.json: the conversation's under `chat`,
-// the agent's under `agent`, and the Discord bot's under `discord`. Each section keeps only the
-// fields saved, so fields added later take their default.
-
-import { statSync } from "node:fs";
-import { join } from "node:path";
+// Every setting the app keeps, in the database's `settings` table: the conversation's under
+// `chat`, the agent's under `agent`, and the Discord bot's under `discord`. Each section keeps
+// only the fields saved, so fields added later take their default.
 
 import {
 	agentSettingsSchema,
@@ -12,10 +9,9 @@ import {
 } from "@nextroom/contracts";
 import { z } from "zod";
 
-import { dataDir } from "../lib/config";
-import { readJson, writeJson } from "../lib/storage";
+import { readDoc, writeDoc } from "../lib/db";
 
-const { browser, sandbox, claude, web_search, topic_search, ask_user, image_gen, composio } =
+const { browser, sandbox, web_search, topic_search, ask_user, image_gen, composio } =
 	agentSettingsSchema.shape;
 type ChatShape = typeof chatSettingsSchema.shape;
 /** A stored field that no longer fits (a choice since removed) takes its default. */
@@ -30,50 +26,24 @@ const storedChatSchema = z.object(
 const storedAgentSchema = z.object({
 	browser: browser.partial().optional(),
 	sandbox: sandbox.partial().optional(),
-	claude: claude.partial().optional(),
 	web_search: web_search.partial().optional(),
 	topic_search: topic_search.partial().optional(),
 	ask_user: ask_user.partial().optional(),
 	image_gen: image_gen.partial().optional(),
 	composio: composio.partial().optional(),
 });
-const settingsFileSchema = z.object({
-	chat: storedChatSchema.optional(),
-	agent: storedAgentSchema.optional(),
-	discord: discordSettingsSchema.partial().optional(),
-});
-type SettingsFile = z.output<typeof settingsFileSchema>;
-
-const path = () => join(dataDir(), "settings.json");
-
-/** The file as last read, kept while its time and size stay the same (it is also edited by hand). */
-let cached: { path: string; stamp: string; file: SettingsFile } | null = null;
-
-const stampOf = (file: string) => {
-	const stat = statSync(file, { throwIfNoEntry: false });
-	return stat ? `${stat.mtimeMs}:${stat.size}` : "";
+/** The sections, each as stored. */
+export const SETTINGS_SECTIONS = {
+	chat: storedChatSchema,
+	agent: storedAgentSchema,
+	discord: discordSettingsSchema.partial(),
 };
+type Sections = typeof SETTINGS_SECTIONS;
+type Section<K extends keyof Sections> = z.output<Sections[K]>;
 
-function readSettingsFile(): SettingsFile {
-	const file = path();
-	const stamp = stampOf(file);
-	if (cached?.path !== file || cached.stamp !== stamp) {
-		cached = { path: file, stamp, file: readJson(file, settingsFileSchema) ?? {} };
-	}
-	return structuredClone(cached.file);
-}
+export const readSettingsSection = <K extends keyof Sections>(key: K): Section<K> | undefined =>
+	(readDoc("settings", key, SETTINGS_SECTIONS[key]) as Section<K> | null) ?? undefined;
 
-function writeSettingsFile(data: SettingsFile): void {
-	cached = null;
-	writeJson(path(), settingsFileSchema, data);
-}
-
-export const readSettingsSection = <K extends keyof SettingsFile>(key: K): SettingsFile[K] =>
-	readSettingsFile()[key];
-
-export function writeSettingsSection<K extends keyof SettingsFile>(
-	key: K,
-	value: NonNullable<SettingsFile[K]>,
-): void {
-	writeSettingsFile({ ...readSettingsFile(), [key]: value });
+export function writeSettingsSection<K extends keyof Sections>(key: K, value: Section<K>): void {
+	writeDoc("settings", key, SETTINGS_SECTIONS[key], value as never);
 }

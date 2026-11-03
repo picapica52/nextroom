@@ -64,8 +64,8 @@ export const chatMessageSchema = z.object({
 });
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 
-/** A character's one conversation as stored. Its id is the character's, which is also the id of
- *  the Mastra memory thread its messages live in. */
+/** A character's one conversation as stored. Its id is the character's; its messages are in the
+ *  character's conversation log. */
 export const chatSessionRecordSchema = z.object({
 	id: z.string(),
 	created_at: z.number(),

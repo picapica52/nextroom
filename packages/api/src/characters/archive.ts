@@ -1,30 +1,36 @@
-// A whole character as one zip, to move it to another install: its folder as it is on disk
-// (store.ts), less the files speech.cpp makes again, with a marker file the import checks for.
+// A whole character as one zip, to move it to another install: its document and files (store.ts),
+// less the files speech.cpp makes again, with a marker file the import checks for.
 //
 //     nextroom.json   {format, version}
 //     character.json         persona, voice, expressions, neutral
 //     reference.png          optional
 //     expressions/<id>.png   and <id>.orig.png
-//     voice/                 the reference clips (refs.json, refs/) and the voice file
+//     voice/                 the reference clips (refs.json, refs/), the voice file and what is
+//                            known about it (voice.json)
 
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { type CharacterView, characterSchema } from "@nextroom/contracts";
+import { type CharacterView, characterSchema, voiceFileInfoSchema } from "@nextroom/contracts";
 import { unzipSync, type Zippable, zipSync } from "fflate";
 import { charactersDir } from "../lib/config";
+import { readDoc, writeDoc } from "../lib/db";
 import { BadRequestError } from "../lib/errors";
-import { newId, now, safeFileName, writeJson } from "../lib/storage";
-import { characterDir, characterFile } from "./paths";
+import { newId, now, safeFileName } from "../lib/storage";
+import { characterDir } from "./paths";
 import { isPng } from "./png";
 import { getCharacter, loadCharacter } from "./store";
-import { clipFilePath, refClipIds, VOICE_FILES } from "./voice-files";
+import { clipFilePath, refClipIds, refsSchema, VOICE_FILES } from "./voice-files";
 
 const MARKER = "nextroom.json";
 const FORMAT = { format: "nextroom", version: 1 };
 
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 1));
 
-/** The files besides character.json, as paths inside the folder (and the zip). */
+/** The voice's documents, as files of the zip. */
+const REFS_FILE = "voice/refs.json";
+const VOICE_INFO_FILE = "voice/voice.json";
+
+/** The files besides the documents, as paths inside the folder (and the zip). */
 function filePaths(expressionIds: string[], clipIds: string[]): string[] {
 	return [
 		"reference.png",
@@ -54,6 +60,10 @@ export function exportArchive(characterId: string): Uint8Array {
 		[MARKER]: encode(FORMAT),
 		"character.json": encode(character),
 	};
+	const refs = readDoc("voice_refs", characterId, refsSchema);
+	if (refs) zip[REFS_FILE] = encode(refs);
+	const info = readDoc("voice_files", characterId, voiceFileInfoSchema);
+	if (info) zip[VOICE_INFO_FILE] = encode(info);
 	for (const path of filePaths(
 		character.expressions.map((e) => e.id),
 		refClipIds(characterId),
@@ -108,7 +118,8 @@ export function importArchive(data: Uint8Array): CharacterView {
 	const tmp = join(charactersDir(), `.import-${character.id}`);
 	rmSync(tmp, { recursive: true, force: true });
 	try {
-		const clipIds = clipIdsOf(files["voice/refs.json"]);
+		mkdirSync(tmp, { recursive: true });
+		const clipIds = clipIdsOf(files[REFS_FILE]);
 		for (const path of filePaths(
 			character.expressions.map((e) => e.id),
 			clipIds,
@@ -118,11 +129,32 @@ export function importArchive(data: Uint8Array): CharacterView {
 			mkdirSync(dirname(join(tmp, path)), { recursive: true });
 			writeFileSync(join(tmp, path), data);
 		}
-		writeJson(characterFile(tmp), characterSchema, character);
 		renameSync(tmp, characterDir(character.id));
+		importVoiceDocs(character.id, files);
+		writeDoc("characters", character.id, characterSchema, character);
 	} catch (error) {
 		rmSync(tmp, { recursive: true, force: true });
 		throw error;
 	}
 	return getCharacter(character.id);
+}
+
+/** The voice's documents from the zip, those that can be read. */
+function importVoiceDocs(characterId: string, files: Record<string, Uint8Array>) {
+	const read = (path: string) => {
+		const data = files[path];
+		if (!data) return null;
+		try {
+			return JSON.parse(new TextDecoder().decode(data)) as unknown;
+		} catch {
+			return null;
+		}
+	};
+	const refs = refsSchema.safeParse(read(REFS_FILE));
+	if (refs.success) {
+		const clips = refs.data.clips.filter((c) => files[clipFilePath(c.id)]);
+		writeDoc("voice_refs", characterId, refsSchema, { clips });
+	}
+	const info = voiceFileInfoSchema.safeParse(read(VOICE_INFO_FILE));
+	if (info.success) writeDoc("voice_files", characterId, voiceFileInfoSchema, info.data);
 }

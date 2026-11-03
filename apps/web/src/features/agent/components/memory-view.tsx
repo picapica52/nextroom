@@ -12,7 +12,7 @@ import { EmptyNote, ErrorNote } from "@/components/status";
 import { useCharacters } from "@/features/characters/queries";
 import { useMemoryActions, useMemoryOverview } from "../queries";
 
-/** What a character remembers: its notes about the user, as the observer keeps them. */
+/** What a character remembers: the notes it keeps (MEMORY.md) and the summary of older conversation. */
 export function MemoryView({ characterId }: { characterId: string }) {
 	const confirm = useConfirm();
 	const characters = useCharacters();
@@ -38,7 +38,7 @@ export function MemoryView({ characterId }: { characterId: string }) {
 							await confirm({
 								title: `${name} の記憶を消しますか？`,
 								description:
-									"ワーキングメモリーと、これまでの会話がすべて消えます。好感度も最初に戻ります。",
+									"メモと、これまでの会話（そのまとめも）がすべて消えます。好感度も最初に戻ります。",
 								action: "消去",
 								destructive: true,
 							})
@@ -55,9 +55,9 @@ export function MemoryView({ characterId }: { characterId: string }) {
 			<div className="flex flex-col gap-4">
 				<Card>
 					<CardHeader>
-						<CardTitle>ワーキングメモリー</CardTitle>
+						<CardTitle>メモ</CardTitle>
 						<CardDescription className="text-xs">
-							あなたについてのメモ。会話が要約されるときに書き換わり、毎回の返答で参照されます。
+							キャラクターが自分で書き直すメモ（MEMORY.md）。毎回の返答で参照されます。
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -67,11 +67,26 @@ export function MemoryView({ characterId }: { characterId: string }) {
 							</pre>
 						) : (
 							<EmptyNote className="py-4">
-								まだメモはありません。会話がある程度たまると書かれます。
+								まだメモはありません。覚えておきたいことができると書かれます。
 							</EmptyNote>
 						)}
 					</CardContent>
 				</Card>
+				{data?.summary && (
+					<Card>
+						<CardHeader>
+							<CardTitle>これまでの会話のまとめ</CardTitle>
+							<CardDescription className="text-xs">
+								古くなった会話の要約。会話が長くなると書き足され、毎回の返答で参照されます。
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<pre className="m-0 max-h-80 overflow-y-auto rounded-lg border-2 bg-muted px-3 py-2 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+								{data.summary}
+							</pre>
+						</CardContent>
+					</Card>
+				)}
 			</div>
 		</>
 	);

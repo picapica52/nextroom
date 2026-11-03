@@ -36,7 +36,7 @@ export default function ConnectionSettings() {
 
 					<SettingsSection
 						title="Anthropic"
-						description="返答モデルで「Claude」を選んだときと、Claude Agent SDK（道具と権限）が API キーで動くときに使います。"
+						description="返答モデルで「Claude（Anthropic）」を選んだときに使います。"
 						action={<KeyBadge isSet={s.has_anthropic_api_key} />}
 						className="gap-5"
 					>

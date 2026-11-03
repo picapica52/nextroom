@@ -1,19 +1,20 @@
 // Workspaces: each character has one, `workspace/` of its folder, made the first time it is
-// used. The agent's file and command tools (a Mastra workspace) and Claude Agent SDK work in it,
-// and the user sees its files in the conversation's 「ファイル」 tab.
+// used. The agent's file and command tools work in it, and the user sees its files in the
+// conversation's 「ファイル」 tab.
 
 import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
 import type { WorkspaceFile } from "@nextroom/contracts";
 
-import { characterDir, characterFile } from "../characters/paths";
+import { characterDir } from "../characters/paths";
+import { hasDoc } from "../lib/db";
 import { BadRequestError, ConflictError, NotFoundError } from "../lib/errors";
 
 /** The character's workspace, made when missing; the character must exist. */
 export function workspaceDir(characterId: string): string {
 	const dir = characterDir(characterId);
-	if (!existsSync(characterFile(dir)))
+	if (!hasDoc("characters", characterId))
 		throw new NotFoundError(`キャラクターが見つかりません: ${characterId}`);
 	const path = join(dir, "workspace");
 	mkdirSync(path, { recursive: true });

@@ -3,22 +3,6 @@
 
 import { z } from "zod";
 
-export const CLAUDE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"] as const;
-export const PERMISSION_MODES = ["default", "acceptEdits", "plan", "dontAsk"] as const;
-export const CLAUDE_TOOLS = [
-	"Read",
-	"Glob",
-	"Grep",
-	"Write",
-	"Edit",
-	"Bash",
-	"TodoWrite",
-	"WebSearch",
-	"WebFetch",
-] as const;
-
-export type PermissionMode = (typeof PERMISSION_MODES)[number];
-
 /** The agent settings as stored; the server checks every change against it. */
 export const agentSettingsSchema = z.object({
 	browser: z.object({
@@ -41,18 +25,6 @@ export const agentSettingsSchema = z.object({
 		approve_write: z.boolean(),
 		approve_delete: z.boolean(),
 	}),
-	claude: z.object({
-		enabled: z.boolean(),
-		/** api_key: the Anthropic key of the chat settings (or ANTHROPIC_API_KEY); login: this
-		 *  PC's Claude Code login (a Claude subscription), for personal use only. */
-		auth: z.enum(["api_key", "login"]),
-		/** Empty: not chosen yet, and Claude cannot be handed work. */
-		model: z.string().trim(),
-		permission_mode: z.enum(PERMISSION_MODES),
-		max_turns: z.number().int().min(1).max(200),
-		/** Tools Claude may use without asking; the rest ask on the conversation screen. */
-		allowed_tools: z.array(z.string()),
-	}),
 	web_search: z.object({
 		/** Search the web through Exa's API (its key is in the connection settings). */
 		enabled: z.boolean(),
@@ -62,7 +34,7 @@ export const agentSettingsSchema = z.object({
 		enabled: z.boolean(),
 	}),
 	ask_user: z.object({
-		/** A reply that needs the user to decide something ends with choices (Mastra's ask_user). */
+		/** A reply that needs the user to decide something ends with choices (ask_user). */
 		enabled: z.boolean(),
 	}),
 	image_gen: z.object({
@@ -92,7 +64,6 @@ const { shape } = agentSettingsSchema;
 export const agentSettingsPatchSchema = z.object({
 	browser: shape.browser.partial().optional(),
 	sandbox: shape.sandbox.partial().optional(),
-	claude: shape.claude.partial().optional(),
 	web_search: shape.web_search.partial().optional(),
 	topic_search: shape.topic_search.partial().optional(),
 	ask_user: shape.ask_user.partial().optional(),
@@ -101,13 +72,12 @@ export const agentSettingsPatchSchema = z.object({
 });
 export type AgentSettingsPatch = z.infer<typeof agentSettingsPatchSchema>;
 
-/** The settings as the API answers them, with whether the Anthropic, Exa, OpenRouter and Composio
+/** The settings as the API answers them, with whether the Exa, OpenRouter and Composio
  *  keys are set and the image model of the chat settings. */
 export type AgentSettingsView = Omit<
 	AgentSettings,
-	"claude" | "web_search" | "topic_search" | "image_gen" | "composio"
+	"web_search" | "topic_search" | "image_gen" | "composio"
 > & {
-	claude: AgentSettings["claude"] & { has_api_key: boolean };
 	web_search: AgentSettings["web_search"] & { has_api_key: boolean };
 	topic_search: AgentSettings["topic_search"] & { has_api_key: boolean };
 	image_gen: AgentSettings["image_gen"] & { has_api_key: boolean; model: string };
@@ -136,7 +106,16 @@ export const composioConnectSchema = z.object({ callback_url: z.url() });
 /** The shapes the image tool can ask for. */
 export const IMAGE_ASPECT_RATIOS = ["1:1", "3:4", "4:3", "9:16", "16:9"] as const;
 
-const STEP_KINDS = ["browser", "sandbox", "claude", "image", "ask", "app", "other"] as const;
+const STEP_KINDS = [
+	"browser",
+	"sandbox",
+	"claude",
+	"image",
+	"ask",
+	"memory",
+	"app",
+	"other",
+] as const;
 const STEP_STATUSES = ["running", "awaiting", "done", "error", "declined"] as const;
 export type StepKind = (typeof STEP_KINDS)[number];
 
@@ -153,7 +132,8 @@ export const agentStepSchema = z.object({
 	detail: z.string(),
 	/** Its result, or the command's output so far (the tail of it). */
 	output: z.string(),
-	/** For Claude Agent SDK's own tool calls: the step that handed it the task. */
+	/** For a tool call made within another one (Claude Agent SDK's, in older replies): the step it
+	 *  was made under. */
 	parent: z.string().optional(),
 	/** While `awaiting`: the id to answer with. */
 	approval: z.string().optional(),
@@ -203,7 +183,10 @@ export interface DockerStatus {
 	error: string | null;
 }
 
+/** What a character remembers: its notes (MEMORY.md), and the summary of the conversation
+ *  older than what the character still has word for word. */
 export interface MemoryOverview {
 	resource_id: string;
 	working_memory: string;
+	summary: string;
 }

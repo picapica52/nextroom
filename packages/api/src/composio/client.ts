@@ -2,26 +2,58 @@
 // so every account is connected under one fixed Composio user id. Accounts are connected from the
 // agent settings, never from within a conversation, so the session's own connect tool is off.
 
-import { Composio } from "@composio/core";
-import { MastraProvider, type MastraToolCollection } from "@composio/mastra";
+import {
+	BaseAgenticProvider,
+	Composio,
+	dereferenceJsonSchema,
+	type ExecuteToolFn,
+	normalizeToolArguments,
+	type Tool,
+} from "@composio/core";
 import type { ComposioStatus } from "@nextroom/contracts";
+import type { JsonSchemaTool, ToolSet } from "../agent/tool";
 import { BadRequestError, messageOf } from "../lib/errors";
 import { composioApiKey } from "../settings/chat";
 
 const USER_ID = "local";
 
-type Session = Awaited<ReturnType<Composio<MastraProvider>["create"]>>;
+/** Composio's tools as the character's tools. */
+class CharacterToolProvider extends BaseAgenticProvider<ToolSet, JsonSchemaTool, never> {
+	override readonly name = "nextroom";
+
+	override wrapTool(tool: Tool, executeTool: ExecuteToolFn): JsonSchemaTool {
+		return {
+			name: tool.slug,
+			description: tool.description ?? "",
+			jsonSchema: dereferenceJsonSchema(tool.inputParameters ?? {}, {
+				onUnresolved: "sentinel",
+			}) as Record<string, unknown>,
+			execute: (input) =>
+				executeTool(tool.slug, normalizeToolArguments(input as Record<string, unknown>, tool.slug)),
+		};
+	}
+
+	override wrapTools(tools: Tool[], executeTool: ExecuteToolFn): ToolSet {
+		return Object.fromEntries(tools.map((tool) => [tool.slug, this.wrapTool(tool, executeTool)]));
+	}
+
+	override wrapMcpServerResponse(): never {
+		throw new Error("MCP is not used");
+	}
+}
+
+type Session = Awaited<ReturnType<Composio<CharacterToolProvider>["create"]>>;
 
 let cached: {
 	key: string;
 	session: Promise<Session>;
-	tools?: Promise<MastraToolCollection>;
+	tools?: Promise<ToolSet>;
 } | null = null;
 
-function client(): Composio<MastraProvider> {
+function client(): Composio<CharacterToolProvider> {
 	const apiKey = composioApiKey();
 	if (!apiKey) throw new BadRequestError(".env で COMPOSIO_API_KEY を設定してください");
-	return new Composio({ apiKey, provider: new MastraProvider() });
+	return new Composio({ apiKey, provider: new CharacterToolProvider() });
 }
 
 /** A session limited to `toolkits`, made once for each key and set of toolkits. */
@@ -42,7 +74,7 @@ export function composioSession(toolkits: string[]): Promise<Session> {
 }
 
 /** The session's tools for the agent, fetched once for each session. */
-export function composioSessionTools(toolkits: string[]): Promise<MastraToolCollection> {
+export function composioSessionTools(toolkits: string[]): Promise<ToolSet> {
 	const session = composioSession(toolkits);
 	const entry = cached;
 	if (entry?.session !== session) return session.then((s) => s.tools());

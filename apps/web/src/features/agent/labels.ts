@@ -5,6 +5,7 @@ import {
 	LayoutGrid,
 	type LucideIcon,
 	MessageCircleQuestionMark,
+	NotebookPen,
 	Sparkles,
 	SquareTerminal,
 	Wrench,
@@ -17,8 +18,24 @@ export const KINDS: Record<StepKind, { icon: LucideIcon; title: string; tone: st
 	claude: { icon: Sparkles, title: "Claude Agent SDK", tone: "text-mode-lora" },
 	image: { icon: ImageIcon, title: "画像生成", tone: "text-mode-lora" },
 	ask: { icon: MessageCircleQuestionMark, title: "質問", tone: "text-mode-si" },
+	memory: { icon: NotebookPen, title: "記憶", tone: "text-mode-si" },
 	app: { icon: LayoutGrid, title: "アプリ連携", tone: "text-info" },
 	other: { icon: Wrench, title: "ツール", tone: "text-muted-foreground" },
+};
+
+const WORKSPACE_LABELS: Record<string, string> = {
+	execute_command: "コマンドを実行",
+	get_process_output: "コマンドの出力を見る",
+	kill_process: "コマンドを止める",
+	read_file: "ファイルを読む",
+	write_file: "ファイルを書く",
+	edit_file: "ファイルを編集",
+	ast_edit: "コードを編集",
+	list_files: "ファイルの一覧",
+	delete: "ファイルを削除",
+	file_stat: "ファイルの情報",
+	mkdir: "フォルダーを作る",
+	grep: "ファイルを検索",
 };
 
 const LABELS: Record<string, string> = {
@@ -31,21 +48,10 @@ const LABELS: Record<string, string> = {
 	stagehand_tabs: "タブを操作",
 	stagehand_screenshot: "スクリーンショット",
 	stagehand_close: "ブラウザを閉じる",
-	mastra_workspace_execute_command: "コマンドを実行",
-	mastra_workspace_get_process_output: "コマンドの出力を見る",
-	mastra_workspace_kill_process: "コマンドを止める",
-	mastra_workspace_read_file: "ファイルを読む",
-	mastra_workspace_write_file: "ファイルを書く",
-	mastra_workspace_edit_file: "ファイルを編集",
-	mastra_workspace_ast_edit: "コードを編集",
-	mastra_workspace_list_files: "ファイルの一覧",
-	mastra_workspace_delete: "ファイルを削除",
-	mastra_workspace_file_stat: "ファイルの情報",
-	mastra_workspace_mkdir: "フォルダーを作る",
-	mastra_workspace_grep: "ファイルを検索",
 	delegate_to_claude: "Claude に任せる",
 	send_photo: "写真を送る",
 	ask_user: "質問",
+	update_memory: "メモを書き直す",
 	recall: "思い出す",
 	COMPOSIO_SEARCH_TOOLS: "アプリの機能を探す",
 	COMPOSIO_GET_TOOL_SCHEMAS: "アプリの使い方を調べる",
@@ -55,6 +61,8 @@ const LABELS: Record<string, string> = {
 /** A tool call in words, e.g. "コマンドを実行" or "Claude: Bash". */
 export function stepLabel(step: Pick<AgentStep, "tool">): string {
 	if (step.tool.startsWith("claude:")) return `Claude: ${step.tool.slice("claude:".length)}`;
+	const workspace = step.tool.replace(/^(mastra_)?workspace_/, "");
+	if (workspace !== step.tool && WORKSPACE_LABELS[workspace]) return WORKSPACE_LABELS[workspace];
 	return LABELS[step.tool] ?? step.tool;
 }
 

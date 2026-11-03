@@ -3,23 +3,58 @@ import {
 	type ChatTurn,
 	chatSettingsPatchSchema,
 	LLM_PROVIDERS,
+	SUBSCRIPTION_PROVIDERS,
+	type SubscriptionLogin,
+	type SubscriptionStatus,
+	subscriptionCodeSchema,
 } from "@nextroom/contracts";
 import { Hono } from "hono";
 import { z } from "zod";
+import {
+	answerSubscriptionLogin,
+	cancelSubscriptionLogin,
+	signOut,
+	startSubscriptionLogin,
+	subscriptionLogin,
+	subscriptionStatus,
+} from "../agent/auth";
+import { listLlmModels, listOpenrouterImageModels } from "../agent/models";
 import { readChatImage } from "../conversations/images";
 import { clipOf } from "../conversations/live-turn";
 import { getSession, listSessions } from "../conversations/sessions";
 import { submitOpening, submitTurn } from "../conversations/turn";
-import { listLlmModels, listOpenrouterImageModels } from "../mastra/model";
 import { getSettings, updateSettings } from "../settings/chat";
 import { approvalsRouter } from "./agent";
 import { bytesOf, json, query } from "./inputs";
+
+const subscriptionParam = z.object({ provider: z.enum(SUBSCRIPTION_PROVIDERS) });
+
+/** Signing in to the subscriptions the replies can use. */
+const subscriptionsRouter = new Hono()
+	.get("/", (c) => c.json<SubscriptionStatus[]>(subscriptionStatus()))
+	.post("/:provider/login", async (c) => {
+		const { provider } = subscriptionParam.parse(c.req.param());
+		return c.json<SubscriptionLogin>(await startSubscriptionLogin(provider));
+	})
+	.delete("/:provider", async (c) => {
+		const { provider } = subscriptionParam.parse(c.req.param());
+		await signOut(provider);
+		return c.json<SubscriptionStatus[]>(subscriptionStatus());
+	})
+	.get("/logins/:id", (c) => c.json<SubscriptionLogin>(subscriptionLogin(c.req.param("id"))))
+	.post("/logins/:id/code", json(subscriptionCodeSchema), (c) =>
+		c.json<SubscriptionLogin>(answerSubscriptionLogin(c.req.param("id"), c.req.valid("json").code)),
+	)
+	.post("/logins/:id/cancel", (c) =>
+		c.json<SubscriptionLogin>(cancelSubscriptionLogin(c.req.param("id"))),
+	);
 
 export const chatRouter = new Hono()
 	.get("/settings", (c) => c.json<ChatSettingsView>(getSettings()))
 	.patch("/settings", json(chatSettingsPatchSchema), (c) =>
 		c.json<ChatSettingsView>(updateSettings(c.req.valid("json"))),
 	)
+	.route("/subscriptions", subscriptionsRouter)
 	.get("/llm-models", query(z.object({ provider: z.string().optional() })), async (c) => {
 		const provider = LLM_PROVIDERS.find((p) => p === c.req.valid("query").provider);
 		return c.json(await listLlmModels(provider));

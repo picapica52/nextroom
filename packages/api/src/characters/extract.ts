@@ -8,9 +8,9 @@ import {
 	type PersonaExtract,
 	replyEffortOf,
 } from "@nextroom/contracts";
+import { generateOnce } from "../agent";
+import { connectionOf } from "../agent/providers";
 import { BadRequestError, ConflictError } from "../lib/errors";
-import { generateOnce } from "../mastra";
-import { connectionOf } from "../mastra/providers";
 import { loadSettings } from "../settings/chat";
 
 /** Characters of the files the model reads in all; the rest is cut. */

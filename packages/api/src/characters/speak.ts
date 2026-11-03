@@ -1,6 +1,6 @@
 import type { VoiceSettings } from "@nextroom/contracts";
 
-import { irodoriVoice } from "../mastra";
+import { irodoriVoice } from "../agent";
 import { speakFiles } from "./voice-files";
 
 /** `text` spoken with `voice` and the character's voice files (none without a character). */

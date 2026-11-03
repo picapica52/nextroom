@@ -12,6 +12,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import { backToFriends, getAffinity, resetAffinity } from "../affinity/store";
+import { forgetConversation, stopSandbox } from "../agent/cleanup";
 import { exportArchive, exportName, importArchive } from "../characters/archive";
 import { generateNeutral, regenerateExpression, tagExpression } from "../characters/expression-ai";
 import {
@@ -55,7 +56,6 @@ import {
 	voiceRefs,
 } from "../characters/voice-files";
 import { BadRequestError, parseOrBadRequest } from "../lib/errors";
-import { forgetConversation, stopSandbox } from "../mastra/cleanup";
 import { attachment, bytesOf, json, ok, sendFile } from "./inputs";
 
 async function uploaded(c: {

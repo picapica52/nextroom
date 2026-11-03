@@ -1,5 +1,5 @@
 // Workspaces: each character has one (_data/characters/<id>/workspace), where the agent's file
-// and command tools and Claude Agent SDK all work.
+// and command tools work.
 
 import { z } from "zod";
 

@@ -10,9 +10,9 @@ import {
 	type ChatSettings,
 	replyEffortOf,
 } from "@nextroom/contracts";
+import { generateOnce } from "../agent";
+import type { LlmConnection } from "../agent/providers";
 import { resourceTalk } from "../conversations/history";
-import { generateOnce } from "../mastra";
-import type { LlmConnection } from "../mastra/providers";
 import { type EventChoice, type EventContext, guideOf, needsHistory } from "./events";
 
 /** How much of the conversations a draft reads: the first talks and the latest. */
@@ -61,12 +61,12 @@ async function draftOf(
 	kind: AffinityEventKind,
 	c: EventContext,
 	notes: string,
-	resourceId: string,
+	characterId: string,
 	connection: LlmConnection,
 	settings: ChatSettings,
 	signal: AbortSignal,
 ): Promise<Draft | null> {
-	const talk = await resourceTalk(resourceId, FIRST_MESSAGES, LAST_MESSAGES);
+	const talk = resourceTalk(characterId, FIRST_MESSAGES, LAST_MESSAGES);
 	const used = c.affinity.events
 		.filter((e) => e.kind === kind && e.topic)
 		.map((e) => e.topic)
@@ -111,7 +111,6 @@ export async function prepareEvent(
 	c: EventContext,
 	character: CharacterView,
 	notes: string,
-	resourceId: string,
 	connection: LlmConnection,
 	settings: ChatSettings,
 	signal: AbortSignal,
@@ -119,7 +118,7 @@ export async function prepareEvent(
 	let topic: string = choice.label;
 	let points: string[] = [];
 	if (needsHistory(choice.kind)) {
-		const draft = await draftOf(choice.kind, c, notes, resourceId, connection, settings, signal);
+		const draft = await draftOf(choice.kind, c, notes, character.id, connection, settings, signal);
 		if (!draft) return null;
 		topic = draft.topic ?? topic;
 		points = draft.points ?? [];

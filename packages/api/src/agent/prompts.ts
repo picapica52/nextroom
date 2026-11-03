@@ -9,24 +9,9 @@ export const OUTSIDE_CONVERSATION = "This tool is only available inside a conver
 export const DECLINED = {
 	browser: "The user did not allow this action. Find another way or check with the user.",
 	sandbox: "The user did not allow this to run. Find another way or check with the user.",
-	claude: "The user did not allow this.",
 	photo: "The user did not want this photo sent. Check with the user.",
 	app: "The user did not allow this. Find another way or check with the user.",
 } as const;
-
-export const NO_ANTHROPIC_KEY =
-	"No Anthropic API key is set. Ask the user to set one in the connection settings.";
-
-export const NO_CLAUDE_MODEL =
-	"No model is chosen for Claude. Ask the user to choose one in the agent settings.";
-
-export const CLAUDE_SILENT = "(Claude did not report anything.)";
-
-/** Appended to Claude Code's own system prompt for a task the character hands over. */
-export const CLAUDE_INSTRUCTIONS =
-	"You are an assistant working on a task handed over by a character agent. " +
-	"Do not read or write files outside the workspace (the current directory). " +
-	"When you are done, briefly summarize in Japanese what you did and the files you created.";
 
 export const NO_EXA_KEY =
 	"No Exa API key is set. Ask the user to set EXA_API_KEY in the server's .env.";
@@ -53,9 +38,11 @@ export const TOPICS_NOTE = [
 	'A topic of kind new is something the user may not know: share it as an interesting thing you learned, like "did you know…".',
 ].join("\n");
 
-/** What the character is told about the tools it has, when it has any. */
+/** What the character is told about the tools it has. */
 export function toolGuide(settings: AgentSettings): string {
-	const tools: string[] = [];
+	const tools: string[] = [
+		"- update_memory: rewrite your notes when something worth remembering comes up. Do it quietly, without mentioning it.",
+	];
 	if (settings.web_search.enabled) {
 		tools.push(
 			"- web_search: search the web through your device. When you need to look something up, start here; it gives you the top pages' titles, URLs and the passages that match.",
@@ -100,12 +87,7 @@ export function toolGuide(settings: AgentSettings): string {
 	}
 	if (settings.sandbox.enabled) {
 		tools.push(
-			"- Workspace (mastra_workspace_*): through your device, read and write files and run commands in your own workspace on the user's computer. The user sees its files and can add some.",
-		);
-	}
-	if (settings.claude.enabled) {
-		tools.push(
-			"- delegate_to_claude: through your device, hand laborious work over to Claude, a helper on the user's side who works in the same workspace. You know Claude by the name the user uses, so you may call it Claude.",
+			"- Workspace (workspace_*): through your device, read and write files and run commands in your own workspace on the user's computer. The user sees its files and can add some.",
 		);
 	}
 	if (settings.ask_user.enabled) {
@@ -119,12 +101,11 @@ export function toolGuide(settings: AgentSettings): string {
 			].join("\n"),
 		);
 	}
-	if (!tools.length) return "";
 	return [
 		"# Tools",
 		...tools,
 		"Use a tool only when the request needs it.",
-		"Before your first tool call in a reply (other than ask_user and recall), say once in a few words what you are about to do.",
+		"Before your first tool call in a reply (other than ask_user and update_memory), say once in a few words what you are about to do.",
 		"After that, work silently: say nothing between tool calls. Do not narrate each step, what you are opening or clicking, or what you found along the way. Speak again only when you are done.",
 		"Then report only the final result the tools actually returned, briefly, in natural spoken language that sounds right when read aloud. If a tool fails, say so.",
 	].join("\n");

@@ -1,13 +1,13 @@
-import { type AgentSettingsView, CLAUDE_TOOLS } from "@nextroom/contracts";
+import type { AgentSettingsView } from "@nextroom/contracts";
 import { ToggleGroup, ToggleGroupItem } from "@nextroom/ui/components/toggle-group";
 import { cn } from "@nextroom/ui/lib/utils";
 import type { ReactNode } from "react";
 import { SettingsSection } from "@/components/settings-section";
-import { claudeToolGroups, type SetAgentSection } from "../agent-options";
+import type { SetAgentSection } from "../agent-options";
 
 /** Whether each tool asks on the conversation screen before it acts. */
 export function AgentApprovalsSection({
-	form: { browser, sandbox, claude, image_gen, composio },
+	form: { browser, sandbox, image_gen, composio },
 	set,
 }: {
 	form: AgentSettingsView;
@@ -68,24 +68,6 @@ export function AgentApprovalsSection({
 					ask={composio.approve_write}
 					onChange={(approve_write) => set("composio", { approve_write })}
 				/>
-			</ApproveGroup>
-			<ApproveGroup title="Claude" off={!claude.enabled}>
-				{claudeToolGroups(CLAUDE_TOOLS).map((group) => (
-					<ApproveRow
-						key={group.label}
-						label={group.label}
-						detail={group.tools.join("・")}
-						askLabel={claude.permission_mode === "dontAsk" ? "断る" : "毎回確認"}
-						ask={!group.tools.every((t) => claude.allowed_tools.includes(t))}
-						onChange={(ask) =>
-							set("claude", {
-								allowed_tools: ask
-									? claude.allowed_tools.filter((t) => !group.tools.includes(t))
-									: [...new Set([...claude.allowed_tools, ...group.tools])],
-							})
-						}
-					/>
-				))}
 			</ApproveGroup>
 		</SettingsSection>
 	);
