@@ -13,6 +13,13 @@ elif [ "$owner" != "$(id -u user)" ]; then
 fi
 chown user:user /home/user
 
+# A container stopped and started again keeps /tmp, and with it the last display's lock when
+# Xvfb was killed before it could remove it; Xvfb then refuses to start.
+rm -f /tmp/.X1-lock /tmp/.X11-unix/X1
+mkdir -p /tmp/.X11-unix
+chown root:root /tmp/.X11-unix
+chmod 1777 /tmp/.X11-unix
+
 as_user() {
 	runuser -u user -- env HOME=/home/user DISPLAY=:1 LANG=C.UTF-8 "$@"
 }
