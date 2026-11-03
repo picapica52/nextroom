@@ -95,13 +95,14 @@ packages/
     src/engine/         エンジン: speech.cpp サーバーのクライアント（音声合成・文字起こし）、
                         GPU ジョブのキュー、speech.cpp サーバーのモデル
     src/settings/       設定（chat: 会話、agent: エージェント）
-    src/lib/            データフォルダーのパス・JSON 保存・エラー・ジョブを1つずつ実行するキュー・子プロセス
+    src/lib/            データフォルダーのパス・データベース（Drizzle ORM、テーブルは schema.ts）・エラー・ジョブを1つずつ実行するキュー・子プロセス
+    drizzle/            データベースのマイグレーション（起動時に適用。schema.ts を変えたら `bun run db:generate`）
   contracts/          画面とサーバーで共有する型と、リクエストを確かめる zod スキーマ
   ui/                 shadcn/ui（Base UI・nova）の部品とテーマ
   config/             共通の tsconfig
 docs/                 見た目のルール
 _data/                会話・キャラクター・設定（git 管理外）
-  nextroom.sqlite       データベース（bun:sqlite）: 設定（chat・agent・discord・slack）、キャラクター（人物設定・声・詳細の設定）、
+  nextroom.sqlite       データベース（bun:sqlite + Drizzle ORM）: 設定（chat・agent・discord・slack）、キャラクター（人物設定・声・詳細の設定）、
                         好感度、会話（記録と要約）、メモ（MEMORY.md）とその版、参照音声の一覧、プロバイダーの API キーとサインイン情報。
                         ルーティンとその実行履歴、接続先と API キー（入力したもの）
   characters/<キャラクター>/  キャラクターのファイル

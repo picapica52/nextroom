@@ -5,8 +5,10 @@
 
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import type { AgentStep, ChatAffinityMark } from "@nextroom/contracts";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { splitImageNote } from "../../conversations/images";
-import { memoryDb } from "./db";
+import { appDb } from "../../lib/db";
+import { messages, summaries } from "../../lib/schema";
 
 /** What the conversation screen shows of a message that the model's message does not tell. */
 export interface ChatMeta {
@@ -36,78 +38,95 @@ export type SummaryEntry = {
 	text: string;
 };
 
-interface MessageRow {
-	id: string;
-	at: number;
-	message: string;
-	chat: string | null;
-}
+const columns = {
+	id: messages.id,
+	at: messages.at,
+	message: messages.message,
+	chat: messages.chat,
+};
 
-const entryOf = (row: MessageRow): ChatMessageEntry => ({
-	id: row.id,
-	at: row.at,
-	message: JSON.parse(row.message),
-	...(row.chat ? { chat: JSON.parse(row.chat) } : {}),
-});
+const entryOf = (row: { id: string; at: number; message: string; chat: string | null }) =>
+	({
+		id: row.id,
+		at: row.at,
+		message: JSON.parse(row.message),
+		...(row.chat ? { chat: JSON.parse(row.chat) } : {}),
+	}) as ChatMessageEntry;
 
-const COLUMNS = "id, at, message, chat";
+const selectMessages = (...where: Parameters<typeof and>) =>
+	appDb()
+		.select(columns)
+		.from(messages)
+		.where(and(...where))
+		.orderBy(asc(messages.seq))
+		.all()
+		.map(entryOf);
+
+const of = (characterId: string) => eq(messages.characterId, characterId);
 
 /** The character's messages, oldest first. */
 function listMessages(characterId: string): ChatMessageEntry[] {
-	return memoryDb()
-		.query<MessageRow, [string]>(
-			`SELECT ${COLUMNS} FROM messages WHERE character_id = ? ORDER BY seq`,
-		)
-		.all(characterId)
-		.map(entryOf);
+	return selectMessages(of(characterId));
 }
 
 /** The character's messages that were said aloud: the user's and the character's (not the tools'
  *  results), oldest first. */
 export function listSpokenMessages(characterId: string): ChatMessageEntry[] {
-	return memoryDb()
-		.query<MessageRow, [string]>(
-			`SELECT ${COLUMNS} FROM messages WHERE character_id = ? AND role IN ('user', 'assistant') ORDER BY seq`,
-		)
-		.all(characterId)
-		.map(entryOf);
+	return selectMessages(of(characterId), inArray(messages.role, ["user", "assistant"]));
 }
 
 export function appendMessages(characterId: string, entries: ChatMessageEntry[]): void {
 	if (!entries.length) return;
-	const d = memoryDb();
-	const insert = d.query(
-		`INSERT INTO messages (id, character_id, seq, at, role, message, chat)
-		 VALUES (?, ?, (SELECT COALESCE(MAX(seq), 0) + 1 FROM messages WHERE character_id = ?), ?, ?, ?, ?)`,
-	);
-	d.transaction(() => {
+	appDb().transaction((tx) => {
 		for (const e of entries) {
-			insert.run(
-				e.id,
-				characterId,
-				characterId,
-				e.at,
-				e.message.role,
-				JSON.stringify(e.message),
-				e.chat ? JSON.stringify(e.chat) : null,
-			);
+			const last = tx
+				.select({ seq: sql<number>`COALESCE(MAX(${messages.seq}), 0)` })
+				.from(messages)
+				.where(of(characterId))
+				.get();
+			tx.insert(messages)
+				.values({
+					id: e.id,
+					characterId,
+					seq: (last?.seq ?? 0) + 1,
+					at: e.at,
+					role: e.message.role,
+					message: JSON.stringify(e.message),
+					chat: e.chat ? JSON.stringify(e.chat) : null,
+				})
+				.run();
 		}
-	})();
+	});
 }
 
 export function addSummary(characterId: string, summary: SummaryEntry): void {
-	memoryDb().run(
-		`INSERT INTO summaries (id, character_id, at, until_id, text) VALUES (?, ?, ?, ?, ?)`,
-		[summary.id, characterId, summary.at, summary.until, summary.text],
-	);
+	appDb()
+		.insert(summaries)
+		.values({
+			id: summary.id,
+			characterId,
+			at: summary.at,
+			untilId: summary.until,
+			text: summary.text,
+		})
+		.run();
 }
 
 export function latestSummary(characterId: string): SummaryEntry | null {
-	return memoryDb()
-		.query<SummaryEntry, [string]>(
-			`SELECT id, at, until_id AS until, text FROM summaries WHERE character_id = ? ORDER BY at DESC LIMIT 1`,
-		)
-		.get(characterId);
+	return (
+		appDb()
+			.select({
+				id: summaries.id,
+				at: summaries.at,
+				until: summaries.untilId,
+				text: summaries.text,
+			})
+			.from(summaries)
+			.where(eq(summaries.characterId, characterId))
+			.orderBy(desc(summaries.at))
+			.limit(1)
+			.get() ?? null
+	);
 }
 
 /** The latest summary, and the messages after it. */
@@ -117,14 +136,12 @@ export function unsummarized(characterId: string): {
 } {
 	const summary = latestSummary(characterId);
 	if (!summary) return { summary, messages: listMessages(characterId) };
-	const messages = memoryDb()
-		.query<MessageRow, [string, string]>(
-			`SELECT ${COLUMNS} FROM messages WHERE character_id = ?1
-			 AND seq > COALESCE((SELECT seq FROM messages WHERE id = ?2), 0) ORDER BY seq`,
-		)
-		.all(characterId, summary.until)
-		.map(entryOf);
-	return { summary, messages };
+	const until = appDb()
+		.select({ seq: messages.seq })
+		.from(messages)
+		.where(eq(messages.id, summary.until))
+		.get();
+	return { summary, messages: selectMessages(of(characterId), gt(messages.seq, until?.seq ?? 0)) };
 }
 
 /** The words of a message, without its thinking and tool calls. */

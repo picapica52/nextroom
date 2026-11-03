@@ -4,8 +4,10 @@
 // reply is given them in full, and the affinity's events read their fields (affinity/events.ts).
 // Each rewrite is kept as a revision, with who made it.
 
+import { eq } from "drizzle-orm";
+import { appDb } from "../../lib/db";
+import { noteRevisions, notes } from "../../lib/schema";
 import { now } from "../../lib/storage";
-import { memoryDb } from "./db";
 
 /** The notes may be no longer than this, so they stay cheap to send with every reply. */
 export const NOTES_MAX_CHARS = 4000;
@@ -55,31 +57,33 @@ export type NotesSource = "character" | "summary";
 /** The notes; empty before anything is written. */
 export function readNotes(characterId: string): string {
 	return (
-		memoryDb()
-			.query<{ content: string }, [string]>(`SELECT content FROM notes WHERE character_id = ?`)
-			.get(characterId)?.content ?? ""
+		appDb()
+			.select({ content: notes.content })
+			.from(notes)
+			.where(eq(notes.characterId, characterId))
+			.get()?.content ?? ""
 	);
 }
 
 export function writeNotes(characterId: string, text: string, source: NotesSource): void {
-	const d = memoryDb();
 	const content = `${text.trim()}\n`;
 	const at = now();
-	d.transaction(() => {
-		const current = d
-			.query<{ revision: number }, [string]>(`SELECT revision FROM notes WHERE character_id = ?`)
-			.get(characterId);
+	appDb().transaction((tx) => {
+		const current = tx
+			.select({ revision: notes.revision })
+			.from(notes)
+			.where(eq(notes.characterId, characterId))
+			.get();
 		const revision = (current?.revision ?? 0) + 1;
-		d.run(
-			`INSERT INTO notes (character_id, content, revision, updated_at) VALUES (?, ?, ?, ?)
-			 ON CONFLICT (character_id) DO UPDATE SET content = excluded.content,
-			 revision = excluded.revision, updated_at = excluded.updated_at`,
-			[characterId, content, revision, at],
-		);
-		d.run(
-			`INSERT INTO note_revisions (character_id, revision, content, source, created_at)
-			 VALUES (?, ?, ?, ?, ?)`,
-			[characterId, revision, content, source, at],
-		);
-	})();
+		tx.insert(notes)
+			.values({ characterId, content, revision, updatedAt: at })
+			.onConflictDoUpdate({
+				target: notes.characterId,
+				set: { content, revision, updatedAt: at },
+			})
+			.run();
+		tx.insert(noteRevisions)
+			.values({ characterId, revision, content, source, createdAt: at })
+			.run();
+	});
 }

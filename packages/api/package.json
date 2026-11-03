@@ -6,7 +6,8 @@
 		"./*": "./src/*.ts"
 	},
 	"scripts": {
-		"check-types": "tsc --noEmit"
+		"check-types": "tsc --noEmit",
+		"db:generate": "drizzle-kit generate"
 	},
 	"dependencies": {
 		"@composio/core": "^0.24.0",
@@ -17,6 +18,7 @@
 		"@slack/socket-mode": "^3.1.1",
 		"@slack/web-api": "^8.3.0",
 		"discord.js": "^14.27.0",
+		"drizzle-orm": "^0.45.4",
 		"fflate": "^0.8.2",
 		"hono": "catalog:",
 		"opusscript": "^0.1.1",
@@ -28,6 +30,7 @@
 		"@nextroom/config": "workspace:*",
 		"@types/bun": "catalog:",
 		"@types/node": "catalog:",
+		"drizzle-kit": "^0.31.11",
 		"typescript": "catalog:"
 	}
 }

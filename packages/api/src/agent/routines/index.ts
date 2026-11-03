@@ -17,23 +17,12 @@ import {
 	routineCreateSchema,
 	routineSchema,
 } from "@nextroom/contracts";
-import { appDb, defineTables, deleteDoc, listDocs, readDoc, writeDoc } from "../../lib/db";
+import { and, desc, eq, notInArray } from "drizzle-orm";
+import { appDb, deleteDoc, listDocs, readDoc, writeDoc } from "../../lib/db";
 import { BadRequestError, messageOf, NotFoundError, parseOrBadRequest } from "../../lib/errors";
+import { routineRuns as runs } from "../../lib/schema";
 import { newId, now } from "../../lib/storage";
 import { checkTrigger, nextRunAt } from "./schedule";
-
-defineTables(`
-CREATE TABLE IF NOT EXISTS routine_runs (
-	id TEXT PRIMARY KEY,
-	routine_id TEXT NOT NULL,
-	started_at REAL NOT NULL,
-	finished_at REAL,
-	status TEXT NOT NULL,
-	reply TEXT NOT NULL,
-	error TEXT
-);
-CREATE INDEX IF NOT EXISTS routine_runs_routine ON routine_runs (routine_id, started_at);
-`);
 
 const TICK_MS = 30_000;
 const MISSED_AFTER_SECONDS = 60 * 60;
@@ -115,7 +104,7 @@ export function updateRoutine(id: string, patch: RoutinePatch): RoutineView {
 export function deleteRoutine(id: string): void {
 	loadRoutine(id);
 	deleteDoc("routines", id);
-	appDb().run(`DELETE FROM routine_runs WHERE routine_id = ?`, [id]);
+	appDb().delete(runs).where(eq(runs.routineId, id)).run();
 }
 
 export function deleteRoutinesOf(characterId: string): void {
@@ -125,26 +114,44 @@ export function deleteRoutinesOf(characterId: string): void {
 /** The routine's runs, the newest first. */
 export function routineRuns(id: string): RoutineRun[] {
 	return appDb()
-		.query<RoutineRun, [string, number]>(
-			`SELECT id, routine_id, started_at, finished_at, status, reply, error FROM routine_runs
-			 WHERE routine_id = ? ORDER BY started_at DESC LIMIT ?`,
-		)
-		.all(id, KEPT_RUNS);
+		.select({
+			id: runs.id,
+			routine_id: runs.routineId,
+			started_at: runs.startedAt,
+			finished_at: runs.finishedAt,
+			status: runs.status,
+			reply: runs.reply,
+			error: runs.error,
+		})
+		.from(runs)
+		.where(eq(runs.routineId, id))
+		.orderBy(desc(runs.startedAt))
+		.limit(KEPT_RUNS)
+		.all();
 }
 
 function recordRun(run: RoutineRun): void {
-	appDb().run(
-		`INSERT INTO routine_runs (id, routine_id, started_at, finished_at, status, reply, error)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT (id) DO UPDATE SET finished_at = excluded.finished_at, status = excluded.status,
-		 reply = excluded.reply, error = excluded.error`,
-		[run.id, run.routine_id, run.started_at, run.finished_at, run.status, run.reply, run.error],
-	);
-	appDb().run(
-		`DELETE FROM routine_runs WHERE routine_id = ?1 AND id NOT IN
-		 (SELECT id FROM routine_runs WHERE routine_id = ?1 ORDER BY started_at DESC LIMIT ?2)`,
-		[run.routine_id, KEPT_RUNS],
-	);
+	const row = {
+		finishedAt: run.finished_at,
+		status: run.status,
+		reply: run.reply,
+		error: run.error,
+	};
+	const d = appDb();
+	d.insert(runs)
+		.values({ id: run.id, routineId: run.routine_id, startedAt: run.started_at, ...row })
+		.onConflictDoUpdate({ target: runs.id, set: row })
+		.run();
+	const of = eq(runs.routineId, run.routine_id);
+	const kept = d
+		.select({ id: runs.id })
+		.from(runs)
+		.where(of)
+		.orderBy(desc(runs.startedAt))
+		.limit(KEPT_RUNS);
+	d.delete(runs)
+		.where(and(of, notInArray(runs.id, kept)))
+		.run();
 }
 
 /** Runs the routine now; false while its character is busy (or it is already running). */

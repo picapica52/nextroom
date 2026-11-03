@@ -8,43 +8,36 @@ import {
 	characterAgentPatchSchema,
 	type InstructionRevision,
 } from "@nextroom/contracts";
-import { appDb, defineTables } from "../lib/db";
+import { and, desc, eq, max, notInArray } from "drizzle-orm";
+import { appDb } from "../lib/db";
 import { parseOrBadRequest } from "../lib/errors";
+import { instructionRevisions as revisions } from "../lib/schema";
 import { now } from "../lib/storage";
 import { loadCharacter, saveCharacter, viewOf } from "./store";
-
-defineTables(`
-CREATE TABLE IF NOT EXISTS instruction_revisions (
-	character_id TEXT NOT NULL,
-	revision INTEGER NOT NULL,
-	instructions TEXT NOT NULL,
-	created_at REAL NOT NULL,
-	PRIMARY KEY (character_id, revision)
-);
-`);
 
 const KEPT_REVISIONS = 50;
 
 function keepRevision(characterId: string, instructions: string): void {
-	const d = appDb();
-	d.transaction(() => {
-		const last = d
-			.query<{ n: number | null }, [string]>(
-				`SELECT MAX(revision) AS n FROM instruction_revisions WHERE character_id = ?`,
-			)
-			.get(characterId);
-		d.run(
-			`INSERT INTO instruction_revisions (character_id, revision, instructions, created_at)
-			 VALUES (?, ?, ?, ?)`,
-			[characterId, (last?.n ?? 0) + 1, instructions, now()],
-		);
-		d.run(
-			`DELETE FROM instruction_revisions WHERE character_id = ?1 AND revision NOT IN
-			 (SELECT revision FROM instruction_revisions WHERE character_id = ?1
-			  ORDER BY revision DESC LIMIT ?2)`,
-			[characterId, KEPT_REVISIONS],
-		);
-	})();
+	appDb().transaction((tx) => {
+		const of = eq(revisions.characterId, characterId);
+		const last = tx
+			.select({ n: max(revisions.revision) })
+			.from(revisions)
+			.where(of)
+			.get();
+		tx.insert(revisions)
+			.values({ characterId, revision: (last?.n ?? 0) + 1, instructions, createdAt: now() })
+			.run();
+		const kept = tx
+			.select({ revision: revisions.revision })
+			.from(revisions)
+			.where(of)
+			.orderBy(desc(revisions.revision))
+			.limit(KEPT_REVISIONS);
+		tx.delete(revisions)
+			.where(and(of, notInArray(revisions.revision, kept)))
+			.run();
+	});
 }
 
 export function updateCharacterAgent(
@@ -68,13 +61,17 @@ export function updateCharacterAgent(
 export function instructionRevisions(characterId: string): InstructionRevision[] {
 	loadCharacter(characterId);
 	return appDb()
-		.query<InstructionRevision, [string]>(
-			`SELECT revision, instructions, created_at FROM instruction_revisions
-			 WHERE character_id = ? ORDER BY revision DESC`,
-		)
-		.all(characterId);
+		.select({
+			revision: revisions.revision,
+			instructions: revisions.instructions,
+			created_at: revisions.createdAt,
+		})
+		.from(revisions)
+		.where(eq(revisions.characterId, characterId))
+		.orderBy(desc(revisions.revision))
+		.all();
 }
 
 export function forgetInstructionRevisions(characterId: string): void {
-	appDb().run(`DELETE FROM instruction_revisions WHERE character_id = ?`, [characterId]);
+	appDb().delete(revisions).where(eq(revisions.characterId, characterId)).run();
 }

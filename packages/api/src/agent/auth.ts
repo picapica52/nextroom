@@ -17,7 +17,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { LlmProvider, ProviderLogin, ProviderStatus } from "@nextroom/contracts";
 import { z } from "zod";
-import { appDb, deleteDoc, hasDoc, readDoc, writeDoc } from "../lib/db";
+import { deleteDoc, hasDoc, rawDocs, readDoc, writeDoc } from "../lib/db";
 import { BadRequestError, messageOf, NotFoundError } from "../lib/errors";
 import { newId } from "../lib/storage";
 import { readSettingsSection, writeSettingsSection } from "../settings/file";
@@ -45,10 +45,10 @@ class DbCredentialStore implements CredentialStore {
 
 	async list(): Promise<readonly CredentialInfo[]> {
 		await this.chain;
-		return appDb()
-			.query<{ key: string; data: string }, []>(`SELECT key, data FROM credentials`)
-			.all()
-			.map((r) => ({ providerId: r.key, type: (JSON.parse(r.data) as Credential).type }));
+		return rawDocs("credentials").map((r) => ({
+			providerId: r.key,
+			type: (r.data as Credential).type,
+		}));
 	}
 
 	modify(
