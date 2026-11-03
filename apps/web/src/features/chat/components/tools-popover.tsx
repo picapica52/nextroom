@@ -38,18 +38,11 @@ const TOOLS: {
 		patch: (enabled) => ({ topic_search: { enabled } }),
 	},
 	{
-		key: "desktop",
-		label: "デスクトップ",
-		description: "自分の Linux デスクトップを画面を見ながら操作する",
-		on: (s) => s.desktop.enabled,
-		patch: (enabled) => ({ desktop: { enabled } }),
-	},
-	{
-		key: "sandbox",
-		label: "ファイルとコマンド",
-		description: "ワークスペースでファイル作成・コマンド実行",
-		on: (s) => s.sandbox.enabled,
-		patch: (enabled) => ({ sandbox: { enabled } }),
+		key: "computer",
+		label: "コンピューター",
+		description: "自分の Linux でコマンドを実行し、画面も操作する",
+		on: (s) => s.computer.enabled,
+		patch: (enabled) => ({ computer: { enabled } }),
 	},
 	{
 		key: "ask_user",

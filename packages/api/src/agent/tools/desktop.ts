@@ -32,7 +32,7 @@ export async function desktopView(
 	characterId: string,
 	settings: AgentSettings,
 ): Promise<DesktopView> {
-	return { enabled: settings.desktop.enabled, ...(await computerState(characterId)) };
+	return { enabled: settings.computer.enabled, ...(await computerState(characterId)) };
 }
 
 // Working the screen: requests to control.py, one JSON line each way
@@ -278,13 +278,13 @@ const describeAction = (a: Action) =>
 const seesImages = (connection: LlmConnection) => modelOf(connection).input.includes("image");
 
 export const hasDesktop = (settings: AgentSettings, connection: LlmConnection) =>
-	settings.desktop.enabled && seesImages(connection);
+	settings.computer.enabled && seesImages(connection);
 
 /** The character's computer, started when need be. */
 export async function computerFor(call: ToolCall, settings: AgentSettings): Promise<string> {
 	const { characterId } = call.context;
 	if (!runningComputer(characterId)) call.output("コンピューターを起動しています…\n");
-	await useComputer(characterId, settings.container);
+	await useComputer(characterId, settings.computer);
 	return characterId;
 }
 

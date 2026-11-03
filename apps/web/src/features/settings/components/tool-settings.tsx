@@ -13,7 +13,7 @@ export default function ToolSettings() {
 	return (
 		<AgentSettingsPage>
 			{({ form, set }) => {
-				const { container, desktop, sandbox } = form;
+				const { computer } = form;
 				return (
 					<>
 						<SettingsGroup title="Web">
@@ -55,7 +55,7 @@ export default function ToolSettings() {
 							title="コンピューター"
 							description="キャラクターごとの Linux のコンテナで作業します。この PC のファイルには触れません"
 							action={
-								(desktop.enabled || sandbox.enabled) &&
+								computer.enabled &&
 								(docker.isPending ? (
 									<Dot tone="muted">Docker を確認中</Dot>
 								) : docker.data?.ok ? (
@@ -66,46 +66,38 @@ export default function ToolSettings() {
 							}
 						>
 							<SwitchRow
-								id="desktop-enabled"
-								label="デスクトップを使う"
-								description="画面を見ながら操作します。画像を読めるモデルで使えます"
-								checked={desktop.enabled}
-								onChange={(enabled) => set("desktop", { enabled })}
+								id="computer-enabled"
+								label="コンピューターを使う"
+								description="コマンドでファイルを作ったりプログラムを動かしたりします。画像を読めるモデルなら、画面を見ながらの操作もします"
+								checked={computer.enabled}
+								onChange={(enabled) => set("computer", { enabled })}
 							/>
-							<SwitchRow
-								id="sandbox-enabled"
-								label="ファイルとコマンドを使う"
-								checked={sandbox.enabled}
-								onChange={(enabled) => set("sandbox", { enabled })}
-							/>
-							{sandbox.enabled && (
-								<NumberField
-									id="timeout"
-									label="コマンドの制限時間（秒）"
-									value={sandbox.timeout_sec}
-									min={5}
-									step={30}
-									onChange={(timeout_sec) => set("sandbox", { timeout_sec })}
-								/>
-							)}
-							{(desktop.enabled || sandbox.enabled) && (
+							{computer.enabled && (
 								<>
+									<NumberField
+										id="timeout"
+										label="コマンドの制限時間（秒）"
+										value={computer.timeout_sec}
+										min={5}
+										step={30}
+										onChange={(timeout_sec) => set("computer", { timeout_sec })}
+									/>
 									<NumberField
 										id="container-mem"
 										label="メモリ上限（MB）"
 										description="キャラクターごとの上限"
-										value={container.memory_mb}
+										value={computer.memory_mb}
 										min={512}
 										step={512}
-										onChange={(memory_mb) => set("container", { memory_mb })}
+										onChange={(memory_mb) => set("computer", { memory_mb })}
 									/>
 									<NumberField
 										id="container-cpus"
 										label="CPU"
-										value={container.cpus}
+										value={computer.cpus}
 										min={0.5}
 										step={0.5}
-										onChange={(cpus) => set("container", { cpus })}
+										onChange={(cpus) => set("computer", { cpus })}
 									/>
 								</>
 							)}

@@ -1,5 +1,5 @@
 // The character agent: its settings (tools), the steps of a reply, and what the
-// desktop, sandbox and memory screens are answered with.
+// computer and memory screens are answered with.
 
 import { z } from "zod";
 
@@ -8,8 +8,7 @@ import { z } from "zod";
 export const TOOL_GROUPS = [
 	"web_search",
 	"topic_search",
-	"desktop",
-	"workspace",
+	"computer",
 	"ask_user",
 	"apps",
 	"routines",
@@ -36,21 +35,14 @@ export const agentSettingsSchema = z.object({
 		mode: z.enum(APPROVAL_MODES),
 		rules: z.array(approvalRuleSchema),
 	}),
-	/** The character's own Linux computer (a Docker container) that the desktop and the files and
-	 *  commands work in; nothing of this PC is mounted in it. */
-	container: z.object({
+	/** The character's own Linux computer (a Docker container) with a desktop and a shell; nothing
+	 *  of this PC is mounted in it. Its screen is only for models that can see images. */
+	computer: z.object({
+		enabled: z.boolean(),
+		/** The longest a command may run. */
+		timeout_sec: z.number().int().min(5).max(3600),
 		memory_mb: z.number().int().min(512).max(65536),
 		cpus: z.number().min(0.5).max(64),
-	}),
-	desktop: z.object({
-		/** Its screen, which the user can watch and take over. Only for models that can see
-		 *  images. */
-		enabled: z.boolean(),
-	}),
-	sandbox: z.object({
-		/** Files and commands in it. */
-		enabled: z.boolean(),
-		timeout_sec: z.number().int().min(5).max(3600),
 	}),
 	web_search: z.object({
 		/** Search the web through Exa's API (its key is in the integrations' settings). */
@@ -84,9 +76,7 @@ const { shape } = agentSettingsSchema;
 /** A change to the settings: any fields of any section. */
 export const agentSettingsPatchSchema = z.object({
 	approvals: shape.approvals.partial().optional(),
-	container: shape.container.partial().optional(),
-	desktop: shape.desktop.partial().optional(),
-	sandbox: shape.sandbox.partial().optional(),
+	computer: shape.computer.partial().optional(),
 	web_search: shape.web_search.partial().optional(),
 	topic_search: shape.topic_search.partial().optional(),
 	ask_user: shape.ask_user.partial().optional(),

@@ -19,7 +19,7 @@ export const KINDS: Record<StepKind, { icon: LucideIcon; title: string; tone: st
 	// Older replies: the browser tool, since removed.
 	browser: { icon: Globe, title: "ブラウザ", tone: "text-info" },
 	desktop: { icon: Monitor, title: "デスクトップ", tone: "text-info" },
-	sandbox: { icon: SquareTerminal, title: "ファイルとコマンド", tone: "text-warning" },
+	sandbox: { icon: SquareTerminal, title: "コマンド", tone: "text-warning" },
 	claude: { icon: Sparkles, title: "Claude Agent SDK", tone: "text-mode-lora" },
 	// Older replies: the photo tool, since removed.
 	image: { icon: ImageIcon, title: "画像生成", tone: "text-mode-lora" },
@@ -55,6 +55,7 @@ const LABELS: Record<string, string> = {
 	stagehand_tabs: "タブを操作",
 	stagehand_screenshot: "スクリーンショット",
 	stagehand_close: "ブラウザを閉じる",
+	execute_command: "コマンドを実行",
 	computer_observe: "画面を見る",
 	computer_act: "画面を操作",
 	delegate_to_claude: "Claude に任せる",

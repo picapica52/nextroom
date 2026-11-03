@@ -1,7 +1,7 @@
 // A character's computer: one Docker container per character, made from packages/api/desktop,
 // with its workspace (/workspace) and home (/home/user) in volumes of its own. Everything the
-// character does on a computer happens in it: the desktop (desktop.ts), its files and commands
-// (sandbox.ts), and the user's 「ファイル」 tab (workspaces/store.ts). Nothing of this PC is
+// character does on a computer happens in it: the desktop (desktop.ts), its commands
+// (command.ts), and the user's 「ファイル」 tab (workspaces/store.ts). Nothing of this PC is
 // mounted in it.
 //
 // A computer no one has used or watched for a while is stopped; the next use starts it again.
@@ -14,7 +14,7 @@ import { BadRequestError, ConflictError, messageOf, NotFoundError } from "../../
 import type { AgentSettings } from "../../settings/agent";
 import { docker, dockerError, dockerNetwork } from "./docker";
 
-type ContainerSettings = AgentSettings["container"];
+type ContainerSettings = Pick<AgentSettings["computer"], "memory_mb" | "cpus">;
 
 /** Where the workspace is in the computer. */
 export const WORKSPACE = "/workspace";

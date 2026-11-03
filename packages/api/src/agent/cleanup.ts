@@ -2,8 +2,8 @@
 
 import { clearSession } from "../conversations/sessions";
 import { clearMemory } from "./memory";
+import { stopCommands } from "./tools/command";
 import { removeComputer } from "./tools/computer";
-import { stopCommands } from "./tools/sandbox";
 
 /** Everything the agent kept of the character's conversation: its memory and
  *  approvals. The workspace's files stay, as the user's work. */

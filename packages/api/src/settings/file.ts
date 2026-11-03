@@ -15,22 +15,11 @@ import { z } from "zod";
 
 import { readDoc, writeDoc } from "../lib/db";
 
-const {
-	approvals,
-	container,
-	desktop,
-	sandbox,
-	web_search,
-	topic_search,
-	ask_user,
-	composio,
-	routines,
-} = agentSettingsSchema.shape;
+const { approvals, computer, web_search, topic_search, ask_user, composio, routines } =
+	agentSettingsSchema.shape;
 const storedAgentSchema = z.object({
 	approvals: approvals.partial().optional(),
-	container: container.partial().optional(),
-	desktop: desktop.partial().optional(),
-	sandbox: sandbox.partial().optional(),
+	computer: computer.partial().optional(),
 	web_search: web_search.partial().optional(),
 	topic_search: topic_search.partial().optional(),
 	ask_user: ask_user.partial().optional(),

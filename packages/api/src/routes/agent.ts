@@ -10,7 +10,7 @@ import { resetAffinity } from "../affinity/store";
 import { forgetConversation } from "../agent/cleanup";
 import { memoryOverview } from "../agent/memory";
 import { decide } from "../agent/steps";
-import { dockerStatus } from "../agent/tools/sandbox";
+import { dockerStatus } from "../agent/tools/command";
 import { getCharacter } from "../characters/store";
 import { composioCatalog, composioStatus, connectComposioToolkit } from "../composio/client";
 import { NotFoundError } from "../lib/errors";

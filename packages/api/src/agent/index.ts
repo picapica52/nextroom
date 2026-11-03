@@ -20,12 +20,12 @@ import { type LlmConnection, modelOf, streamFnOf, thinkingLevelOf } from "./prov
 import { type ToolSet, toAgentTool } from "./tool";
 import { askUserTools, offeredChoices } from "./tools/ask-user";
 import { characterTools } from "./tools/characters";
+import { commandTools } from "./tools/command";
 import { composioTools } from "./tools/composio";
 import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
 import { memoryTools } from "./tools/memory";
 import { routineTools } from "./tools/routines";
-import { sandboxTools } from "./tools/sandbox";
 import { webSearchTools } from "./tools/web-search";
 
 export { generateOnce } from "./llm";
@@ -45,8 +45,7 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 	const groups: [ToolGroup, () => ToolSet | Promise<ToolSet>][] = [
 		["web_search", () => webSearchTools(settings)],
 		["topic_search", () => findTopicTools(settings)],
-		["desktop", () => desktopTools(settings, connection)],
-		["workspace", () => sandboxTools(settings)],
+		["computer", () => ({ ...commandTools(settings), ...desktopTools(settings, connection) })],
 		["ask_user", () => askUserTools(settings)],
 		["routines", () => routineTools(settings)],
 		["apps", () => composioTools(settings)],
@@ -58,6 +57,12 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 	return tools;
 }
 
+/** Whether the character has its computer's shell, and its screen too. */
+function computerOf({ settings, connection, disabledTools }: CharacterContext) {
+	const shell = settings.computer.enabled && !disabledTools.includes("computer");
+	return { shell, screen: shell && hasDesktop(settings, connection) };
+}
+
 const section = (title: string, body: string) => (body.trim() ? `# ${title}\n${body.trim()}` : "");
 
 /** The system prompt: the instructions and tools, the persona, then what the character holds
@@ -66,12 +71,7 @@ function systemPrompt(context: CharacterContext, summary: string): string {
 	const notes = readNotes(context.characterId);
 	return [
 		context.system,
-		toolGuide(
-			context.settings,
-			hasDesktop(context.settings, context.connection) &&
-				!context.disabledTools.includes("desktop"),
-			context.chief,
-		),
+		toolGuide(context.settings, computerOf(context), context.chief),
 		...context.beforeHistory,
 		section(
 			"Your notes (MEMORY.md)",

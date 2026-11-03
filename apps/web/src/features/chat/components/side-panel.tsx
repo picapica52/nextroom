@@ -108,21 +108,19 @@ function TabNote({ children }: { children: ReactNode }) {
 
 function FilesTab({ characterId, steps }: { characterId: string; steps: AgentStep[] }) {
 	const settings = useAgentSettings();
-	const on = !!settings.data?.sandbox.enabled;
-	// The files are in the character's computer, which is there with either of its tools.
-	const computer = on || !!settings.data?.desktop.enabled;
+	const on = !!settings.data?.computer.enabled;
 	// The workspace changes when a step finishes; list it again then.
 	const finished = steps.filter((s) => s.finished_at).length;
 	return (
 		<div className="flex flex-col gap-2">
 			{!on && (
 				<TabNote>
-					ファイルとコマンドの道具はオフです。上の「道具」か
-					<Link to="/settings/tools#sandbox-enabled">設定 → 道具</Link>
+					コンピューターはオフです。上の「道具」か
+					<Link to="/settings/tools#computer-enabled">設定 → 道具</Link>
 					でオンにできます。
 				</TabNote>
 			)}
-			{computer && <FileExplorer key={characterId} characterId={characterId} version={finished} />}
+			{on && <FileExplorer key={characterId} characterId={characterId} version={finished} />}
 		</div>
 	);
 }

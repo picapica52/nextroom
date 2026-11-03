@@ -1,5 +1,5 @@
 // Workspaces: each character has one, /workspace of its computer (agent/tools/computer.ts), kept
-// in a Docker volume. The agent's file and command tools work in it, and the user sees its files
+// in a Docker volume. The agent's commands work in it, and the user sees its files
 // in the conversation's 「ファイル」 tab; nothing of it is on this PC.
 
 import type { WorkspaceFile } from "@nextroom/contracts";
@@ -14,9 +14,9 @@ function computerOf(characterId: string) {
 	if (!hasDoc("characters", characterId))
 		throw new NotFoundError(`キャラクターが見つかりません: ${characterId}`);
 	const settings = loadAgentSettings();
-	if (!settings.sandbox.enabled && !settings.desktop.enabled)
-		throw new BadRequestError("コンピューターの道具がオフになっています");
-	return settings.container;
+	if (!settings.computer.enabled)
+		throw new BadRequestError("コンピューターは設定でオフになっています");
+	return settings.computer;
 }
 
 const request = <T = null>(characterId: string, body: { op: string } & Record<string, unknown>) =>
@@ -53,7 +53,7 @@ export const workspaceFileStream = (characterId: string, path: string) =>
 
 /** Copies `bytes` to `path` of the workspace, when the character has a computer to keep it in. */
 export async function copyToWorkspace(characterId: string, path: string, bytes: Uint8Array) {
-	if (!loadAgentSettings().sandbox.enabled) return;
+	if (!loadAgentSettings().computer.enabled) return;
 	const slash = path.lastIndexOf("/");
 	await fileRequest(
 		characterId,

@@ -27,8 +27,8 @@ export function DesktopPanel({ characterId, steps }: { characterId: string; step
 		<div className="flex flex-col gap-4">
 			{desktop && !desktop.enabled && (
 				<p className="m-0 text-sm text-warning">
-					デスクトップは今オフです。上の「道具」か
-					<Link to="/settings/tools#desktop-enabled" className="text-warning">
+					コンピューターは今オフです。上の「道具」か
+					<Link to="/settings/tools#computer-enabled" className="text-warning">
 						設定 → 道具
 					</Link>
 					でオンにすると、キャラクターが自分のデスクトップを使えるようになります。
