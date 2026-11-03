@@ -8,7 +8,7 @@ export const DEFAULT_SPEECH_URL = "http://127.0.0.1:8080";
 
 /** parakeet: the recognition model of the speech.cpp server (named after its first model);
  *  elevenlabs: ElevenLabs Scribe. */
-export const ASR_PROVIDERS = ["parakeet", "elevenlabs"] as const;
+export const ASR_PROVIDERS = ["parakeet", "elevenlabs", "fishaudio"] as const;
 export type AsrProvider = (typeof ASR_PROVIDERS)[number];
 
 /** The providers the app sets up itself.

@@ -1,4 +1,4 @@
-// Fish Audio's API: speech (text-to-speech) and the voices (models) it speaks with, the account's
+// Fish Audio's API: speech (text-to-speech), transcription, and the voices (models) it speaks with, the account's
 // own ones cloned from recordings and those shared on Fish Audio. Speech comes back as 24 kHz PCM,
 // made into a WAV like the engine's.
 
@@ -10,6 +10,7 @@ import { BadRequestError, Cancelled, ConflictError } from "./errors";
 
 const FISH_AUDIO_API_URL = "https://api.fish.audio";
 const PCM_RATE = 24000;
+const FISH_AUDIO_ASR_MODEL = "transcribe-1-pro";
 /** The speeds Fish Audio takes. */
 const MIN_SPEED = 0.5;
 const MAX_SPEED = 2;
@@ -164,6 +165,25 @@ export async function cloneFishAudioVoice(
 		for (const file of files) form.append("texts", file.text?.trim() ?? "");
 	const answer = await requestJson<{ _id: string }>("/model", { method: "POST", body: form });
 	return answer._id;
+}
+
+/** The text of a recording; empty if nothing was said. */
+export async function transcribeFishAudio(audio: Uint8Array, signal?: AbortSignal) {
+	const form = new FormData();
+	form.append("language", "ja");
+	form.append("ignore_timestamps", "true");
+	form.append(
+		"audio",
+		new Blob([audio as Uint8Array<ArrayBuffer>], { type: "audio/wav" }),
+		"speech.wav",
+	);
+	const answer = await requestJson<{ text?: string }>("/v1/asr", {
+		method: "POST",
+		headers: { model: FISH_AUDIO_ASR_MODEL },
+		body: form,
+		signal,
+	});
+	return (answer.text ?? "").trim();
 }
 
 export async function deleteFishAudioVoice(id: string): Promise<void> {

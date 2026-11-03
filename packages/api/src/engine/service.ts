@@ -5,7 +5,7 @@
 import type { AsrProvider } from "@nextroom/contracts";
 import { synthesizeElevenlabs, transcribeElevenlabs } from "../lib/elevenlabs";
 import { BadRequestError } from "../lib/errors";
-import { synthesizeFishAudio } from "../lib/fish-audio";
+import { synthesizeFishAudio, transcribeFishAudio } from "../lib/fish-audio";
 import { transcribe } from "./asr";
 import { runOnGpu } from "./queue";
 import { type SynthesisOutcome, synthesize } from "./tts";
@@ -56,5 +56,6 @@ export function transcribeSpeech(
 	signal?: AbortSignal,
 ): Promise<string> {
 	if (provider === "elevenlabs") return transcribeElevenlabs(wav, signal);
+	if (provider === "fishaudio") return transcribeFishAudio(wav, signal);
 	return runOnGpu("transcribe", "文字起こし", (job) => transcribe(wav, job.signal), signal);
 }
