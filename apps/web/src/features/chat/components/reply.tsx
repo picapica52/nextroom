@@ -94,7 +94,7 @@ function ToolCard({ group, all }: { group: Group; all: AgentStep[] }) {
 		group.kind === "web" || group.kind === "browser"
 			? `${group.steps.length} アクション`
 			: group.kind === "sandbox"
-				? `Workspace ・ ${group.steps.length} 件`
+				? `${group.steps.length} 件`
 				: handoff
 					? `ClaudeSDKAgent ・ ${first?.input ?? ""}`
 					: group.kind === "claude"

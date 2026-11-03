@@ -17,10 +17,10 @@ export const desktopsRouter = new Hono()
 		const id = c.req.param("id");
 		getCharacter(id);
 		const settings = loadAgentSettings();
-		if (!settings.desktop.enabled)
-			throw new BadRequestError("デスクトップは設定でオフになっています");
+		if (!settings.computer.enabled)
+			throw new BadRequestError("コンピューターは設定でオフになっています");
 		// Making the image the first time takes minutes; the screen polls the state meanwhile.
-		void ensureComputer(id, settings.container).catch(() => {});
+		void ensureComputer(id, settings.computer).catch(() => {});
 		return c.json<DesktopView>(await desktopView(id, settings));
 	})
 	.post("/:id/stop", async (c) => {

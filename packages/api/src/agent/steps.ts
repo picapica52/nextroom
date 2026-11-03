@@ -17,7 +17,7 @@ const FLUSH_MS = 250;
 
 function stepKind(tool: string): StepKind {
 	if (tool === "web_search" || tool === "find_topic") return "web";
-	if (tool.startsWith("workspace_")) return "sandbox";
+	if (tool === "execute_command") return "sandbox";
 	if (tool.startsWith("computer_")) return "desktop";
 	if (tool === "ask_user") return "ask";
 	if (tool === "update_memory") return "memory";

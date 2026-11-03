@@ -1,5 +1,5 @@
 // What the character agent may do, under `agent` in the settings (settings/file.ts): the
-// tools it can reach for (a computer of its own with a desktop, files and commands, and apps
+// tools it can reach for (a computer of its own with a desktop and a shell, and apps
 // such as Gmail through Composio). Tools are off until turned on here, since some need more
 // setup (Docker, a key).
 
@@ -19,9 +19,7 @@ export type { AgentSettings };
 
 const AGENT_DEFAULTS: AgentSettings = {
 	approvals: { mode: "auto", rules: [] },
-	container: { memory_mb: 4096, cpus: 2 },
-	desktop: { enabled: false },
-	sandbox: { enabled: false, timeout_sec: 300 },
+	computer: { enabled: false, timeout_sec: 300, memory_mb: 4096, cpus: 2 },
 	web_search: { enabled: false },
 	topic_search: { enabled: false },
 	ask_user: { enabled: false },
