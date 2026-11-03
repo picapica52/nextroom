@@ -14,6 +14,8 @@ import {
 
 /** How each kind of tool call is shown: its icon, name and the icon's color. */
 export const KINDS: Record<StepKind, { icon: LucideIcon; title: string; tone: string }> = {
+	web: { icon: Globe, title: "Web", tone: "text-info" },
+	// Older replies: the browser tool, since removed.
 	browser: { icon: Globe, title: "ブラウザ", tone: "text-info" },
 	desktop: { icon: Monitor, title: "デスクトップ", tone: "text-info" },
 	sandbox: { icon: SquareTerminal, title: "ファイルとコマンド", tone: "text-warning" },

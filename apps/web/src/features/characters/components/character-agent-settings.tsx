@@ -21,7 +21,6 @@ import { ModelChoiceField, useModelChoiceText } from "./model-choice-field";
 export const TOOL_GROUP_LABELS: Record<ToolGroup, string> = {
 	web_search: "Web 検索",
 	topic_search: "話題さがし",
-	browser: "ブラウザ",
 	desktop: "デスクトップ",
 	workspace: "ファイルとコマンド",
 	ask_user: "選択肢で聞く",

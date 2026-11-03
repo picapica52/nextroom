@@ -17,7 +17,6 @@ import type { MicMode } from "../voice/mic-button";
 import { MicLevel } from "../voice/mic-level";
 import { usePushToTalk } from "../voice/push-to-talk";
 import { useReplyVoice } from "../voice/use-reply-voice";
-import { BrowserDialog } from "./browser-dialog";
 import { CallCaptions, ReplyReveal } from "./call-captions";
 import { CallStage, type CallState } from "./call-stage";
 import { ChatBottomBar } from "./chat-bottom-bar";
@@ -57,9 +56,9 @@ export default function ChatPage() {
 	// The newest reply as written out with its voice, for both the captions and the log.
 	const [reveal] = useState(() => new RevealStore());
 
-	// ?view=browser opens the browser over the conversation, ?view=desktop the desktop.
+	// ?view=desktop opens the desktop over the conversation.
 	const view = searchParams.get("view");
-	const setView = (name: "browser" | "desktop", open: boolean) =>
+	const setView = (name: "desktop", open: boolean) =>
 		setSearchParams(open ? { view: name } : {}, { replace: true });
 
 	const chat = useCurrentChat({
@@ -156,7 +155,6 @@ export default function ChatPage() {
 					onListOpen={layout.setListOpen}
 					panelOpen={layout.filesOpen}
 					onPanelOpen={layout.setFilesOpen}
-					onBrowser={() => setView("browser", true)}
 					onDesktop={() => setView("desktop", true)}
 				/>
 
@@ -255,20 +253,12 @@ export default function ChatPage() {
 			/>
 
 			{currentId && (
-				<>
-					<BrowserDialog
-						open={view === "browser"}
-						onOpenChange={(open) => setView("browser", open)}
-						sessionId={currentId}
-						messages={messages}
-					/>
-					<DesktopDialog
-						open={view === "desktop"}
-						onOpenChange={(open) => setView("desktop", open)}
-						characterId={currentId}
-						messages={messages}
-					/>
-				</>
+				<DesktopDialog
+					open={view === "desktop"}
+					onOpenChange={(open) => setView("desktop", open)}
+					characterId={currentId}
+					messages={messages}
+				/>
 			)}
 		</div>
 	);

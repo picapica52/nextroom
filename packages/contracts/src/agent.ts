@@ -1,5 +1,5 @@
 // The character agent: its settings (tools), the steps of a reply, and what the
-// browser, sandbox and memory screens are answered with.
+// desktop, sandbox and memory screens are answered with.
 
 import { z } from "zod";
 
@@ -8,7 +8,6 @@ import { z } from "zod";
 export const TOOL_GROUPS = [
 	"web_search",
 	"topic_search",
-	"browser",
 	"desktop",
 	"workspace",
 	"ask_user",
@@ -36,11 +35,6 @@ export const agentSettingsSchema = z.object({
 	approvals: z.object({
 		mode: z.enum(APPROVAL_MODES),
 		rules: z.array(approvalRuleSchema),
-	}),
-	browser: z.object({
-		enabled: z.boolean(),
-		/** Hide Chrome's window; the page also streams to the app either way. */
-		headless: z.boolean(),
 	}),
 	desktop: z.object({
 		/** A Linux desktop of its own per character (a Docker container), which the user can watch
@@ -91,7 +85,6 @@ const { shape } = agentSettingsSchema;
 /** A change to the settings: any fields of any section. */
 export const agentSettingsPatchSchema = z.object({
 	approvals: shape.approvals.partial().optional(),
-	browser: shape.browser.partial().optional(),
 	desktop: shape.desktop.partial().optional(),
 	sandbox: shape.sandbox.partial().optional(),
 	web_search: shape.web_search.partial().optional(),
@@ -143,6 +136,8 @@ export interface ComposioCatalog {
 export const composioConnectSchema = z.object({ callback_url: z.url() });
 
 const STEP_KINDS = [
+	"web",
+	/** Older replies: the browser tool, since removed. */
 	"browser",
 	"desktop",
 	"sandbox",
@@ -195,23 +190,6 @@ export const approvalSchema = z.object({
 	/** Always allow this tool from now on (it is added to the approval rules). */
 	always: z.boolean().default(false),
 });
-
-/** The user's own input into a conversation's browser (taking over from the agent). */
-export const browserInputSchema = z.discriminatedUnion("type", [
-	z.object({ type: z.literal("click"), x: z.number(), y: z.number() }),
-	z.object({ type: z.literal("scroll"), x: z.number(), y: z.number(), delta_y: z.number() }),
-	z.object({ type: z.literal("text"), text: z.string().min(1).max(500) }),
-	z.object({ type: z.literal("key"), key: z.enum(["Enter", "Backspace", "Tab", "Escape"]) }),
-]);
-export type BrowserInput = z.infer<typeof browserInputSchema>;
-
-export interface BrowserView {
-	active: boolean;
-	url: string | null;
-	frame_at: number | null;
-	width: number;
-	height: number;
-}
 
 /** A character's desktop: whether it is turned on, running or being made. */
 export interface DesktopView {

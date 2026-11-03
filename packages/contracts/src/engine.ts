@@ -16,8 +16,6 @@ export interface SpeechServerStatus {
 
 export interface EngineStatus {
 	speech: SpeechServerStatus;
-	/** Conversations whose browser is open. */
-	browsers: number;
 	/** The engine's GPU job (synthesis, transcription, voice files), cancelled at /api/engine/jobs. */
 	engine_job: JobView | null;
 	current_job: JobView | null;

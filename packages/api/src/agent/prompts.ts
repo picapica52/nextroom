@@ -52,18 +52,6 @@ export function toolGuide(settings: AgentSettings, desktop: boolean): string {
 			"- find_topic: when the user asks you to say something or bring up a topic, recall what you came across lately: something about what they like, and something new to them.",
 		);
 	}
-	if (settings.browser.enabled) {
-		tools.push(
-			[
-				"- Browser (stagehand_*): open web pages through your device to read them or act on them.",
-				`  - Never use it to open search engines or run searches on them; they block the browser as a bot. ${
-					settings.web_search.enabled
-						? "Search with web_search, then open a URL from its results only when you need to read or act on the page itself."
-						: "Go straight to a URL you already know instead."
-				}`,
-			].join("\n"),
-		);
-	}
 	if (desktop) {
 		tools.push(
 			[

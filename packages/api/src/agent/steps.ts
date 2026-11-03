@@ -2,7 +2,7 @@
 // conversation screen can show each tool call as it runs, and ask before the ones that
 // need the user's go-ahead.
 //
-// Asking works the same for every tool: the browser, workspace, photo and app tools wait on
+// Asking works the same for every tool: the desktop, workspace and app tools wait on
 // `TurnReporter.approve()` until the user answers on the screen. The reply's stream simply stays open meanwhile,
 // so nothing has to be suspended and resumed.
 
@@ -16,8 +16,7 @@ const MAX_DETAIL = 10000;
 const FLUSH_MS = 250;
 
 function stepKind(tool: string): StepKind {
-	if (tool.startsWith("stagehand_") || tool === "web_search" || tool === "find_topic")
-		return "browser";
+	if (tool === "web_search" || tool === "find_topic") return "web";
 	if (tool.startsWith("workspace_")) return "sandbox";
 	if (tool.startsWith("computer_")) return "desktop";
 	if (tool === "ask_user") return "ask";

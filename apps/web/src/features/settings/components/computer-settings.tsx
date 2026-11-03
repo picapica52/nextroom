@@ -5,7 +5,7 @@ import { SandboxToolSettings } from "./sandbox-tool-settings";
 import { NumberField, SwitchRow } from "./settings-fields";
 import { SettingsGroup, SettingsRow } from "./settings-layout";
 
-/** What the characters may do on a computer: a browser, a desktop of their own, and files and
+/** What the characters may do on a computer: a desktop of their own, and files and
  *  commands in a workspace. */
 export default function ComputerSettings() {
 	const docker = useDockerStatus();
@@ -25,26 +25,8 @@ export default function ComputerSettings() {
 	);
 	return (
 		<AgentSettingsPage>
-			{({ form: { browser, desktop, sandbox }, set }) => (
+			{({ form: { desktop, sandbox }, set }) => (
 				<>
-					<SettingsGroup title="ブラウザ">
-						<SwitchRow
-							id="browser-enabled"
-							label="ブラウザを使う"
-							description="この PC の Chrome を操作します"
-							checked={browser.enabled}
-							onChange={(enabled) => set("browser", { enabled })}
-						/>
-						{browser.enabled && (
-							<SwitchRow
-								id="headless"
-								label="Chrome のウィンドウを表示する"
-								checked={!browser.headless}
-								onChange={(show) => set("browser", { headless: !show })}
-							/>
-						)}
-					</SettingsGroup>
-
 					<SettingsGroup title="デスクトップ">
 						<SwitchRow
 							id="desktop-enabled"

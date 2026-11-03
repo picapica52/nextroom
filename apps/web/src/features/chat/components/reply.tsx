@@ -91,7 +91,7 @@ function ToolCard({ group, all }: { group: Group; all: AgentStep[] }) {
 	const status = groupStatus([...group.steps, ...children]);
 	const todo = todoProgress(handoff ? children : group.steps);
 	const subtitle =
-		group.kind === "browser"
+		group.kind === "web" || group.kind === "browser"
 			? `${group.steps.length} アクション`
 			: group.kind === "sandbox"
 				? `Workspace ・ ${group.steps.length} 件`
