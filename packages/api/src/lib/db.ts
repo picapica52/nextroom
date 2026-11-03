@@ -1,7 +1,7 @@
 // The app's database, _data/nextroom.sqlite (bun:sqlite). Most of what the app keeps is a document
 // checked against its zod schema, kept by key in a table of its own:
 //
-//     settings        by section (chat, agent, discord)
+//     settings        by section (chat, agent, discord, slack)
 //     characters      by character id: persona, voice, agent
 //     affinity        by character id
 //     chat_sessions   by character id: when the conversation was made and last changed

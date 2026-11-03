@@ -1,79 +1,52 @@
 import type { DiscordSettingsPatch, DiscordSettingsView, DiscordStatus } from "@nextroom/contracts";
-import { Button } from "@nextroom/ui/components/button";
 import { ExternalLink } from "lucide-react";
-import { useState } from "react";
 import { AnchorButton } from "@/components/buttons";
-import { SaveInput } from "@/components/save-field";
-import { SettingsErrorFooter } from "@/components/settings-section";
 import { SimpleSelect } from "@/components/simple-select";
 import { Dot, ErrorNote } from "@/components/status";
 import { useCharacters } from "@/features/characters/queries";
-import { useDiscordSettings, useSaveDiscordSettings } from "@/features/discord/queries";
 import { useChatSettings } from "@/hooks/queries";
-import { NumberField, SwitchRow } from "./settings-fields";
-import {
-	SettingsPageBody as SettingsBody,
-	SettingsDisclosure,
-	SettingsGroup,
-	SettingsRow,
-} from "./settings-layout";
+import { NumberField, SecretField, SwitchRow } from "./settings-fields";
+import { SettingsDisclosure, SettingsGroup, SettingsRow } from "./settings-layout";
 
 type Set = (patch: DiscordSettingsPatch) => Promise<boolean>;
 
-/** The Discord bot: how it logs in, which character it talks as, and how it listens. A change is
- *  saved as soon as it is made. */
-export default function DiscordSettings() {
-	const saved = useDiscordSettings();
-	const save = useSaveDiscordSettings();
-	if (!saved.data)
-		return (
-			<SettingsBody>
-				<ErrorNote error={saved.error} />
-			</SettingsBody>
-		);
-	const form = saved.data;
-	const set: Set = (patch) =>
-		save.mutateAsync(patch).then(
-			() => true,
-			() => false,
-		);
-
+/** The Discord bot: how it logs in, which character it talks as, and how it listens. */
+export function DiscordSection({ form, set }: { form: DiscordSettingsView; set: Set }) {
 	return (
 		<>
-			<SettingsBody>
-				<SettingsGroup
-					title="bot"
-					action={<StatusDot status={form.status} enabled={form.enabled} />}
+			<SettingsGroup
+				title="Discord"
+				action={<StatusDot status={form.status} enabled={form.enabled} />}
+			>
+				<SwitchRow
+					id="discord-enabled"
+					label="Discord に接続する"
+					checked={form.enabled}
+					onChange={(enabled) => set({ enabled })}
 				>
-					<SwitchRow
-						id="discord-enabled"
-						label="bot を動かす"
-						checked={form.enabled}
-						onChange={(enabled) => set({ enabled })}
-					>
-						<StatusDetail status={form.status} />
-					</SwitchRow>
-					<TokenField isSet={form.has_bot_token} set={set} />
-					<SettingsDisclosure label="設定のしかた">
-						<p className="m-0 text-xs leading-relaxed text-muted-foreground">
-							<a
-								href="https://discord.com/developers/applications"
-								target="_blank"
-								rel="noreferrer"
-							>
-								Developer Portal
-							</a>
-							で「New Application」を作り、「Bot」で「Reset
-							Token」を押して出たトークンを貼り付けます。特権 Intent
-							は要りません。ログインできたら「サーバーに追加」から招待し、ボイスチャンネルに入った状態で
-							<code>/join</code> と打つと参加します。<code>/leave</code> で退出します。
-						</p>
-					</SettingsDisclosure>
-				</SettingsGroup>
+					<StatusDetail status={form.status} />
+				</SwitchRow>
+				<SecretField
+					id="discord-token"
+					label="トークン"
+					isSet={form.has_bot_token}
+					onSave={(bot_token) => set({ bot_token })}
+					onDelete={() => set({ bot_token: "" })}
+				/>
+				<SettingsDisclosure label="設定のしかた">
+					<p className="m-0 text-xs leading-relaxed text-muted-foreground">
+						<a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">
+							Developer Portal
+						</a>
+						で「New Application」を作り、「Bot」で「Reset
+						Token」を押して出たトークンを貼り付けます。特権 Intent
+						は要りません。ログインできたら「サーバーに追加」から招待し、ボイスチャンネルに入った状態で
+						<code>/join</code> と打つと参加します。<code>/leave</code> で退出します。
+					</p>
+				</SettingsDisclosure>
+			</SettingsGroup>
 
-				<TalkGroup form={form} set={set} />
-			</SettingsBody>
-			<SettingsErrorFooter error={save.error} />
+			<TalkGroup form={form} set={set} />
 		</>
 	);
 }
@@ -118,68 +91,12 @@ function StatusDetail({ status }: { status: DiscordStatus }) {
 	);
 }
 
-function TokenField({ isSet, set }: { isSet: boolean; set: Set }) {
-	const [replacing, setReplacing] = useState(false);
-	if (isSet && !replacing)
-		return (
-			<SettingsRow
-				label="トークン"
-				control={
-					<>
-						<Dot tone="success">保存済み</Dot>
-						<Button variant="outline" size="sm" onClick={() => setReplacing(true)}>
-							変更
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="text-muted-foreground"
-							onClick={() => set({ bot_token: "" })}
-						>
-							削除
-						</Button>
-					</>
-				}
-			/>
-		);
-	return (
-		<SettingsRow
-			label="トークン"
-			htmlFor="discord-token"
-			control={
-				<div className="flex w-72 max-w-full items-center gap-2">
-					<SaveInput
-						id="discord-token"
-						type="password"
-						autoComplete="off"
-						className="font-mono"
-						autoFocus={replacing}
-						value=""
-						placeholder="貼り付け"
-						onSave={async (token) => {
-							if (!token.trim()) return false;
-							const ok = await set({ bot_token: token.trim() });
-							if (ok) setReplacing(false);
-							return ok;
-						}}
-					/>
-					{replacing && (
-						<Button variant="ghost" size="sm" onClick={() => setReplacing(false)}>
-							やめる
-						</Button>
-					)}
-				</div>
-			}
-		/>
-	);
-}
-
 function TalkGroup({ form, set }: { form: DiscordSettingsView; set: Set }) {
 	const characters = useCharacters();
 	const chat = useChatSettings();
 	const silent = chat.data && !chat.data.tts_enabled;
 	return (
-		<SettingsGroup title="話しかた">
+		<SettingsGroup title="Discord での話しかた">
 			<SettingsRow
 				label="話すキャラクター"
 				htmlFor="discord-character"

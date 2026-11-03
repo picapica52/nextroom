@@ -10,5 +10,6 @@ export * from "./engine";
 export * from "./jobs";
 export * from "./routines";
 export * from "./settings";
+export * from "./slack";
 export * from "./voice";
 export * from "./workspaces";
