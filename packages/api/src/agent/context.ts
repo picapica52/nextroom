@@ -15,11 +15,11 @@ export type CharacterContext = {
 	postHistory: string;
 	/** The model the reply is made with, then the fallbacks to try when it fails. */
 	connections: LlmConnection[];
-	/** The first of them, for what the tools ask a model (reading a page). */
+	/** The first of them, for what the tools ask a model. */
 	connection: LlmConnection;
 	/** What the user asked for in this turn (or the routine's instruction), for the approvals. */
 	request: string;
-	/** The conversation, which is also the browser session. */
+	/** The conversation. */
 	sessionId: string;
 	/** Also whose workspace the file tools work in. */
 	characterId: string;

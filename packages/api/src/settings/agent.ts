@@ -1,7 +1,7 @@
 // What the character agent may do, under `agent` in the settings (settings/file.ts): the
-// tools it can reach for (a browser through Stagehand, files and commands in its workspace, and
-// apps such as Gmail through Composio). Tools are off until turned on here, since some need more
-// setup (Chrome, Docker, a key).
+// tools it can reach for (a desktop of its own, files and commands in its workspace, and apps
+// such as Gmail through Composio). Tools are off until turned on here, since some need more
+// setup (Docker, a key).
 
 import {
 	type AgentSettings,
@@ -19,7 +19,6 @@ export type { AgentSettings };
 
 const AGENT_DEFAULTS: AgentSettings = {
 	approvals: { mode: "auto", rules: [] },
-	browser: { enabled: false, headless: false },
 	desktop: { enabled: false, memory_mb: 4096, cpus: 2 },
 	sandbox: {
 		enabled: false,

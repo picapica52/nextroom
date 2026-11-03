@@ -38,13 +38,6 @@ const TOOLS: {
 		patch: (enabled) => ({ topic_search: { enabled } }),
 	},
 	{
-		key: "browser",
-		label: "ブラウザ",
-		description: "Web ページを開いて調べる・操作する",
-		on: (s) => s.browser.enabled,
-		patch: (enabled) => ({ browser: { enabled } }),
-	},
-	{
 		key: "desktop",
 		label: "デスクトップ",
 		description: "自分の Linux デスクトップを画面を見ながら操作する",

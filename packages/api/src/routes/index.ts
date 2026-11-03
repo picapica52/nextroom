@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 
 import { isApiError, messageOf } from "../lib/errors";
-import { agentRouter, browserRouter, memoryRouter } from "./agent";
+import { agentRouter, memoryRouter } from "./agent";
 import { charactersRouter } from "./characters";
 import { chatRouter } from "./chat";
 import { desktopsRouter } from "./desktops";
@@ -23,7 +23,6 @@ export const apiRouter = new Hono()
 	.route("/characters", charactersRouter)
 	.route("/discord", discordRouter)
 	.route("/agent", agentRouter)
-	.route("/browser", browserRouter)
 	.route("/desktops", desktopsRouter)
 	.route("/workspaces", workspacesRouter)
 	.route("/memory", memoryRouter)

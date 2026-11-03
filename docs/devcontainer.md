@@ -19,4 +19,4 @@
 ## コンテナの中で使えないもの
 
 - speech.cpp のサーバーはホストで起動したままにし、`apps/server/.env` の `SPEECH_URL` を `http://host.docker.internal:8080` にします。
-- ブラウザ（Chrome の操作）と Docker のサンドボックスの道具は、コンテナの中からは使えません。
+- Docker のサンドボックスの道具は、コンテナの中からは使えません。

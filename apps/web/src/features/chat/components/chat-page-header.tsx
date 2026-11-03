@@ -1,13 +1,13 @@
 import type { CharacterView } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
-import { Globe, Monitor, PanelLeft, PanelRight, Pencil } from "lucide-react";
+import { Monitor, PanelLeft, PanelRight, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AffinityBadge } from "@/features/characters/components/affinity";
 import { CharacterAvatar } from "@/features/characters/components/character-avatar";
 import { PaneToggle } from "./pane-rail";
 import { ToolsPopover } from "./tools-popover";
 
-/** The conversation's partner and how long the two have talked, with the tools, browser and
+/** The conversation's partner and how long the two have talked, with the tools, desktop and
  *  the character's settings. */
 export function ChatPageHeader({
 	wide,
@@ -19,7 +19,6 @@ export function ChatPageHeader({
 	onListOpen,
 	panelOpen,
 	onPanelOpen,
-	onBrowser,
 	onDesktop,
 }: {
 	wide: boolean;
@@ -31,7 +30,6 @@ export function ChatPageHeader({
 	onListOpen: (open: boolean) => void;
 	panelOpen: boolean;
 	onPanelOpen: (open: boolean) => void;
-	onBrowser: () => void;
 	onDesktop: () => void;
 }) {
 	const navigate = useNavigate();
@@ -52,16 +50,6 @@ export function ChatPageHeader({
 			</div>
 			<div className="flex items-center gap-1">
 				<ToolsPopover />
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label="ブラウザを開く"
-					title="ブラウザを開く"
-					disabled={!currentId}
-					onClick={onBrowser}
-				>
-					<Globe />
-				</Button>
 				<Button
 					variant="ghost"
 					size="icon-sm"

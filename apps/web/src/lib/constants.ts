@@ -4,8 +4,6 @@ export const POLL = {
 	engineJobs: 1500,
 	download: 1000,
 	speechModels: 10_000,
-	browserActive: 500,
-	browserIdle: 3000,
 	chatReply: 400,
 	subscriptionLogin: 2000,
 } as const;

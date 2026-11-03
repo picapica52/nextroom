@@ -2,7 +2,6 @@ import {
 	type AgentSettingsView,
 	agentSettingsPatchSchema,
 	approvalSchema,
-	browserInputSchema,
 	composioConnectSchema,
 } from "@nextroom/contracts";
 import { Hono } from "hono";
@@ -11,11 +10,9 @@ import { resetAffinity } from "../affinity/store";
 import { forgetConversation } from "../agent/cleanup";
 import { memoryOverview } from "../agent/memory";
 import { decide } from "../agent/steps";
-import { browserFrame, browserInput, browserView, closeBrowser } from "../agent/tools/browser";
 import { dockerStatus } from "../agent/tools/sandbox";
 import { getCharacter } from "../characters/store";
 import { composioCatalog, composioStatus, connectComposioToolkit } from "../composio/client";
-import { loadSession } from "../conversations/sessions";
 import { NotFoundError } from "../lib/errors";
 import { getAgentSettings, loadAgentSettings, updateAgentSettings } from "../settings/agent";
 import { json, ok, query } from "./inputs";
@@ -51,28 +48,6 @@ export const approvalsRouter = new Hono().post(
 		return c.json(ok);
 	},
 );
-
-/** A conversation's browser: what it shows, and the user's own input into it. */
-export const browserRouter = new Hono()
-	.get("/:id", async (c) => {
-		loadSession(c.req.param("id"));
-		return c.json(await browserView(c.req.param("id")));
-	})
-	.get("/:id/frame", (c) => {
-		const frame = browserFrame(c.req.param("id"));
-		if (!frame) return c.body(null, 204);
-		return c.body(new Uint8Array(frame), 200, {
-			"content-type": "image/jpeg",
-			"cache-control": "no-store",
-		});
-	})
-	.post("/:id/input", json(browserInputSchema), async (c) => {
-		return c.json({ ok: await browserInput(c.req.param("id"), c.req.valid("json")) });
-	})
-	.post("/:id/close", async (c) => {
-		await closeBrowser(c.req.param("id"));
-		return c.json(ok);
-	});
 
 const characterQuery = query(z.object({ character_id: z.string() }));
 

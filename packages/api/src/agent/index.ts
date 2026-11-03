@@ -19,7 +19,6 @@ import { toolGuide } from "./prompts";
 import { type LlmConnection, modelOf, streamFnOf, thinkingLevelOf } from "./providers";
 import { type ToolSet, toAgentTool } from "./tool";
 import { askUserTools, offeredChoices } from "./tools/ask-user";
-import { browserTools } from "./tools/browser";
 import { composioTools } from "./tools/composio";
 import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
@@ -44,7 +43,6 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 	const groups: [ToolGroup, () => ToolSet | Promise<ToolSet>][] = [
 		["web_search", () => webSearchTools(settings)],
 		["topic_search", () => findTopicTools(settings)],
-		["browser", () => browserTools(settings, connection)],
 		["desktop", () => desktopTools(settings, connection)],
 		["workspace", () => sandboxTools(settings)],
 		["ask_user", () => askUserTools(settings)],

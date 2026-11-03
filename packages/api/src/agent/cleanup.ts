@@ -3,11 +3,10 @@
 import { clearSession } from "../conversations/sessions";
 import { loadAgentSettings } from "../settings/agent";
 import { clearMemory } from "./memory";
-import { closeBrowser } from "./tools/browser";
 import { removeDesktop } from "./tools/desktop";
 import { resetSandbox } from "./tools/sandbox";
 
-/** Everything the agent kept of the character's conversation: its memory, browser and
+/** Everything the agent kept of the character's conversation: its memory and
  *  approvals, and the files beside it. The workspace's files stay, as the user's work. */
 export async function forgetConversation(characterId: string) {
 	clearSession(characterId);
@@ -16,7 +15,6 @@ export async function forgetConversation(characterId: string) {
 	} catch (error) {
 		console.warn(`Could not clear the memory of character ${characterId}:`, error);
 	}
-	await closeBrowser(characterId).catch(() => {});
 }
 
 /** Stops the character's sandbox container and removes its desktop, before its workspace goes
