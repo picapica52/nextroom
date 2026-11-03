@@ -1,6 +1,7 @@
 import type {
 	ConnectionsPatch,
 	LlmProvider,
+	PiProviderId,
 	SubscriptionLogin,
 	SubscriptionProvider,
 } from "@nextroom/contracts";
@@ -86,6 +87,7 @@ export function useSubscriptionLogin(id: string | null) {
 			);
 			if (login.status === "done") {
 				qc.invalidateQueries({ queryKey: qk.subscriptions() });
+				qc.invalidateQueries({ queryKey: qk.piProviders() });
 				qc.invalidateQueries({ queryKey: qk.llmModels(login.provider) });
 			}
 			return login;
@@ -122,6 +124,36 @@ export function useSubscriptionActions() {
 			onSuccess: (data, provider) => {
 				qc.setQueryData(qk.subscriptions(), data);
 				qc.invalidateQueries({ queryKey: qk.llmModels(provider) });
+			},
+		}),
+	};
+}
+
+/** pi's other providers, and whether each can be used now. */
+export function usePiProviders() {
+	return useQuery({
+		queryKey: qk.piProviders(),
+		queryFn: ({ signal }) => read(client.chat["pi-providers"].$get(undefined, signalled(signal))),
+		staleTime: 60_000,
+	});
+}
+
+/** Starts signing in to one of pi's other providers (followed with useSubscriptionLogin), or
+ *  removes what was entered for it. */
+export function usePiProviderActions() {
+	const qc = useQueryClient();
+	const provider = client.chat["pi-providers"][":provider"];
+	return {
+		start: useMutation({
+			mutationFn: ({ id, type }: { id: PiProviderId; type: "api_key" | "oauth" }) =>
+				read(provider.login.$post({ param: { provider: id }, json: { type } })),
+			onSuccess: (login) => qc.setQueryData(qk.subscriptionLogin(login.id), login),
+		}),
+		forget: useMutation({
+			mutationFn: (id: PiProviderId) => read(provider.$delete({ param: { provider: id } })),
+			onSuccess: (data, id) => {
+				qc.setQueryData(qk.piProviders(), data);
+				qc.invalidateQueries({ queryKey: qk.llmModels(id) });
 			},
 		}),
 	};

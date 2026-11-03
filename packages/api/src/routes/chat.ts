@@ -4,7 +4,10 @@ import {
 	type ConnectionsView,
 	chatSettingsPatchSchema,
 	connectionsPatchSchema,
-	LLM_PROVIDERS,
+	llmProviderSchema,
+	type PiProviderStatus,
+	piLoginSchema,
+	piProviderIdSchema,
 	SUBSCRIPTION_PROVIDERS,
 	type SubscriptionLogin,
 	type SubscriptionStatus,
@@ -15,7 +18,10 @@ import { z } from "zod";
 import {
 	answerSubscriptionLogin,
 	cancelSubscriptionLogin,
+	forgetPiProvider,
+	piProviderStatus,
 	signOut,
+	startPiLogin,
 	startSubscriptionLogin,
 	subscriptionLogin,
 	subscriptionStatus,
@@ -51,13 +57,28 @@ const subscriptionsRouter = new Hono()
 		c.json<SubscriptionLogin>(cancelSubscriptionLogin(c.req.param("id"))),
 	);
 
+const piProviderParam = z.object({ provider: piProviderIdSchema });
+
+/** pi's other providers: signing in to them (the sign-in is followed like a subscription's). */
+const piProvidersRouter = new Hono()
+	.get("/", async (c) => c.json<PiProviderStatus[]>(await piProviderStatus()))
+	.post("/:provider/login", json(piLoginSchema), async (c) => {
+		const { provider } = piProviderParam.parse(c.req.param());
+		return c.json<SubscriptionLogin>(await startPiLogin(provider, c.req.valid("json").type));
+	})
+	.delete("/:provider", async (c) => {
+		const { provider } = piProviderParam.parse(c.req.param());
+		return c.json<PiProviderStatus[]>(await forgetPiProvider(provider));
+	});
+
 export const chatRouter = new Hono()
 	.get("/settings", (c) => c.json<ChatSettingsView>(getSettings()))
 	.patch("/settings", json(chatSettingsPatchSchema), (c) =>
 		c.json<ChatSettingsView>(updateSettings(c.req.valid("json"))),
 	)
 	.route("/subscriptions", subscriptionsRouter)
-	.get("/llm-models", query(z.object({ provider: z.enum(LLM_PROVIDERS) })), async (c) =>
+	.route("/pi-providers", piProvidersRouter)
+	.get("/llm-models", query(z.object({ provider: llmProviderSchema })), async (c) =>
 		c.json(await listLlmModels(c.req.valid("query").provider)),
 	)
 	.get("/connections", (c) => c.json<ConnectionsView>(getConnections()))

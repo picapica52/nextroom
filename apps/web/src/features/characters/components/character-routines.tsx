@@ -9,7 +9,7 @@ import { SettingsSection } from "@/components/settings-section";
 import { Dot, EmptyNote, ErrorNote } from "@/components/status";
 import { useRoutineActions, useRoutineRuns, useRoutines } from "../queries";
 import { formatDateTime, formatNext, RUN_STATUS, scheduleText } from "../routine-schedule";
-import { modelChoiceText } from "./model-choice-field";
+import { useModelChoiceText } from "./model-choice-field";
 import { RoutineFormDialog } from "./routine-form-dialog";
 
 /** The ルーティン tab: what the character does on its own, at the times each routine says. */
@@ -46,6 +46,7 @@ function RoutineCard({ characterId, routine }: { characterId: string; routine: R
 	const [editing, setEditing] = useState(false);
 	const [showRuns, setShowRuns] = useState(false);
 	const confirm = useConfirm();
+	const modelChoiceText = useModelChoiceText();
 
 	const destroy = async () => {
 		const ok = await confirm({

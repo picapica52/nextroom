@@ -2,7 +2,7 @@
 
 キャラクターと声で会話するためのローカル GUI です。音声合成には [Irodori-TTS](https://github.com/Aratako/Irodori-TTS) v4.1（Small / Small MF）、文字起こしには speech.cpp のカタログから選んだ日本語のモデルを使い、どちらも別に起動した [speech.cpp](https://github.com/nyosegawa/speech.cpp) のサーバー（`speech serve`）に HTTP で頼みます（Python は不要です）。参照音声（Voice Clone）の声づくりは、キャラクターの声の画面で行えます。
 
-- **会話**: マイクで話しかけると、speech.cpp で文字起こし → OpenAI 互換 API（OpenRouter / Ollama / LM Studio など）・Claude（Anthropic API）、またはサインインしたサブスク（ChatGPT / Claude / GitHub Copilot / SuperGrok）の LLM に送信 → 返答を Irodori-TTS で読み上げ。返答は1文ずつ合成して順に再生するので、全文を待たずに話し始めます。会話画面はキャラクターの顔と字幕を中心に、プッシュトゥートークで聞き取ります。マイクのボタン（入力欄の外では Space キー）を押している間だけ録音し、離すと送信します。返答の読み上げ中に押すと読み上げを止めて話せます。文字でも話しかけられます。返答の声（モデル・話速・Voice Clone・キャプション）はキャラクターごとに指定できます。
+- **会話**: マイクで話しかけると、speech.cpp で文字起こし → OpenAI 互換 API（OpenRouter / Ollama / LM Studio など）・Claude（Anthropic API）、サインインしたサブスク（ChatGPT / Claude / GitHub Copilot / SuperGrok）、または pi が対応するその他のプロバイダー（Gemini・Groq・Mistral・DeepSeek・OpenCode・Meta など）の LLM に送信 → 返答を Irodori-TTS で読み上げ。返答は1文ずつ合成して順に再生するので、全文を待たずに話し始めます。会話画面はキャラクターの顔と字幕を中心に、プッシュトゥートークで聞き取ります。マイクのボタン（入力欄の外では Space キー）を押している間だけ録音し、離すと送信します。返答の読み上げ中に押すと読み上げを止めて話せます。文字でも話しかけられます。返答の声（モデル・話速・Voice Clone・キャプション）はキャラクターごとに指定できます。
 - **キャラクター**: エージェントの人格になるキャラクターを、このアプリ独自の設定（世界観・プロフィール・見た目・性格・喋り方・部屋の様子・端末）と参考画像・返答の声つきで保存。キャラクターは自分の世界の自分の部屋にいて、そこに置いた音声通話の端末があなたの端末と突然つながった、という前提で話します。返答は声に出す言葉だけで、通話画面の表情は一文ごとに Decisions API が選びます。道具はつながった端末を通して実際にあなたの PC で作業します（方針は [docs/direction.md](docs/direction.md)）。サイドバーの「キャラクターを作る」を押すと、すぐにキャラクターの設定が会話の上に開きます（設定も同じく会話の上に開きます）。新しい会話を始めるときに話し相手を選びます。書き出しは、表情や声のファイルも含めたこのアプリ用の zip です。
 - **エージェント**: キャラクターは [pi](https://github.com/earendil-works/pi)（`@earendil-works/pi-agent-core`）のエージェントとして動き、会話画面の「道具」か、設定の「コンピューター」「連携」でオンにした道具を会話の中で使います。返答の下と会話の右パネルに道具の実行ステップが表示されます。確認のしかたは「設定 → 承認」で選び（確認しない / 自動 / 確認）、確認が必要な操作は入力欄の上で「許可 / 常に許可 / 拒否」を聞いてから実行します。
   - **ルーティン**: キャラクターが決まった時間に自分で動きます（「毎朝7時に起こして」と頼むか、キャラクター画面の「ルーティン」で作ります）。結果はキャラクターからのメッセージとして会話に残ります。キャラクター画面の「詳細」では、そのキャラクターだけのモデル・使わない道具・指示を決められます。
@@ -24,7 +24,7 @@
   - macOS: Metal 版
   - Linux: Vulkan 版。Vulkan のローダー（`libvulkan.so.1`）がなければ CPU 版
 - [Bun](https://bun.sh/) 1.4 以上、Git
-- 会話用の LLM（OpenAI 互換 API、Claude 用の Anthropic API キー、または ChatGPT / Claude / GitHub Copilot / SuperGrok のサブスク）。記憶の道具をいつも使うので、ツール呼び出し（function calling）に対応したモデルが必要です
+- 会話用の LLM（OpenAI 互換 API、Claude 用の Anthropic API キー、ChatGPT / Claude / GitHub Copilot / SuperGrok のサブスク、または「設定 → モデル → その他のプロバイダー」で設定する pi のプロバイダー）。記憶の道具をいつも使うので、ツール呼び出し（function calling）に対応したモデルが必要です
 - 道具を使う場合のみ: ブラウザには Google Chrome、デスクトップと Docker のサンドボックスには Docker Desktop
 
 ## セットアップと起動
@@ -57,7 +57,7 @@ Docker Compose で起動する場合は [docs/docker.md](docs/docker.md) を見�
 
 同じネットワークのスマホからは `https://<PC の IP>:8768`（開発モードでは `https://<PC の IP>:5175`）で開きます。ブラウザは HTTPS のページにしかマイクを使わせないため、サーバーが自己署名の証明書を作って HTTPS でも待ち受けます（`_data/tls`）。初めて開くときに出る「安全ではない」という警告を許可して進んでください。
 
-接続先と API キー（OpenRouter・Anthropic・Exa・Composio・ElevenLabs・OpenAI 互換 API・speech.cpp）は、設定の各ページ（モデル・音声・連携）で入力するとデータベースに保存されます。入力していないものは `apps/server/.env` から読みます（項目と既定値は `apps/server/.env.schema`。書き換えたあとはサーバーを起動し直してください）。
+接続先と API キー（OpenRouter・Anthropic・Exa・Composio・ElevenLabs・OpenAI 互換 API・speech.cpp）は、設定の各ページ（モデル・音声・連携）で入力するとデータベースに保存されます。入力していないものは `apps/server/.env` から読みます（項目と既定値は `apps/server/.env.schema`。書き換えたあとはサーバーを起動し直してください）。「その他のプロバイダー」のキーやサインインも同じくデータベースに保存され、入力していないものは pi が読む環境変数（`GROQ_API_KEY`・`GEMINI_API_KEY` など）から読みます。
 
 ```sh
 # apps/server/.env の例（画面で入力しない場合）

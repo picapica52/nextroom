@@ -2,13 +2,16 @@
 // key it takes, and the model pi calls it with. Any endpoint that speaks OpenAI's Chat Completions
 // (OpenAI, Ollama, LM Studio, llama.cpp server, vLLM, ...) is `openai_compatible`; OpenRouter is
 // one with its own key; Claude goes through Anthropic's Messages API; the subscriptions go
-// through pi's own providers with the credentials the user signed in with (auth.ts).
+// through pi's own providers with the credentials the user signed in with (auth.ts). Every other
+// provider pi has is offered as it is ("pi:<id>"), signed in to the way pi asks.
 
 import type { StreamFn } from "@earendil-works/pi-agent-core";
 import {
 	type Api,
+	type ApiKeyAuth,
 	type AuthContext,
 	createProvider,
+	defaultProviderAuthContext,
 	type Model,
 	type MutableModels,
 	type ThinkingLevel,
@@ -16,10 +19,13 @@ import {
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
 import {
+	type AppProvider,
 	type ChatSettings,
+	isPiProvider,
 	isSubscription,
 	type LlmProvider,
 	type ModelChoice,
+	type PiProviderId,
 	type SubscriptionProvider,
 } from "@nextroom/contracts";
 
@@ -64,12 +70,42 @@ const noAmbientAuth: AuthContext = {
 	fileExists: async () => false,
 };
 
+/** pi's providers the app offers in its own way: the subscriptions keep their credentials under
+ *  these ids, and OpenRouter's key is a connection of its own. */
+const isOwnPiProvider = (id: string) =>
+	id === "openrouter" || (Object.values(PI_PROVIDERS) as string[]).includes(id);
+
+const ambientAuth = defaultProviderAuthContext();
+
+/** The other providers may also find their keys in this process's environment (apps/server/.env),
+ *  as the connections do, and the cloud credentials they read from files (AWS, Google Cloud). */
+function withAmbientAuth(auth: ApiKeyAuth): ApiKeyAuth {
+	const ctx = (own: AuthContext): AuthContext => ({
+		env: async (name) => (await own.env(name)) ?? (await ambientAuth.env(name)),
+		fileExists: async (path) =>
+			(await own.fileExists(path)) || (await ambientAuth.fileExists(path)),
+	});
+	const { check } = auth;
+	return {
+		...auth,
+		resolve: (input) => auth.resolve({ ...input, ctx: ctx(input.ctx) }),
+		...(check ? { check: (input) => check({ ...input, ctx: ctx(input.ctx) }) } : {}),
+	};
+}
+
 let models: MutableModels | null = null;
 
 /** pi's providers and models, with the subscriptions' credentials. */
 export function piModels(): MutableModels {
 	if (models) return models;
 	models = builtinModels({ credentials, authContext: noAmbientAuth });
+	for (const provider of models.getProviders()) {
+		if (isOwnPiProvider(provider.id) || !provider.auth.apiKey) continue;
+		models.setProvider({
+			...provider,
+			auth: { ...provider.auth, apiKey: withAmbientAuth(provider.auth.apiKey) },
+		});
+	}
 	models.setProvider(
 		createProvider({
 			id: OPENAI_COMPATIBLE,
@@ -86,6 +122,25 @@ export function piModels(): MutableModels {
 	);
 	return models;
 }
+
+export const piIdOf = (provider: PiProviderId) => provider.slice("pi:".length);
+
+/** pi's other providers, by the app's id: those that have models, or list them once signed in. */
+export function piProviderIds(): PiProviderId[] {
+	return piModels()
+		.getProviders()
+		.filter(
+			(p) =>
+				!isOwnPiProvider(p.id) &&
+				p.id !== OPENAI_COMPATIBLE &&
+				(p.getModels().length > 0 || p.refreshModels),
+		)
+		.map((p) => `pi:${p.id}` as const)
+		.sort((a, b) => a.localeCompare(b));
+}
+
+export const piProviderName = (provider: PiProviderId) =>
+	piModels().getProvider(piIdOf(provider))?.name ?? piIdOf(provider);
 
 const FREE = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
@@ -144,6 +199,14 @@ function unlistedModel(connection: LlmConnection): Model<Api> {
 /** The model pi calls for the connection. */
 export function modelOf(connection: LlmConnection): Model<Api> {
 	const { provider, model } = connection;
+	if (isPiProvider(provider)) {
+		const known = piModels().getModel(piIdOf(provider), model);
+		if (!known)
+			throw new BadRequestError(
+				`${piProviderName(provider)} のモデル ${model} が見つかりません。設定 → モデル で選び直してください`,
+			);
+		return known;
+	}
 	if (isSubscription(provider)) {
 		const known = piModels().getModel(PI_PROVIDERS[provider], model);
 		if (!known)
@@ -158,9 +221,12 @@ export function modelOf(connection: LlmConnection): Model<Api> {
 	return provider === "anthropic" ? known : { ...known, baseUrl: baseUrlOf(connection) };
 }
 
-/** The key the call is made with; none for a subscription, whose credentials pi reads itself. */
+/** The key the call is made with; none for a subscription or another of pi's providers, whose
+ *  credentials pi reads itself. */
 export const apiKeyOf = (connection: LlmConnection): string | undefined =>
-	isSubscription(connection.provider) ? undefined : connection.apiKey.trim() || "none";
+	isSubscription(connection.provider) || isPiProvider(connection.provider)
+		? undefined
+		: connection.apiKey.trim() || "none";
 
 /** pi's thinking level for the connection; none for the model's default. */
 export const thinkingLevelOf = (connection: LlmConnection) =>
@@ -174,7 +240,7 @@ export function streamFnOf(connection: LlmConnection): StreamFn {
 }
 
 const ENDPOINTS: Record<
-	Exclude<LlmProvider, SubscriptionProvider>,
+	Exclude<AppProvider, SubscriptionProvider>,
 	{ keyName: string | null; endpoint: () => { baseUrl: string; apiKey: string } }
 > = {
 	openai_compatible: {
@@ -198,6 +264,11 @@ const NO_KEY: Record<string, string> = {
 
 /** Where `provider` is and the key it takes, for any of its models (listing them, too). */
 export function providerConnection(provider: LlmProvider, model = ""): LlmConnection {
+	if (isPiProvider(provider)) {
+		if (!piProviderIds().includes(provider))
+			throw new BadRequestError(`プロバイダー ${piIdOf(provider)} はありません`);
+		return { provider, baseUrl: "", apiKey: "", model, thinking: null };
+	}
 	if (isSubscription(provider)) {
 		if (!isSignedIn(provider))
 			throw new BadRequestError(
