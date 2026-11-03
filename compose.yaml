@@ -1,0 +1,27 @@
+services:
+  nextroom:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8767:8767"
+      - "8768:8768"
+    env_file:
+      - path: apps/server/.env
+        required: false
+    environment:
+      # The desktops join this network, and mount the workspaces from this volume.
+      NEXTROOM_DOCKER_NETWORK: nextroom
+      NEXTROOM_DOCKER_DATA_VOLUME: nextroom-data
+    volumes:
+      - data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - host.docker.internal:host-gateway
+
+networks:
+  default:
+    name: nextroom
+
+volumes:
+  data:
+    name: nextroom-data

@@ -9,6 +9,7 @@ export const TOOL_GROUPS = [
 	"web_search",
 	"topic_search",
 	"browser",
+	"desktop",
 	"workspace",
 	"send_photo",
 	"ask_user",
@@ -41,6 +42,13 @@ export const agentSettingsSchema = z.object({
 		enabled: z.boolean(),
 		/** Hide Chrome's window; the page also streams to the app either way. */
 		headless: z.boolean(),
+	}),
+	desktop: z.object({
+		/** A Linux desktop of its own per character (a Docker container), which the user can watch
+		 *  and take over. Only for models that can see images. */
+		enabled: z.boolean(),
+		memory_mb: z.number().int().min(512).max(65536),
+		cpus: z.number().min(0.5).max(64),
 	}),
 	sandbox: z.object({
 		enabled: z.boolean(),
@@ -90,6 +98,7 @@ const { shape } = agentSettingsSchema;
 export const agentSettingsPatchSchema = z.object({
 	approvals: shape.approvals.partial().optional(),
 	browser: shape.browser.partial().optional(),
+	desktop: shape.desktop.partial().optional(),
 	sandbox: shape.sandbox.partial().optional(),
 	web_search: shape.web_search.partial().optional(),
 	topic_search: shape.topic_search.partial().optional(),
@@ -136,6 +145,7 @@ export const IMAGE_ASPECT_RATIOS = ["1:1", "3:4", "4:3", "9:16", "16:9"] as cons
 
 const STEP_KINDS = [
 	"browser",
+	"desktop",
 	"sandbox",
 	"claude",
 	"image",
@@ -201,6 +211,14 @@ export interface BrowserView {
 	frame_at: number | null;
 	width: number;
 	height: number;
+}
+
+/** A character's desktop: whether it is turned on, running or being made. */
+export interface DesktopView {
+	enabled: boolean;
+	running: boolean;
+	starting: boolean;
+	error: string | null;
 }
 
 export interface DockerStatus {

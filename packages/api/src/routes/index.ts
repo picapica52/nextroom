@@ -4,6 +4,7 @@ import { isApiError, messageOf } from "../lib/errors";
 import { agentRouter, browserRouter, memoryRouter } from "./agent";
 import { charactersRouter } from "./characters";
 import { chatRouter } from "./chat";
+import { desktopsRouter } from "./desktops";
 import { discordRouter } from "./discord";
 import { elevenlabsRouter } from "./elevenlabs";
 import { engineRouter } from "./engine";
@@ -21,6 +22,7 @@ export const apiRouter = new Hono()
 	.route("/discord", discordRouter)
 	.route("/agent", agentRouter)
 	.route("/browser", browserRouter)
+	.route("/desktops", desktopsRouter)
 	.route("/workspaces", workspacesRouter)
 	.route("/memory", memoryRouter)
 	.route("/routines", routinesRouter)

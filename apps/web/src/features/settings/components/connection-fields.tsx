@@ -5,7 +5,6 @@ import type {
 	LlmProvider,
 } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
-import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
@@ -14,6 +13,7 @@ import { Dot, ErrorNote } from "@/components/status";
 import { useConnections, useSaveConnections } from "@/hooks/queries";
 import { client, read } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
+import { SettingsRow } from "./settings-layout";
 
 /** Where a key or address comes from: entered here, the server's .env, the default, or nowhere. */
 export function SourceBadge({
@@ -31,16 +31,14 @@ export function SourceBadge({
 	return optional ? <Dot tone="muted">キーなし</Dot> : <Dot tone="warning">未設定</Dot>;
 }
 
-/** An API key: typed in and saved, never shown again; clearing it lets the .env's apply. */
+/** An API key as a row: typed in and saved, never shown again; clearing it lets the .env's apply. */
 export function KeyField({
 	name,
 	label = "API キー",
-	description,
 	optional,
 }: {
 	name: ConnectionKey;
 	label?: string;
-	description?: ReactNode;
 	optional?: boolean;
 }) {
 	const connections = useConnections();
@@ -53,48 +51,51 @@ export function KeyField({
 			() => false,
 		);
 	return (
-		<Field>
-			<div className="flex flex-wrap items-center gap-2">
-				<FieldLabel htmlFor={id}>{label}</FieldLabel>
-				<SourceBadge source={key?.source} optional={optional} />
-			</div>
-			<div className="flex items-center gap-2">
-				<SaveInput
-					id={id}
-					type="password"
-					autoComplete="off"
-					className="font-mono"
-					value=""
-					placeholder={key?.set ? "入力すると置き換えます" : "API キーを貼り付け"}
-					onSave={(text) => (text.trim() ? submit(text.trim()) : true)}
-				/>
-				{key?.source === "settings" && (
-					<Button
-						variant="ghost"
-						size="sm"
-						disabled={save.isPending}
-						onClick={() => void submit("")}
-					>
-						消す
-					</Button>
-				)}
-			</div>
-			{description && <FieldDescription className="text-xs">{description}</FieldDescription>}
+		<SettingsRow
+			label={
+				<span className="flex items-center gap-2">
+					{label}
+					<SourceBadge source={key?.source} optional={optional} />
+				</span>
+			}
+			htmlFor={id}
+			control={
+				<div className="flex w-72 max-w-full items-center gap-2">
+					<SaveInput
+						id={id}
+						type="password"
+						autoComplete="off"
+						className="font-mono"
+						value=""
+						placeholder={key?.set ? "入力すると置き換え" : "貼り付け"}
+						onSave={(text) => (text.trim() ? submit(text.trim()) : true)}
+					/>
+					{key?.source === "settings" && (
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={save.isPending}
+							onClick={() => void submit("")}
+						>
+							消す
+						</Button>
+					)}
+				</div>
+			}
+		>
 			<ErrorNote error={connections.error ?? save.error} />
-		</Field>
+		</SettingsRow>
 	);
 }
 
-/** A service's address; saving it empty goes back to the .env's (or the default). */
+/** A service's address as a row; saving it empty goes back to the .env's (or the default). */
 export function UrlField({
 	name,
 	label,
-	description,
 	placeholder,
 }: {
 	name: ConnectionUrl;
 	label: string;
-	description?: ReactNode;
 	placeholder?: string;
 }) {
 	const connections = useConnections();
@@ -102,32 +103,46 @@ export function UrlField({
 	const url = connections.data?.urls[name];
 	const id = `url-${name}`;
 	return (
-		<Field>
-			<div className="flex flex-wrap items-center gap-2">
-				<FieldLabel htmlFor={id}>{label}</FieldLabel>
-				<SourceBadge source={url?.source} />
-			</div>
-			<SaveInput
-				id={id}
-				type="url"
-				className="font-mono"
-				value={url?.value ?? ""}
-				placeholder={placeholder}
-				onSave={(text) =>
-					save.mutateAsync({ [name]: text.trim() }).then(
-						() => true,
-						() => false,
-					)
-				}
-			/>
-			{description && <FieldDescription className="text-xs">{description}</FieldDescription>}
+		<SettingsRow
+			label={
+				<span className="flex items-center gap-2">
+					{label}
+					<SourceBadge source={url?.source} />
+				</span>
+			}
+			htmlFor={id}
+			control={
+				<div className="flex w-72 max-w-full items-center">
+					<SaveInput
+						id={id}
+						type="url"
+						className="font-mono"
+						value={url?.value ?? ""}
+						placeholder={placeholder}
+						onSave={(text) =>
+							save.mutateAsync({ [name]: text.trim() }).then(
+								() => true,
+								() => false,
+							)
+						}
+					/>
+				</div>
+			}
+		>
 			<ErrorNote error={connections.error ?? save.error} />
-		</Field>
+		</SettingsRow>
 	);
 }
 
-/** Whether a key a section needs is set, and where it is entered. */
-export function KeyStatus({
+/** Whether a key is set, as a pill. */
+export function KeyBadge({ name }: { name: ConnectionKey }) {
+	const key = useConnections().data?.keys[name];
+	if (!key) return null;
+	return key.set ? <Dot tone="success">設定済み</Dot> : <Dot tone="muted">未設定</Dot>;
+}
+
+/** A note that a key something needs is not set, and where it is entered; nothing once it is. */
+export function MissingKey({
 	name,
 	service,
 	where,
@@ -137,16 +152,11 @@ export function KeyStatus({
 	where: ReactNode;
 }) {
 	const key = useConnections().data?.keys[name];
-	if (!key) return null;
+	if (!key || key.set) return null;
 	return (
-		<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-			{key.set ? (
-				<Dot tone="success">{service} のキーは設定済み</Dot>
-			) : (
-				<Dot tone="warning">{service} のキーが未設定</Dot>
-			)}
-			{!key.set && <span className="text-muted-foreground">{where}</span>}
-		</div>
+		<p className="m-0 text-xs text-warning">
+			{service} の API キーが未設定です。{where}
+		</p>
 	);
 }
 
@@ -220,15 +230,17 @@ function CheckRow({
 	error: unknown;
 }) {
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex flex-wrap items-center gap-3">
+		<SettingsRow
+			label="接続"
+			hint={done}
+			control={
 				<Button variant="outline" size="sm" disabled={pending} onClick={onCheck}>
 					<RefreshCw className={pending ? "animate-spin" : ""} />
-					接続を確認
+					確認
 				</Button>
-				{done && <Dot tone="success">{done}</Dot>}
-			</div>
+			}
+		>
 			<ErrorNote error={error} />
-		</div>
+		</SettingsRow>
 	);
 }

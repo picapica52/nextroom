@@ -1,5 +1,11 @@
 import { join } from "node:path";
-import { apiRouter, configure } from "@nextroom/api";
+import {
+	apiRouter,
+	configure,
+	type DesktopSocketData,
+	desktopSocket,
+	upgradeDesktopSocket,
+} from "@nextroom/api";
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
@@ -26,7 +32,10 @@ if (ENV.WEB_DIST && (await Bun.file(`${ENV.WEB_DIST}/index.html`).exists())) {
 const serve = {
 	// Other devices on the local network open it too; there is no sign-in.
 	hostname: "0.0.0.0",
-	fetch: app.fetch,
+	fetch: (req: Request, server: Bun.Server<DesktopSocketData>) =>
+		upgradeDesktopSocket(req, server) ? undefined : app.fetch(req, server),
+	// The screen of a character's desktop, relayed to its container.
+	websocket: desktopSocket,
 	// Making a face with image generation can keep one request open for minutes.
 	idleTimeout: 0,
 };

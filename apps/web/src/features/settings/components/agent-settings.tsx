@@ -1,11 +1,12 @@
 import type { AgentSettingsPatch, AgentSettingsView } from "@nextroom/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { SettingsBody, SettingsErrorFooter } from "@/components/settings-section";
+import { SettingsErrorFooter } from "@/components/settings-section";
 import { ErrorNote } from "@/components/status";
 import { useAgentSettings, useSaveAgentSettings } from "@/features/agent/queries";
 import { qk } from "@/lib/query-keys";
 import type { SetAgentSection } from "../agent-options";
+import { SettingsPageBody as SettingsBody } from "./settings-layout";
 
 export type AgentSettingsForm = { form: AgentSettingsView; set: SetAgentSection };
 

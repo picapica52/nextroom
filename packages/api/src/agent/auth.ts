@@ -103,10 +103,12 @@ interface Login {
 
 const logins = new Map<string, Login>();
 
-/** The sign-in methods pi offers; the one that works without a browser on this PC is chosen. */
+/** The sign-in methods pi offers; one that works without a browser on the server is chosen (a
+ *  device code, or a code to copy from the page), since the browser login comes back to
+ *  localhost, which is the user's own device when the app runs elsewhere. */
 function choose(prompt: Extract<AuthPrompt, { type: "select" }>): string {
-	const device = prompt.options.find((o) => /device/i.test(`${o.id} ${o.label}`));
-	return (device ?? prompt.options[0])?.id ?? "";
+	const headless = prompt.options.find((o) => /device|headless/i.test(`${o.id} ${o.label}`));
+	return (headless ?? prompt.options[0])?.id ?? "";
 }
 
 function interaction(login: Login): AuthInteraction {

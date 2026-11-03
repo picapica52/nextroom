@@ -13,7 +13,7 @@ export default defineConfig({
 		host: "0.0.0.0",
 		port: 5175,
 		proxy: {
-			"/api": { target: API, changeOrigin: false },
+			"/api": { target: API, changeOrigin: false, ws: true },
 		},
 	},
 	resolve: {

@@ -9,6 +9,7 @@
   - **メモリー**: 記憶はデータベース（`_data/nextroom.sqlite`）に持ちます。キャラクターが会話の中で自分で書き直すメモ（`MEMORY.md`。書き直すたびに版を残します）、会話の記録（長くなった古い部分は要約し、そのときメモも更新）。キャラクター画面の「記憶」タブでメモと要約を見たり、消したりできます。
   - **ブラウザ**: この PC の Chrome を [Stagehand](https://docs.stagehand.dev/) で操作します。操作中の画面は会話の右パネルの「ブラウザ」に映り、パネルを広げるとクリックや入力で操作を引き継げます。
   - **ワークスペース**: キャラクターがファイルを読み書きする場所です。キャラクターごとに1つあり（`_data/characters/<id>/workspace/`）、会話の右パネルの「ファイル」で中身を見たり、ファイルを置いたりできます。
+  - **デスクトップ**: キャラクターごとに、ブラウザとターミナルの入った Linux のデスクトップ（Docker のコンテナ）を持たせます。キャラクターは画面を見ながらクリックや入力で操作し、その画面は会話の「デスクトップ」で見たり、操作を代わったりできます。画像を読めるモデルが必要です（[docs/desktop.md](docs/desktop.md)）。
   - **ファイルとコマンド**: キャラクターのワークスペースで、ファイルを作ったりコマンドを実行したりします。実行は Docker のコンテナの中（おすすめ）か、この PC で直接（隔離なし）から選べます。
 - **声**: キャラクターの「声」タブで、実行先（speech.cpp の Irodori-TTS か ElevenLabs）とモデルをキャラクターごとに選びます。speech.cpp サーバーが読み込めるモデルは1つなので、違うモデルのキャラクターが話すときは先にモデルを読み込み直します。
   - **参照音声**: Voice Clone で使う音声を、キャラクターのフォルダ `_data/characters/<id>/voice/` にアップロードします（WAV 以外はブラウザで WAV にしてから送ります）。同じ画面でボイスファイル（音声を一覧の順に1つにつないだ WAV、合計120秒まで）を作ります。speech.cpp サーバーはこれを参照音声として受け取ります。音声を追加・削除したら、ボイスファイルを作り直します。手元の .wav や speech.cpp で作った .voice.gguf をそのまま読み込むこともできます。
@@ -24,7 +25,7 @@
   - Linux: Vulkan 版。Vulkan のローダー（`libvulkan.so.1`）がなければ CPU 版
 - [Bun](https://bun.sh/) 1.4 以上、Git
 - 会話用の LLM（OpenAI 互換 API、Claude 用の Anthropic API キー、または ChatGPT / Claude / GitHub Copilot / SuperGrok のサブスク）。記憶の道具をいつも使うので、ツール呼び出し（function calling）に対応したモデルが必要です
-- 道具を使う場合のみ: ブラウザには Google Chrome、Docker のサンドボックスには Docker Desktop
+- 道具を使う場合のみ: ブラウザには Google Chrome、デスクトップと Docker のサンドボックスには Docker Desktop
 
 ## セットアップと起動
 
@@ -51,6 +52,8 @@ bun install && bun run build  # 初回のみ
 bun run start                 # サーバーを起動し、http://127.0.0.1:8767 を開く
 bun run dev                   # 画面・サーバーを開発モード（https://127.0.0.1:5175）で起動
 ```
+
+Docker Compose で起動する場合は [docs/docker.md](docs/docker.md) を見てください（`docker compose up -d --build`）。
 
 同じネットワークのスマホからは `https://<PC の IP>:8768`（開発モードでは `https://<PC の IP>:5175`）で開きます。ブラウザは HTTPS のページにしかマイクを使わせないため、サーバーが自己署名の証明書を作って HTTPS でも待ち受けます（`_data/tls`）。初めて開くときに出る「安全ではない」という警告を許可して進んでください。
 

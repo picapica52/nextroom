@@ -1,6 +1,6 @@
 import type { CharacterView } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
-import { Globe, PanelLeft, PanelRight, Pencil } from "lucide-react";
+import { Globe, Monitor, PanelLeft, PanelRight, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AffinityBadge } from "@/features/characters/components/affinity";
 import { CharacterAvatar } from "@/features/characters/components/character-avatar";
@@ -20,6 +20,7 @@ export function ChatPageHeader({
 	panelOpen,
 	onPanelOpen,
 	onBrowser,
+	onDesktop,
 }: {
 	wide: boolean;
 	currentId: string | null;
@@ -31,6 +32,7 @@ export function ChatPageHeader({
 	panelOpen: boolean;
 	onPanelOpen: (open: boolean) => void;
 	onBrowser: () => void;
+	onDesktop: () => void;
 }) {
 	const navigate = useNavigate();
 	return (
@@ -59,6 +61,16 @@ export function ChatPageHeader({
 					onClick={onBrowser}
 				>
 					<Globe />
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label="デスクトップを開く"
+					title="デスクトップを開く"
+					disabled={!currentId}
+					onClick={onDesktop}
+				>
+					<Monitor />
 				</Button>
 				{!wide && (
 					<PaneToggle label="ファイル" pressed={panelOpen} onPressedChange={onPanelOpen}>

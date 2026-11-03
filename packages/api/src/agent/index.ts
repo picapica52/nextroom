@@ -21,6 +21,7 @@ import { type ToolSet, toAgentTool } from "./tool";
 import { askUserTools, offeredChoices } from "./tools/ask-user";
 import { browserTools } from "./tools/browser";
 import { composioTools } from "./tools/composio";
+import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
 import { imageGenTools } from "./tools/image-gen";
 import { memoryTools } from "./tools/memory";
@@ -45,6 +46,7 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 		["web_search", () => webSearchTools(settings)],
 		["topic_search", () => findTopicTools(settings)],
 		["browser", () => browserTools(settings, connection)],
+		["desktop", () => desktopTools(settings, connection)],
 		["workspace", () => sandboxTools(settings)],
 		["send_photo", () => imageGenTools(settings)],
 		["ask_user", () => askUserTools(settings)],
@@ -66,7 +68,11 @@ function systemPrompt(context: CharacterContext, summary: string): string {
 	const notes = readNotes(context.characterId);
 	return [
 		context.system,
-		toolGuide(context.settings),
+		toolGuide(
+			context.settings,
+			hasDesktop(context.settings, context.connection) &&
+				!context.disabledTools.includes("desktop"),
+		),
 		...context.beforeHistory,
 		section(
 			"Your notes (MEMORY.md)",
@@ -197,6 +203,17 @@ async function* replyWith(
 	}
 }
 
+/** A tool's result as it is kept: the screenshots it showed the model are seen once, not stored
+ *  with the conversation and sent again with every later reply. */
+function withoutImages(message: Message): Message {
+	if (message.role !== "toolResult" || !message.content.some((c) => c.type === "image"))
+		return message;
+	const content = message.content.map((c) =>
+		c.type === "image" ? { type: "text" as const, text: "[A screenshot was shown here.]" } : c,
+	);
+	return { ...message, content };
+}
+
 /** What an event of the agent means for the reply: text to speak, a break, or nothing. */
 function handle(
 	event: AgentEvent,
@@ -219,7 +236,7 @@ function handle(
 				const failed = assistantError(message);
 				if (failed) throw failed;
 			}
-			if (message.role !== "system") kept.push(message);
+			if (message.role !== "system") kept.push(withoutImages(message));
 			return null;
 		}
 		case "tool_execution_start":

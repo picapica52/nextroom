@@ -12,4 +12,9 @@ export function configure(config: ApiConfig): void {
 	startRoutines(runRoutineTurn);
 	void restartDiscordBot();
 }
+export {
+	type DesktopSocketData,
+	desktopSocket,
+	upgradeDesktopSocket,
+} from "./agent/tools/desktop";
 export { type AppType, apiRouter } from "./routes";

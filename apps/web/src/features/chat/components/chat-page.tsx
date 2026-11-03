@@ -25,6 +25,7 @@ import { ChatEmptyState } from "./chat-empty-state";
 import { ChatListPane } from "./chat-list-pane";
 import { ChatPageHeader } from "./chat-page-header";
 import { ChatSidePane } from "./chat-side-pane";
+import { DesktopDialog } from "./desktop-dialog";
 import { Transcript } from "./transcript";
 
 const MIC_LABEL: Record<MicMode, string> = {
@@ -56,10 +57,10 @@ export default function ChatPage() {
 	// The newest reply as written out with its voice, for both the captions and the log.
 	const [reveal] = useState(() => new RevealStore());
 
-	// ?view=browser opens the browser over the conversation.
-	const browserOpen = searchParams.get("view") === "browser";
-	const setBrowserOpen = (open: boolean) =>
-		setSearchParams(open ? { view: "browser" } : {}, { replace: true });
+	// ?view=browser opens the browser over the conversation, ?view=desktop the desktop.
+	const view = searchParams.get("view");
+	const setView = (name: "browser" | "desktop", open: boolean) =>
+		setSearchParams(open ? { view: name } : {}, { replace: true });
 
 	const chat = useCurrentChat({
 		keepPolling: segments.playing,
@@ -156,7 +157,8 @@ export default function ChatPage() {
 					onListOpen={layout.setListOpen}
 					panelOpen={layout.filesOpen}
 					onPanelOpen={layout.setFilesOpen}
-					onBrowser={() => setBrowserOpen(true)}
+					onBrowser={() => setView("browser", true)}
+					onDesktop={() => setView("desktop", true)}
 				/>
 
 				<div className="flex min-h-0 flex-1 flex-col px-3 pt-3 sm:px-3.5 sm:pt-3.5">
@@ -256,12 +258,20 @@ export default function ChatPage() {
 			/>
 
 			{currentId && (
-				<BrowserDialog
-					open={browserOpen}
-					onOpenChange={setBrowserOpen}
-					sessionId={currentId}
-					messages={messages}
-				/>
+				<>
+					<BrowserDialog
+						open={view === "browser"}
+						onOpenChange={(open) => setView("browser", open)}
+						sessionId={currentId}
+						messages={messages}
+					/>
+					<DesktopDialog
+						open={view === "desktop"}
+						onOpenChange={(open) => setView("desktop", open)}
+						characterId={currentId}
+						messages={messages}
+					/>
+				</>
 			)}
 		</div>
 	);

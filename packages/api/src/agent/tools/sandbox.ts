@@ -16,6 +16,7 @@ import { messageOf } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
 import { workspaceDir } from "../../workspaces/store";
 import { type CharacterTool, defineTool, type ToolCall, type ToolSet } from "../tool";
+import { docker, dockerError, workspaceMount } from "./docker";
 import {
 	displayPath,
 	grepWorkspace,
@@ -54,30 +55,9 @@ function gated<S extends z.ZodType>(
 
 const containerName = (characterId: string) => `nextroom-${characterId}`;
 
-/** A docker command's output, killed after `timeoutMs`. */
-async function docker(
-	args: string[],
-	timeoutMs = 10_000,
-): Promise<{ code: number; out: string; err: string }> {
-	const proc = track(
-		Bun.spawn(["docker", ...args], { stdout: "pipe", stderr: "pipe", windowsHide: true }),
-	);
-	const timer = setTimeout(() => proc.kill(), timeoutMs);
-	try {
-		const [out, err, code] = await Promise.all([
-			new Response(proc.stdout).text(),
-			new Response(proc.stderr).text(),
-			proc.exited,
-		]);
-		return { code, out: out.trim(), err: err.trim() };
-	} finally {
-		clearTimeout(timer);
-	}
-}
-
 /** What the container is made with; a container made otherwise is made again. */
-function settingsHash(s: SandboxSettings, dir: string): string {
-	const made = [s.image, s.memory_mb, s.cpus, s.network, dir];
+function settingsHash(s: SandboxSettings, mount: string[]): string {
+	const made = [s.image, s.memory_mb, s.cpus, s.network, mount];
 	return Bun.hash(JSON.stringify(made)).toString(36);
 }
 
@@ -94,8 +74,8 @@ function ensureContainer(characterId: string, s: SandboxSettings): Promise<strin
 
 async function prepareContainer(characterId: string, s: SandboxSettings): Promise<string> {
 	const name = containerName(characterId);
-	const dir = workspaceDir(characterId);
-	const hash = settingsHash(s, dir);
+	const mount = workspaceMount(characterId);
+	const hash = settingsHash(s, mount);
 	const info = await docker([
 		"inspect",
 		"--format",
@@ -127,8 +107,7 @@ async function prepareContainer(characterId: string, s: SandboxSettings): Promis
 			String(s.cpus),
 			...(s.network ? [] : ["--network", "none"]),
 			"--init",
-			"-v",
-			`${dir}:${MOUNT}`,
+			...mount,
 			"-w",
 			MOUNT,
 			s.image,
@@ -138,8 +117,7 @@ async function prepareContainer(characterId: string, s: SandboxSettings): Promis
 		CREATE_TIMEOUT_MS,
 	);
 	if (created.code !== 0) {
-		const reason = created.err.split("\n").at(-1) || `exit ${created.code}`;
-		throw new Error(`Could not start the Docker container: ${reason}`);
+		throw new Error(`Could not start the Docker container: ${dockerError(created)}`);
 	}
 	return name;
 }
