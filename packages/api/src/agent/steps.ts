@@ -21,6 +21,7 @@ function stepKind(tool: string): StepKind {
 	if (tool.startsWith("computer_")) return "desktop";
 	if (tool === "ask_user") return "ask";
 	if (tool === "update_memory") return "memory";
+	if (tool.endsWith("_character") || tool === "list_characters") return "character";
 	if (/^[A-Z0-9]+_[A-Z0-9_]+$/.test(tool)) return "app";
 	return "other";
 }
@@ -42,6 +43,7 @@ const MAIN_FIELDS = [
 	"description",
 	"memory",
 	"scene",
+	"name",
 ];
 
 /** The part of a tool's input worth showing: its command, instruction, URL or path. */

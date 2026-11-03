@@ -23,6 +23,7 @@ import { generatePersonaField } from "../characters/generate";
 import { avatarPath } from "../characters/paths";
 import { speakAs } from "../characters/speak";
 import {
+	assertDeletable,
 	createCharacter,
 	deleteCharacter,
 	getCharacter,
@@ -105,7 +106,7 @@ export const charactersRouter = new Hono()
 	})
 	.delete("/:id", async (c) => {
 		const id = c.req.param("id");
-		loadCharacter(id);
+		assertDeletable(id);
 		await removeComputerOf(id);
 		deleteCharacter(id);
 		deleteRoutinesOf(id);

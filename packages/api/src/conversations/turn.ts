@@ -350,6 +350,7 @@ async function prepareTurn(
 			characterId: sessionId,
 			settings: agentSettings,
 			disabledTools: character.agent.disabled_tools,
+			chief: character.chief,
 			reporter,
 		},
 		affinity,

@@ -26,5 +26,7 @@ export type CharacterContext = {
 	settings: AgentSettings;
 	/** The groups of tools this character does without. */
 	disabledTools: ToolGroup[];
+	/** The character is the chief, with the tools that make and change the other characters. */
+	chief: boolean;
 	reporter: TurnReporter;
 };

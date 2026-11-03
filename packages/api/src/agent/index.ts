@@ -19,6 +19,7 @@ import { toolGuide } from "./prompts";
 import { type LlmConnection, modelOf, streamFnOf, thinkingLevelOf } from "./providers";
 import { type ToolSet, toAgentTool } from "./tool";
 import { askUserTools, offeredChoices } from "./tools/ask-user";
+import { characterTools } from "./tools/characters";
 import { composioTools } from "./tools/composio";
 import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
@@ -37,9 +38,10 @@ const MAX_STEPS = 12;
  *  said so far is complete and should be spoken now, not when the next text arrives. */
 export const TEXT_BREAK = Symbol("text-break");
 
-/** Every tool the settings turn on, less the groups the character does without. */
+/** Every tool the settings turn on, less the groups the character does without, and the chief's
+ *  own. */
 async function toolsOf(context: CharacterContext): Promise<ToolSet> {
-	const { settings, connection, disabledTools } = context;
+	const { settings, connection, disabledTools, chief } = context;
 	const groups: [ToolGroup, () => ToolSet | Promise<ToolSet>][] = [
 		["web_search", () => webSearchTools(settings)],
 		["topic_search", () => findTopicTools(settings)],
@@ -49,7 +51,7 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 		["routines", () => routineTools(settings)],
 		["apps", () => composioTools(settings)],
 	];
-	const tools: ToolSet = { ...memoryTools() };
+	const tools: ToolSet = { ...memoryTools(), ...(chief ? characterTools() : {}) };
 	for (const [group, make] of groups) {
 		if (!disabledTools.includes(group)) Object.assign(tools, await make());
 	}
@@ -68,6 +70,7 @@ function systemPrompt(context: CharacterContext, summary: string): string {
 			context.settings,
 			hasDesktop(context.settings, context.connection) &&
 				!context.disabledTools.includes("desktop"),
+			context.chief,
 		),
 		...context.beforeHistory,
 		section(

@@ -9,6 +9,7 @@ import {
 	NotebookPen,
 	Sparkles,
 	SquareTerminal,
+	UserPlus,
 	Wrench,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export const KINDS: Record<StepKind, { icon: LucideIcon; title: string; tone: st
 	ask: { icon: MessageCircleQuestionMark, title: "質問", tone: "text-mode-si" },
 	memory: { icon: NotebookPen, title: "記憶", tone: "text-mode-si" },
 	app: { icon: LayoutGrid, title: "アプリ連携", tone: "text-info" },
+	character: { icon: UserPlus, title: "キャラクター", tone: "text-mode-si" },
 	other: { icon: Wrench, title: "ツール", tone: "text-muted-foreground" },
 };
 
@@ -63,6 +65,10 @@ const LABELS: Record<string, string> = {
 	schedule_routine: "ルーティンを作る",
 	list_routines: "ルーティンを見る",
 	cancel_routine: "ルーティンを取り消す",
+	list_characters: "キャラクターの一覧",
+	read_character: "キャラクターの設定を見る",
+	create_character: "キャラクターを作る",
+	update_character: "キャラクターの設定を変える",
 	COMPOSIO_SEARCH_TOOLS: "アプリの機能を探す",
 	COMPOSIO_GET_TOOL_SCHEMAS: "アプリの使い方を調べる",
 	COMPOSIO_MULTI_EXECUTE_TOOL: "アプリを使う",

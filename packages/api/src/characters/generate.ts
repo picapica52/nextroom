@@ -6,7 +6,7 @@ import { generateOnce } from "../agent";
 import { replyConnections } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
-import { FIELD_GUIDE } from "./extract";
+import { FIELD_GUIDE } from "./fields";
 
 const LENGTH: Record<PersonaGeneratedField, string> = {
 	world: "one short paragraph",

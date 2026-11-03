@@ -10,7 +10,8 @@ import { formatDate } from "@/lib/api";
 import { TAB_INFO, TABS, type Tab } from "../tabs";
 import { AvatarMenu } from "./character-avatar-menu";
 
-/** The character's picture and name, the list of its tabs, and exporting or deleting it. */
+/** The character's picture and name, the list of its tabs, and exporting or deleting it (the
+ *  chief cannot be deleted). */
 export function CharacterSidebar({
 	characterId,
 	character,
@@ -56,7 +57,9 @@ export function CharacterSidebar({
 					<MoreMenu
 						items={[
 							{ label: "エクスポート", onClick: onExport },
-							{ label: "キャラクターを削除", danger: true, onClick: () => void remove() },
+							...(character.chief
+								? []
+								: [{ label: "キャラクターを削除", danger: true, onClick: () => void remove() }]),
 						]}
 					/>
 				</div>
@@ -86,14 +89,16 @@ export function CharacterSidebar({
 					<Download />
 					エクスポート
 				</Button>
-				<Button
-					variant="ghost"
-					className="justify-start text-destructive hover:text-destructive"
-					onClick={() => void remove()}
-				>
-					<Trash2 />
-					削除
-				</Button>
+				{!character.chief && (
+					<Button
+						variant="ghost"
+						className="justify-start text-destructive hover:text-destructive"
+						onClick={() => void remove()}
+					>
+						<Trash2 />
+						削除
+					</Button>
+				)}
 			</div>
 		</RouteDialogNav>
 	);
