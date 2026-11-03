@@ -213,13 +213,16 @@ export const enqueueRefTranscription = (characterId: string, overwrite: boolean)
 		{ character_id: characterId },
 	);
 
-/** The clips as they are, for a voice cloned elsewhere (ElevenLabs). */
-export function refClipFiles(characterId: string): { name: string; data: Uint8Array }[] {
+/** The clips as they are, with their transcripts, for a voice cloned elsewhere (ElevenLabs, Fish Audio). */
+export function refClipFiles(
+	characterId: string,
+): { name: string; data: Uint8Array; text: string | null }[] {
 	const clips = loadClips(characterId);
 	if (!clips.length) throw new BadRequestError("参照音声がありません");
 	return clips.map((c) => ({
 		name: `${c.id}.wav`,
 		data: readFileSync(clipPath(characterId, c.id)),
+		text: c.text,
 	}));
 }
 

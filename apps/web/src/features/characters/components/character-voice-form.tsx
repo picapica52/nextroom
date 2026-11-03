@@ -2,6 +2,7 @@ import {
 	type CharacterView,
 	type CharacterVoice,
 	ELEVENLABS_TTS_MODELS,
+	FISH_AUDIO_TTS_MODELS,
 	TTS_PROVIDERS,
 	type TtsProvider,
 } from "@nextroom/contracts";
@@ -14,14 +15,16 @@ import { SpeechModelPicker } from "@/components/speech-model";
 import { ErrorNote } from "@/components/status";
 import { CaptionField, SpeedField } from "@/components/voice-fields";
 import { useChatSettings } from "@/hooks/queries";
-import { ELEVENLABS_TTS_MODEL_LABELS } from "@/lib/api";
+import { ELEVENLABS_TTS_MODEL_LABELS, FISH_AUDIO_TTS_MODEL_LABELS } from "@/lib/api";
 import { useConnections } from "../queries";
 import { ElevenlabsClone, ElevenlabsDesign, ElevenlabsVoiceField } from "./elevenlabs-voice";
+import { FishAudioClone, FishAudioVoiceField } from "./fish-audio-voice";
 import { VoiceFileField, VoiceRefs } from "./voice-refs";
 
 const TTS_LABELS: Record<TtsProvider, string> = {
 	irodori: "speech.cpp（Irodori-TTS）",
 	elevenlabs: "ElevenLabs",
+	fish_audio: "Fish Audio",
 };
 
 /**
@@ -42,8 +45,10 @@ export function CharacterVoiceForm({
 }) {
 	const settings = useChatSettings();
 	const elevenlabs = value.provider === "elevenlabs";
+	const fish = value.provider === "fish_audio";
 	const connections = useConnections();
-	const hasKey = connections.data?.keys.elevenlabs_key.set ?? false;
+	const keys = connections.data?.keys;
+	const hasKey = (fish ? keys?.fish_audio_key.set : keys?.elevenlabs_key.set) ?? false;
 
 	return (
 		<>
@@ -70,10 +75,19 @@ export function CharacterVoiceForm({
 					onChange={(provider) => update({ provider })}
 				/>
 				<Field>
-					<FieldLabel htmlFor={elevenlabs ? "elevenlabs-tts-model" : "irodori-tts-model"}>
-						モデル
-					</FieldLabel>
-					{elevenlabs ? (
+					<FieldLabel htmlFor={`${value.provider}-tts-model`}>モデル</FieldLabel>
+					{fish ? (
+						<SimpleSelect
+							id="fish_audio-tts-model"
+							value={value.fish_audio_model || null}
+							onChange={(fish_audio_model) => fish_audio_model && update({ fish_audio_model })}
+							placeholder="モデルを選ぶ"
+							options={FISH_AUDIO_TTS_MODELS.map((m) => ({
+								value: m,
+								label: FISH_AUDIO_TTS_MODEL_LABELS[m],
+							}))}
+						/>
+					) : elevenlabs ? (
 						<SimpleSelect
 							id="elevenlabs-tts-model"
 							value={value.elevenlabs_model || null}
@@ -97,12 +111,45 @@ export function CharacterVoiceForm({
 
 			<SettingsSection
 				title="声"
-				description={elevenlabs ? "ElevenLabs のアカウントにある声から選びます。" : undefined}
+				description={
+					elevenlabs
+						? "ElevenLabs のアカウントにある声から選びます。"
+						: fish
+							? "Fish Audio のアカウントの声か、公開されている声から選びます。"
+							: undefined
+				}
 				className="gap-5"
 			>
-				{!elevenlabs ? (
+				{!elevenlabs && !fish ? (
 					<IrodoriVoiceFields character={character} value={value} update={update} />
-				) : hasKey ? (
+				) : !hasKey ? (
+					connections.data && (
+						<FieldDescription className="text-xs">
+							{fish ? "Fish Audio" : "ElevenLabs"} の API キーを
+							<Link to="/settings/voice">設定 → 音声</Link>
+							で入力すると使えます。
+						</FieldDescription>
+					)
+				) : fish ? (
+					<>
+						<FishAudioVoiceField
+							model={value.fish_audio_model}
+							value={value.fish_audio_voice_id}
+							onChange={(fish_audio_voice_id) => update({ fish_audio_voice_id })}
+						/>
+						<FishAudioClone
+							characterId={character.id}
+							name={character.persona.name}
+							onCreated={(fish_audio_voice_id) => update({ fish_audio_voice_id })}
+						/>
+						<SpeedField
+							value={value.speed}
+							min={0.5}
+							max={2}
+							onChange={(speed) => update({ speed })}
+						/>
+					</>
+				) : (
 					<>
 						<ElevenlabsVoiceField
 							model={value.elevenlabs_model}
@@ -126,20 +173,12 @@ export function CharacterVoiceForm({
 							onChange={(speed) => update({ speed })}
 						/>
 					</>
-				) : (
-					connections.data && (
-						<FieldDescription className="text-xs">
-							ElevenLabs の API キーを
-							<Link to="/settings/voice">設定 → 音声</Link>
-							で入力すると使えます。
-						</FieldDescription>
-					)
 				)}
 			</SettingsSection>
 
 			<SettingsSection
 				title="参照音声"
-				description="Voice Clone のボイスファイルと、ElevenLabs の複製に使います。"
+				description="Voice Clone のボイスファイルと、ElevenLabs・Fish Audio の複製に使います。"
 			>
 				<VoiceRefs characterId={character.id} />
 			</SettingsSection>

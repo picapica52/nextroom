@@ -1,10 +1,11 @@
 // The engine as the rest of the server uses it: speech synthesis and transcription on the
-// speech.cpp server (or ElevenLabs, which needs no GPU job), each a job on the GPU queue. Aborting
+// speech.cpp server (or ElevenLabs and Fish Audio, which need no GPU job), each a job on the GPU queue. Aborting
 // `signal` cancels the job (and the server's request with it) and Cancelled is thrown.
 
 import type { AsrProvider } from "@nextroom/contracts";
 import { synthesizeElevenlabs, transcribeElevenlabs } from "../lib/elevenlabs";
 import { BadRequestError } from "../lib/errors";
+import { synthesizeFishAudio } from "../lib/fish-audio";
 import { transcribe } from "./asr";
 import { runOnGpu } from "./queue";
 import { type SynthesisOutcome, synthesize } from "./tts";
@@ -28,6 +29,15 @@ export function synthesizeSpeech(
 				model,
 				speed: settings.speed,
 			},
+			signal,
+		);
+	}
+	if (settings.provider === "fish_audio") {
+		const model = settings.fish_audio_model;
+		if (!model) throw new BadRequestError("キャラクターの音声合成モデルを選んでください");
+		return synthesizeFishAudio(
+			trimmed,
+			{ voiceId: settings.fish_audio_voice_id, model, speed: settings.speed },
 			signal,
 		);
 	}

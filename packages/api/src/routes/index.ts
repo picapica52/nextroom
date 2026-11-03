@@ -8,6 +8,7 @@ import { desktopsRouter } from "./desktops";
 import { discordRouter } from "./discord";
 import { elevenlabsRouter } from "./elevenlabs";
 import { engineRouter } from "./engine";
+import { fishAudioRouter } from "./fish-audio";
 import { routinesRouter } from "./routines";
 import { systemRouter } from "./system";
 import { workspacesRouter } from "./workspaces";
@@ -17,6 +18,7 @@ export const apiRouter = new Hono()
 	.route("/", systemRouter)
 	.route("/engine", engineRouter)
 	.route("/elevenlabs", elevenlabsRouter)
+	.route("/fish-audio", fishAudioRouter)
 	.route("/chat", chatRouter)
 	.route("/characters", charactersRouter)
 	.route("/discord", discordRouter)

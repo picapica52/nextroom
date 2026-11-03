@@ -3,6 +3,7 @@ import { SpeechModelPicker } from "@/components/speech-model";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
 import {
 	ElevenlabsCheck,
+	FishAudioCheck,
 	KeyBadge,
 	KeyField,
 	MissingKey,
@@ -17,7 +18,7 @@ const ASR_LABELS: Record<AsrProvider, string> = {
 	elevenlabs: "ElevenLabs",
 };
 
-/** What is spoken and heard, and where: the speech.cpp server and ElevenLabs. */
+/** What is spoken and heard, and where: the speech.cpp server, ElevenLabs and Fish Audio. */
 export default function VoiceSettings() {
 	return (
 		<ChatSettingsPage>
@@ -49,6 +50,12 @@ export default function VoiceSettings() {
 							<SettingsInset>
 								<KeyField name="elevenlabs_key" />
 								<ElevenlabsCheck />
+							</SettingsInset>
+						</SettingsDisclosure>
+						<SettingsDisclosure label="Fish Audio" status={<KeyBadge name="fish_audio_key" />}>
+							<SettingsInset>
+								<KeyField name="fish_audio_key" />
+								<FishAudioCheck />
 							</SettingsInset>
 						</SettingsDisclosure>
 					</SettingsGroup>

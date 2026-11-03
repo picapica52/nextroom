@@ -108,7 +108,8 @@ export function ElevenlabsVoiceField({
 	);
 }
 
-function Fold({
+/** A folded part of a voice's settings, with what it does. */
+export function Fold({
 	title,
 	description,
 	defaultOpen = false,

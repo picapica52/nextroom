@@ -2,8 +2,9 @@
 
 import { z } from "zod";
 
-/** irodori: Irodori-TTS on the speech.cpp server; elevenlabs: ElevenLabs' API. */
-export const TTS_PROVIDERS = ["irodori", "elevenlabs"] as const;
+/** irodori: Irodori-TTS on the speech.cpp server; elevenlabs: ElevenLabs' API; fish_audio: Fish
+ *  Audio's API. */
+export const TTS_PROVIDERS = ["irodori", "elevenlabs", "fish_audio"] as const;
 /** ElevenLabs' models that speak Japanese. */
 export const ELEVENLABS_TTS_MODELS = [
 	"eleven_v4",
@@ -13,8 +14,18 @@ export const ELEVENLABS_TTS_MODELS = [
 	"eleven_flash_v2_5",
 ] as const;
 
+/** Fish Audio's speech models; s2.1-pro-free is the free plan's. */
+export const FISH_AUDIO_TTS_MODELS = [
+	"s2.1-pro",
+	"s2-pro",
+	"s1",
+	"drama-3",
+	"s2.1-pro-free",
+] as const;
+
 export type TtsProvider = (typeof TTS_PROVIDERS)[number];
 export type ElevenlabsTtsModel = (typeof ELEVENLABS_TTS_MODELS)[number];
+export type FishAudioTtsModel = (typeof FISH_AUDIO_TTS_MODELS)[number];
 
 /** How a character's voice sounds and what speaks it. Irodori-TTS always speaks with the Voice
  *  Clone voice file in the character's own folder (CharacterVoiceRefs). */
@@ -28,6 +39,9 @@ export const characterVoiceSchema = z.object({
 	caption: z.string(),
 	/** The ElevenLabs voice it speaks with when the provider is ElevenLabs. */
 	elevenlabs_voice_id: z.string().default(""),
+	fish_audio_model: z.union([z.enum(FISH_AUDIO_TTS_MODELS), z.literal("")]).default(""),
+	/** The Fish Audio voice (its model id) it speaks with when the provider is Fish Audio. */
+	fish_audio_voice_id: z.string().default(""),
 });
 export type CharacterVoice = z.infer<typeof characterVoiceSchema>;
 export type VoiceSettings = CharacterVoice;
@@ -39,6 +53,8 @@ export const DEFAULT_CHARACTER_VOICE: Readonly<CharacterVoice> = {
 	speed: 1.0,
 	caption: "",
 	elevenlabs_voice_id: "",
+	fish_audio_model: "",
+	fish_audio_voice_id: "",
 };
 
 /** The most audio a voice file holds, all clips together. */
@@ -93,4 +109,16 @@ export interface ElevenlabsVoicePreview {
 	/** A data: URL of the audio. */
 	audio: string;
 	duration: number;
+}
+
+/** A Fish Audio voice: one of the account's own, or one shared on Fish Audio. */
+export interface FishAudioVoice {
+	id: string;
+	title: string;
+	description: string | null;
+	/** The account's own voice, which can be deleted. */
+	mine: boolean;
+	/** created / training / trained / failed; only a trained one speaks. */
+	state: string;
+	languages: string[];
 }
