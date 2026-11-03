@@ -1,6 +1,6 @@
 import { type DragEvent, useState } from "react";
 
-export const DROP_HIGHLIGHT = "border-pastel-yellow-edge bg-selected";
+const DROP_HIGHLIGHT = "border-pastel-yellow-edge bg-selected";
 
 /** Drag-over state plus the handlers and dashed-box style of a file drop target. */
 export function useFileDrop(onDrop: (data: DataTransfer) => void, className = "") {

@@ -90,7 +90,7 @@ export async function restartDiscordBot(): Promise<void> {
 	}
 }
 
-export async function stopDiscordBot(): Promise<void> {
+async function stopDiscordBot(): Promise<void> {
 	session?.close();
 	const bot = client;
 	client = null;

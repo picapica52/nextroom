@@ -19,12 +19,12 @@ export type AffinityLevel = (typeof AFFINITY_LEVELS)[number];
 export const affinityLevel = (level: number): AffinityLevel =>
 	AFFINITY_LEVELS[level - 1] ?? AFFINITY_LEVELS[0];
 
-export const RELATIONSHIPS = ["friend", "lover"] as const;
-export type Relationship = (typeof RELATIONSHIPS)[number];
+const RELATIONSHIPS = ["friend", "lover"] as const;
+type Relationship = (typeof RELATIONSHIPS)[number];
 
 /** How an event reaches the user: the character speaks first when the conversation opens, it
  *  brings it up in a reply, or it reads out a letter it wrote (kept to read again). */
-export const EVENT_DELIVERIES = ["opening", "reply", "letter"] as const;
+const EVENT_DELIVERIES = ["opening", "reply", "letter"] as const;
 export type EventDelivery = (typeof EVENT_DELIVERIES)[number];
 
 /** The kinds of events, with how the screens name them. */
@@ -79,7 +79,7 @@ const affinityGainSchema = z.object({
 	delta: z.number(),
 	reason: z.string(),
 });
-export type AffinityGain = z.infer<typeof affinityGainSchema>;
+type AffinityGain = z.infer<typeof affinityGainSchema>;
 
 /** An event the character started, and what it was about (so it is not repeated). */
 const affinityEventSchema = z.object({
@@ -89,7 +89,7 @@ const affinityEventSchema = z.object({
 });
 
 const letterSchema = z.object({ at: z.number(), kind: z.string(), text: z.string() });
-export type AffinityLetter = z.infer<typeof letterSchema>;
+type AffinityLetter = z.infer<typeof letterSchema>;
 
 /** As stored in the database (the `affinity` table). Dates are the local `YYYY-MM-DD`. */
 export const affinitySchema = z.object({

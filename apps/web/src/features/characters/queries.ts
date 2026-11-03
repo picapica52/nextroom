@@ -3,7 +3,6 @@ import type {
 	CharacterAgentPatch,
 	CharacterView,
 	CharacterVoice,
-	ConnectionsView,
 	InstructionRevision,
 	RoutineCreate,
 	RoutinePatch,
@@ -17,7 +16,6 @@ import { qk } from "@/lib/query-keys";
 
 /** Query keys of this feature's own data. */
 const keys = {
-	connections: () => ["connections"] as const,
 	instructionHistory: (characterId: string) => ["instruction-history", characterId] as const,
 	routines: (characterId: string) => ["routines", characterId] as const,
 	routineRuns: (routineId: string) => ["routine-runs", routineId] as const,
@@ -127,7 +125,7 @@ export function useInvalidateCharacters() {
 }
 
 /** Refreshes the characters, then opens a new one. */
-export function useOpenCharacter() {
+function useOpenCharacter() {
 	const invalidate = useInvalidateCharacters();
 	const navigate = useNavigate();
 	return async (character: CharacterView) => {
@@ -156,15 +154,6 @@ export function useImportArchive() {
 		mutationFn: (file: File) =>
 			api.post<CharacterView>("/api/characters/import/archive", fileForm(file)),
 		onSuccess: open,
-	});
-}
-
-/** Whether each service's key is set (on the connection settings or in the .env). */
-export function useConnections() {
-	return useQuery({
-		queryKey: keys.connections(),
-		queryFn: ({ signal }): Promise<ConnectionsView> =>
-			read(client.chat.connections.$get(undefined, signalled(signal))),
 	});
 }
 

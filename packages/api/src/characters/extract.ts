@@ -10,6 +10,7 @@ import {
 import { generateOnce } from "../agent";
 import { replyConnections } from "../agent/providers";
 import { BadRequestError, ConflictError } from "../lib/errors";
+import { jsonObjectOf } from "../lib/text";
 import { loadSettings } from "../settings/chat";
 import { FIELD_GUIDE } from "./fields";
 
@@ -68,14 +69,9 @@ function textOf(file: SourceFile): string {
 
 /** The model's answer as fields, keeping only non-empty strings of the persona's fields. */
 function personaOf(answer: string): Partial<Persona> {
-	const start = answer.indexOf("{");
-	const end = answer.lastIndexOf("}");
-	let data: unknown;
-	try {
-		data = JSON.parse(answer.slice(start, end + 1));
-	} catch {
+	const data = jsonObjectOf(answer);
+	if (data === undefined)
 		throw new ConflictError("LLM の返答を JSON として読めませんでした。もう一度試してください");
-	}
 	const out: Partial<Persona> = {};
 	if (data && typeof data === "object")
 		for (const key of PERSONA_FIELDS) {

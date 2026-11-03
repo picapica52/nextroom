@@ -53,7 +53,7 @@ const entryOf = (row: MessageRow): ChatMessageEntry => ({
 const COLUMNS = "id, at, message, chat";
 
 /** The character's messages, oldest first. */
-export function listMessages(characterId: string): ChatMessageEntry[] {
+function listMessages(characterId: string): ChatMessageEntry[] {
 	return memoryDb()
 		.query<MessageRow, [string]>(
 			`SELECT ${COLUMNS} FROM messages WHERE character_id = ? ORDER BY seq`,
@@ -128,7 +128,7 @@ export function unsummarized(characterId: string): {
 }
 
 /** The words of a message, without its thinking and tool calls. */
-export function textOf(message: ChatMessageEntry["message"]): string {
+function textOf(message: ChatMessageEntry["message"]): string {
 	const { content } = message;
 	if (typeof content === "string") return content;
 	return content.flatMap((c) => (c.type === "text" ? [c.text] : [])).join("");

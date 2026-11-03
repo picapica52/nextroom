@@ -1,4 +1,8 @@
-import type { FishAudioTtsModel, FishAudioVoice } from "@nextroom/contracts";
+import {
+	FISH_AUDIO_MAX_CLONE_FILES,
+	type FishAudioTtsModel,
+	type FishAudioVoice,
+} from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
 import { Checkbox } from "@nextroom/ui/components/checkbox";
 import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
@@ -243,14 +247,16 @@ export function FishAudioClone({
 			</label>
 			<div className="flex flex-wrap items-center gap-3">
 				<Button
-					disabled={!clips || clips > 20 || !name.trim() || clone.isPending}
+					disabled={!clips || clips > FISH_AUDIO_MAX_CLONE_FILES || !name.trim() || clone.isPending}
 					onClick={() => clone.mutate()}
 				>
 					{clone.isPending && <Spinner />}
 					{clone.isPending ? "複製中…" : "複製する"}
 				</Button>
-				{clips > 20 && (
-					<span className="text-xs text-warning">Fish Audio に送れるのは20件までです</span>
+				{clips > FISH_AUDIO_MAX_CLONE_FILES && (
+					<span className="text-xs text-warning">
+						Fish Audio に送れるのは{FISH_AUDIO_MAX_CLONE_FILES}件までです
+					</span>
 				)}
 				{clone.isSuccess && (
 					<span className="text-xs text-success">声を追加して、この声を選びました</span>

@@ -52,7 +52,7 @@ function parseField(text: string, { min, max }: Field): Set<number> {
 	return out;
 }
 
-export function parseCron(expression: string): Cron {
+function parseCron(expression: string): Cron {
 	const parts = expression.trim().split(/\s+/);
 	if (parts.length !== 5) throw new Error("cron は「分 時 日 月 曜日」の5つで書いてください");
 	const [minutes, hours, days, months, weekdays] = parts.map((p, i) =>
@@ -81,7 +81,7 @@ function dayMatches(cron: Cron, date: Date): boolean {
 
 /** The first time after `after` (seconds) that the expression matches; null when none comes
  *  within about five years. */
-export function nextCron(expression: string, after: number): number | null {
+function nextCron(expression: string, after: number): number | null {
 	const cron = parseCron(expression);
 	const date = new Date(Math.floor(after / 60) * 60_000 + 60_000);
 	const limit = after * 1000 + 5 * 366 * 24 * 60 * 60_000;
@@ -106,7 +106,7 @@ export function nextCron(expression: string, after: number): number | null {
 const hm = (time: string) => time.split(":").map(Number) as [number, number];
 
 /** The trigger as a cron expression; null for a one-off and an interval. */
-export function cronOf(trigger: RoutineTrigger): string | null {
+function cronOf(trigger: RoutineTrigger): string | null {
 	switch (trigger.type) {
 		case "hourly":
 			return `${trigger.minute} * * * *`;

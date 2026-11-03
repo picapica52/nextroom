@@ -17,8 +17,8 @@ export type SlackSettings = z.infer<typeof slackSettingsSchema>;
 export const slackSettingsPatchSchema = slackSettingsSchema.partial();
 export type SlackSettingsPatch = z.infer<typeof slackSettingsPatchSchema>;
 
-export const SLACK_STATES = ["off", "connecting", "ready", "error"] as const;
-export type SlackState = (typeof SLACK_STATES)[number];
+const SLACK_STATES = ["off", "connecting", "ready", "error"] as const;
+type SlackState = (typeof SLACK_STATES)[number];
 
 export interface SlackStatus {
 	state: SlackState;

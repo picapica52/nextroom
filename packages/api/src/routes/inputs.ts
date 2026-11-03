@@ -58,3 +58,28 @@ export const ok = { ok: true } as const;
 /** The content-disposition of a download saved as `filename`. */
 export const attachment = (filename: string) =>
 	`attachment; filename*=UTF-8''${encodeURIComponent(filename)}`;
+
+const SAMPLE_TEXT = "こんにちは。この声でお話しします。よろしくお願いしますね。";
+
+/** A short sentence in the voice `:id`, on the `model` of the query; kept by the browser, since
+ *  each one costs credits. */
+export async function voiceSample<M extends string>(
+	c: Context,
+	models: readonly M[],
+	synthesize: (
+		text: string,
+		speech: { voiceId: string; model: M; speed: number },
+		signal: AbortSignal,
+	) => Promise<{ audio: Uint8Array }>,
+): Promise<Response> {
+	const model = models.find((m) => m === c.req.query("model"));
+	if (!model) throw new BadRequestError("モデルを選んでください");
+	const speech = await synthesize(
+		SAMPLE_TEXT,
+		{ voiceId: c.req.param("id") ?? "", model, speed: 1 },
+		c.req.raw.signal,
+	);
+	return new Response(speech.audio as Uint8Array<ArrayBuffer>, {
+		headers: { "content-type": "audio/wav", "cache-control": "private, max-age=86400" },
+	});
+}

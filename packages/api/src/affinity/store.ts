@@ -15,6 +15,7 @@ import {
 	affinityLevel,
 	affinitySchema,
 } from "@nextroom/contracts";
+import { localDate } from "../lib/dates";
 import { deleteDoc, readDoc, writeDoc } from "../lib/db";
 import { now } from "../lib/storage";
 
@@ -45,20 +46,12 @@ function saveAffinity(characterId: string, affinity: Affinity): void {
 }
 
 /** Changes the stored affinity with `change`. */
-export function updateAffinity(
-	characterId: string,
-	change: (affinity: Affinity) => void,
-): Affinity {
+function updateAffinity(characterId: string, change: (affinity: Affinity) => void): Affinity {
 	const affinity = loadAffinity(characterId);
 	change(affinity);
 	saveAffinity(characterId, affinity);
 	return affinity;
 }
-
-const pad = (n: number) => String(n).padStart(2, "0");
-
-export const localDate = (date: Date) =>
-	`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 const DAY = 24 * 60 * 60 * 1000;
 

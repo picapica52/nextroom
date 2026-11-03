@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { loadCharacter } from "../characters/store";
 import { refClipFiles } from "../characters/voice-files";
-import { BadRequestError } from "../lib/errors";
 import {
 	cloneFishAudioVoice,
 	deleteFishAudioVoice,
@@ -13,9 +12,7 @@ import {
 	searchFishAudioVoices,
 	synthesizeFishAudio,
 } from "../lib/fish-audio";
-import { json, ok, query } from "./inputs";
-
-const SAMPLE_TEXT = "こんにちは。この声でお話しします。よろしくお願いしますね。";
+import { json, ok, query, voiceSample } from "./inputs";
 
 /** `/api/fish-audio/*`: the Fish Audio voices a character's voice is chosen and made from. */
 export const fishAudioRouter = new Hono()
@@ -46,16 +43,4 @@ export const fishAudioRouter = new Hono()
 		await deleteFishAudioVoice(c.req.param("id"));
 		return c.json(ok);
 	})
-	// A short sentence in the voice, on `model`; kept by the browser, since each one costs credits.
-	.get("/voices/:id/sample", async (c) => {
-		const model = FISH_AUDIO_TTS_MODELS.find((m) => m === c.req.query("model"));
-		if (!model) throw new BadRequestError("モデルを選んでください");
-		const speech = await synthesizeFishAudio(
-			SAMPLE_TEXT,
-			{ voiceId: c.req.param("id"), model, speed: 1 },
-			c.req.raw.signal,
-		);
-		return new Response(speech.audio as Uint8Array<ArrayBuffer>, {
-			headers: { "content-type": "audio/wav", "cache-control": "private, max-age=86400" },
-		});
-	});
+	.get("/voices/:id/sample", (c) => voiceSample(c, FISH_AUDIO_TTS_MODELS, synthesizeFishAudio));

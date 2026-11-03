@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { prettifyError, type z } from "zod";
 import { dataDir } from "./config";
 
-export const DOC_TABLES = [
+const DOC_TABLES = [
 	"settings",
 	"characters",
 	"affinity",
@@ -35,7 +35,7 @@ const schemas: string[] = DOC_TABLES.map(
 	(t) => `CREATE TABLE IF NOT EXISTS ${t} (key TEXT PRIMARY KEY, data TEXT NOT NULL)`,
 );
 
-export const dbFile = () => join(dataDir(), "nextroom.sqlite");
+const dbFile = () => join(dataDir(), "nextroom.sqlite");
 
 let db: Database | null = null;
 

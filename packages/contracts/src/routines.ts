@@ -7,7 +7,7 @@ import { modelChoiceSchema } from "./settings";
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "時刻は HH:MM で指定してください");
 
 /** When a routine runs, in this PC's local time. `interval` counts from the last run. */
-export const routineTriggerSchema = z.discriminatedUnion("type", [
+const routineTriggerSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("once"), at: z.number() }),
 	z.object({ type: z.literal("interval"), minutes: z.number().int().min(5).max(43_200) }),
 	z.object({ type: z.literal("hourly"), minute: z.number().int().min(0).max(59) }),

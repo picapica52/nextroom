@@ -6,7 +6,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
-
+import { pad2 } from "../lib/dates";
 import { BadRequestError, NotFoundError } from "../lib/errors";
 import { newId } from "../lib/storage";
 import { copyToWorkspace } from "../workspaces/store";
@@ -25,12 +25,10 @@ const TYPES: Record<string, string> = {
 
 const ID = /^img_[0-9a-f]+$/;
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 /** `20261019-153012`, in local time, so the folder lists the photos in the order they came. */
 function stamp(date = new Date()): string {
-	const day = `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
-	return `${day}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+	const day = `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
+	return `${day}-${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
 }
 
 /** Keeps `image` in the conversation as given when the browser can show it, else as PNG, with

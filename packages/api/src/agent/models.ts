@@ -16,14 +16,14 @@ import {
 const LIST_TIMEOUT_MS = 30_000;
 
 /** A call that did not reach the endpoint at `url`. */
-export const unreachable = (url: string, error: unknown) =>
+const unreachable = (url: string, error: unknown) =>
 	new ConflictError(`LLM API に接続できません（${url}）: ${messageOf(error)}`);
 
 /** A reply with no text. */
 export const emptyReplyError = () => new ConflictError("LLM から空の返答が返りました");
 
 /** The endpoint's own words for a failed call, when it gave any. */
-export function llmErrorMessage(status: number | undefined, body: string): string {
+function llmErrorMessage(status: number | undefined, body: string): string {
 	let detail = body.slice(0, 500);
 	try {
 		const error = (JSON.parse(body) as { error?: unknown }).error;
@@ -50,7 +50,7 @@ function perMillion(value: unknown): number | undefined {
 }
 
 /** The models the endpoint lists, sorted by id. */
-export async function listModels(connection: LlmConnection): Promise<LlmModel[]> {
+async function listModels(connection: LlmConnection): Promise<LlmModel[]> {
 	const { url, headers } = modelsRequest(connection);
 	let response: Response;
 	try {

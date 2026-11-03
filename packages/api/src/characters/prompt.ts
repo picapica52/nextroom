@@ -2,6 +2,7 @@
 // own instructions and the fixed style prompt, then the setting (the voice-call device) and the character's persona before the
 // conversation, and the current time and when the two last talked after it.
 
+import { pad2 } from "../lib/dates";
 import { STYLE_PROMPT, SYSTEM_PROMPT } from "./instructions";
 import type { Character } from "./store";
 
@@ -37,10 +38,8 @@ interface PromptSettings {
 
 const WEEKDAYS = "日月火水木金土";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 const dateTime = (date: Date) =>
-	`${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${WEEKDAYS[date.getDay()]}）${pad(date.getHours())}:${pad(date.getMinutes())}`;
+	`${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日（${WEEKDAYS[date.getDay()]}）${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 
 /** The local date and time, so the character lives in the same "now" as the user. */
 const nowLine = (date: Date) => `Current time: ${dateTime(date)}`;

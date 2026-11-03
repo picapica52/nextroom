@@ -4,10 +4,9 @@
 // keeps what happened as a dated log.
 
 import type { Message } from "@earendil-works/pi-ai";
-
+import { localDate, pad2 } from "../../lib/dates";
 import { newId, now } from "../../lib/storage";
 import { type Connections, complete, generateOnce, replyText } from "../llm";
-
 import { addSummary, type ChatMessageEntry, latestSummary, spokenText, unsummarized } from "./log";
 import { NOTES_MAX_CHARS, NOTES_RULES, NOTES_TEMPLATE, readNotes, writeNotes } from "./notes";
 
@@ -23,7 +22,7 @@ const GAP_SECONDS = 10 * 60;
 const CJK = /[　-鿿가-힯＀-￯]/g;
 
 /** A rough count that holds for Japanese as well as English. */
-export function estimateTokens(text: string): number {
+function estimateTokens(text: string): number {
 	const cjk = text.match(CJK)?.length ?? 0;
 	return cjk + Math.ceil((text.length - cjk) / 4);
 }
@@ -31,12 +30,10 @@ export function estimateTokens(text: string): number {
 const entryTokens = (entry: ChatMessageEntry) =>
 	estimateTokens(JSON.stringify(entry.message.content));
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
 /** `2026-11-03 14:05`, in local time. */
 export function stamp(at: number): string {
 	const d = new Date(at * 1000);
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+	return `${localDate(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
 function withTime(message: Message & { role: "user" }, at: number): Message {

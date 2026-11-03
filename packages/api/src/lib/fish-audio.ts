@@ -2,18 +2,19 @@
 // own ones cloned from recordings and those shared on Fish Audio. Speech comes back as 24 kHz PCM,
 // made into a WAV like the engine's.
 
-import type { FishAudioTtsModel, FishAudioVoice } from "@nextroom/contracts";
+import {
+	FISH_AUDIO_MAX_CLONE_FILES,
+	type FishAudioTtsModel,
+	type FishAudioVoice,
+	TTS_SPEED_RANGE,
+} from "@nextroom/contracts";
 
-import { encodeWav } from "../engine/wav";
 import { fishAudioApiKey } from "../settings/chat";
-import { BadRequestError, Cancelled, ConflictError } from "./errors";
+import { BadRequestError } from "./errors";
+import { clampSpeed, PCM_RATE, speechOf, vendorClient } from "./vendor-http";
 
 const FISH_AUDIO_API_URL = "https://api.fish.audio";
-const PCM_RATE = 24000;
 const FISH_AUDIO_ASR_MODEL = "transcribe-1-pro";
-/** The speeds Fish Audio takes. */
-const MIN_SPEED = 0.5;
-const MAX_SPEED = 2;
 
 function requireKey(): string {
 	const key = fishAudioApiKey();
@@ -31,27 +32,12 @@ function detailOf(answer: unknown): string | null {
 	return null;
 }
 
-/** The response of `path`; a failed request is a ConflictError, an aborted one Cancelled. */
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
-	const headers = new Headers(init.headers);
-	headers.set("authorization", `Bearer ${requireKey()}`);
-	let response: Response;
-	try {
-		response = await fetch(FISH_AUDIO_API_URL + path, { ...init, headers });
-	} catch (error) {
-		if (init.signal?.aborted) throw new Cancelled();
-		throw new ConflictError(`Fish Audio に接続できません: ${(error as Error).message}`);
-	}
-	if (!response.ok) {
-		const detail = detailOf(await response.json().catch(() => null));
-		throw new ConflictError(`Fish Audio: ${detail ?? `${response.status} ${response.statusText}`}`);
-	}
-	return response;
-}
-
-async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
-	return (await request(path, init)).json() as Promise<T>;
-}
+const { request, requestJson } = vendorClient({
+	name: "Fish Audio",
+	baseUrl: FISH_AUDIO_API_URL,
+	auth: () => ["authorization", `Bearer ${requireKey()}`],
+	detailOf,
+});
 
 export interface FishAudioSpeech {
 	voiceId: string;
@@ -67,7 +53,7 @@ export async function synthesizeFishAudio(
 ): Promise<{ audio: Uint8Array; duration: number; seed: number }> {
 	if (!speech.voiceId)
 		throw new BadRequestError("キャラクターの声で Fish Audio の声を選んでください");
-	const speed = Math.min(Math.max(Number(speech.speed) || 1, MIN_SPEED), MAX_SPEED);
+	const speed = clampSpeed(speech.speed, TTS_SPEED_RANGE.fish_audio);
 	const response = await request("/v1/tts", {
 		method: "POST",
 		headers: { "content-type": "application/json", model: speech.model },
@@ -81,12 +67,7 @@ export async function synthesizeFishAudio(
 		}),
 		signal,
 	});
-	const pcm = new Uint8Array(await response.arrayBuffer());
-	return {
-		audio: encodeWav([pcm], PCM_RATE),
-		duration: pcm.length / 2 / PCM_RATE,
-		seed: 0,
-	};
+	return speechOf(response, 0);
 }
 
 interface ModelItem {
@@ -148,7 +129,10 @@ export async function cloneFishAudioVoice(
 ): Promise<string> {
 	if (!title.trim()) throw new BadRequestError("名前を入力してください");
 	if (!files.length) throw new BadRequestError("音声を選んでください");
-	if (files.length > 20) throw new BadRequestError("Fish Audio に送れる参照音声は20件までです");
+	if (files.length > FISH_AUDIO_MAX_CLONE_FILES)
+		throw new BadRequestError(
+			`Fish Audio に送れる参照音声は${FISH_AUDIO_MAX_CLONE_FILES}件までです`,
+		);
 	const form = new FormData();
 	form.append("type", "tts");
 	form.append("train_mode", "fast");

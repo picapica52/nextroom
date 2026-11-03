@@ -20,8 +20,8 @@ export type DiscordSettings = z.infer<typeof discordSettingsSchema>;
 export const discordSettingsPatchSchema = discordSettingsSchema.partial();
 export type DiscordSettingsPatch = z.infer<typeof discordSettingsPatchSchema>;
 
-export const DISCORD_STATES = ["off", "connecting", "ready", "error"] as const;
-export type DiscordState = (typeof DISCORD_STATES)[number];
+const DISCORD_STATES = ["off", "connecting", "ready", "error"] as const;
+type DiscordState = (typeof DISCORD_STATES)[number];
 
 export interface DiscordStatus {
 	state: DiscordState;

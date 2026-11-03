@@ -18,12 +18,12 @@ export type ToolGroup = (typeof TOOL_GROUPS)[number];
 /** How much a character may do without asking: never ask, let the approval model decide (it asks
  *  when an action is off the request or cannot be undone), or ask before any action that changes
  *  something. */
-export const APPROVAL_MODES = ["never", "auto", "ask"] as const;
+const APPROVAL_MODES = ["never", "auto", "ask"] as const;
 export type ApprovalMode = (typeof APPROVAL_MODES)[number];
 
 /** An action always allowed (it never asks) or blocked (refused without asking), in every mode.
  *  `tool` is the tool's name, or the app action for an app's tools. */
-export const approvalRuleSchema = z.object({
+const approvalRuleSchema = z.object({
 	tool: z.string().trim().min(1),
 	decision: z.enum(["allow", "block"]),
 });

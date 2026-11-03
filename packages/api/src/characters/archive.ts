@@ -24,6 +24,7 @@ const MARKER = "nextroom.json";
 const FORMAT = { format: "nextroom", version: 1 };
 
 const encode = (value: unknown) => new TextEncoder().encode(JSON.stringify(value, null, 1));
+const decode = (data?: Uint8Array): unknown => JSON.parse(new TextDecoder().decode(data));
 
 /** The voice's documents, as files of the zip. */
 const REFS_FILE = "voice/refs.json";
@@ -40,7 +41,7 @@ function filePaths(clipIds: string[]): string[] {
 function clipIdsOf(data: Uint8Array | undefined): string[] {
 	if (!data) return [];
 	try {
-		const { clips } = JSON.parse(new TextDecoder().decode(data)) as { clips?: { id?: unknown }[] };
+		const { clips } = decode(data) as { clips?: { id?: unknown }[] };
 		return (clips ?? [])
 			.map((c) => c.id)
 			.filter((id): id is string => typeof id === "string" && /^ref_[0-9a-f]+$/.test(id));
@@ -73,10 +74,10 @@ export function exportName(characterId: string): string {
 	return safeFileName(loadCharacter(characterId).persona.name) || "character";
 }
 
-export const isArchive = (files: Record<string, Uint8Array>) => MARKER in files;
+const isArchive = (files: Record<string, Uint8Array>) => MARKER in files;
 
 /** The files of a zip, by path. */
-export function unzip(data: Uint8Array): Record<string, Uint8Array> {
+function unzip(data: Uint8Array): Record<string, Uint8Array> {
 	try {
 		return unzipSync(data);
 	} catch {
@@ -92,7 +93,7 @@ export function importArchive(data: Uint8Array): CharacterView {
 	}
 	let raw: unknown;
 	try {
-		raw = JSON.parse(new TextDecoder().decode(files["character.json"]));
+		raw = decode(files["character.json"]);
 	} catch {
 		throw new BadRequestError("character.json を読み取れません");
 	}
@@ -134,7 +135,7 @@ function importVoiceDocs(characterId: string, files: Record<string, Uint8Array>)
 		const data = files[path];
 		if (!data) return null;
 		try {
-			return JSON.parse(new TextDecoder().decode(data)) as unknown;
+			return decode(data);
 		} catch {
 			return null;
 		}

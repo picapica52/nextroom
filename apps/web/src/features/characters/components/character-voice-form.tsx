@@ -4,6 +4,7 @@ import {
 	ELEVENLABS_TTS_MODELS,
 	FISH_AUDIO_TTS_MODELS,
 	TTS_PROVIDERS,
+	TTS_SPEED_RANGE,
 	type TtsProvider,
 } from "@nextroom/contracts";
 import { Field, FieldDescription, FieldLabel } from "@nextroom/ui/components/field";
@@ -14,9 +15,8 @@ import { SimpleSelect } from "@/components/simple-select";
 import { SpeechModelPicker } from "@/components/speech-model";
 import { ErrorNote } from "@/components/status";
 import { CaptionField, SpeedField } from "@/components/voice-fields";
-import { useChatSettings } from "@/hooks/queries";
+import { useChatSettings, useConnections } from "@/hooks/queries";
 import { ELEVENLABS_TTS_MODEL_LABELS, FISH_AUDIO_TTS_MODEL_LABELS } from "@/lib/api";
-import { useConnections } from "../queries";
 import { ElevenlabsClone, ElevenlabsDesign, ElevenlabsVoiceField } from "./elevenlabs-voice";
 import { FishAudioClone, FishAudioVoiceField } from "./fish-audio-voice";
 import { VoiceFileField, VoiceRefs } from "./voice-refs";
@@ -146,8 +146,8 @@ export function CharacterVoiceForm({
 						/>
 						<SpeedField
 							value={value.speed}
-							min={0.5}
-							max={2}
+							min={TTS_SPEED_RANGE.fish_audio.min}
+							max={TTS_SPEED_RANGE.fish_audio.max}
 							onChange={(speed) => update({ speed })}
 						/>
 					</>
@@ -170,8 +170,8 @@ export function CharacterVoiceForm({
 						/>
 						<SpeedField
 							value={value.speed}
-							min={0.7}
-							max={1.2}
+							min={TTS_SPEED_RANGE.elevenlabs.min}
+							max={TTS_SPEED_RANGE.elevenlabs.max}
 							onChange={(speed) => update({ speed })}
 						/>
 					</>

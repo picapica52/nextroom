@@ -32,7 +32,7 @@ const storedConnectionsSchema = z.object(
 	),
 ) as z.ZodType<Partial<Record<string, string>>>;
 /** The sections, each as stored. */
-export const SETTINGS_SECTIONS = {
+const SETTINGS_SECTIONS = {
 	chat: chatSettingsSchema.partial(),
 	connections: storedConnectionsSchema,
 	agent: storedAgentSchema,

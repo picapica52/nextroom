@@ -21,7 +21,7 @@ export const WORKSPACE = "/workspace";
 
 const IMAGE_DIR = join(import.meta.dir, "../../../desktop");
 const IMAGE_FILES = ["Dockerfile", "start.sh", "control.py", "files.py", "view.html"];
-export const VNC_PORT = 6080;
+const VNC_PORT = 6080;
 const BUILD_TIMEOUT_MS = 30 * 60_000;
 const START_TIMEOUT_MS = 60_000;
 const IDLE_MS = 15 * 60_000;
@@ -356,35 +356,20 @@ export async function fileRequest<T>(
 	bytes?: Blob,
 ): Promise<T> {
 	await useComputer(characterId, s);
-	const proc = track(
-		Bun.spawn(
-			["docker", "exec", "-i", "-u", "user", containerName(characterId), "nextroom-files"],
-			{ stdin: "pipe", stdout: "pipe", stderr: "pipe", windowsHide: true },
-		),
+	const input = new Blob([`${JSON.stringify(request)}\n`, ...(bytes ? [bytes] : [])]);
+	const result = await docker(
+		["exec", "-i", "-u", "user", containerName(characterId), "nextroom-files"],
+		FILES_TIMEOUT_MS,
+		input,
 	);
-	const timer = setTimeout(() => proc.kill(), FILES_TIMEOUT_MS);
+	let answer: FileAnswer;
 	try {
-		proc.stdin.write(`${JSON.stringify(request)}\n`);
-		if (bytes) proc.stdin.write(new Uint8Array(await bytes.arrayBuffer()));
-		await proc.stdin.end();
-		const [out, err, code] = await Promise.all([
-			new Response(proc.stdout).text(),
-			new Response(proc.stderr).text(),
-			proc.exited,
-		]);
-		let answer: FileAnswer;
-		try {
-			answer = JSON.parse(out) as FileAnswer;
-		} catch {
-			throw new Error(
-				`The computer did not answer: ${err.trim().split("\n").at(-1) || `exit ${code}`}`,
-			);
-		}
-		if (answer.error !== undefined) throw new ERRORS[answer.kind ?? "error"](answer.error);
-		return answer.result as T;
-	} finally {
-		clearTimeout(timer);
+		answer = JSON.parse(result.out) as FileAnswer;
+	} catch {
+		throw new Error(`The computer did not answer: ${dockerError(result)}`);
 	}
+	if (answer.error !== undefined) throw new ERRORS[answer.kind ?? "error"](answer.error);
+	return answer.result as T;
 }
 
 /** A file in the computer's workspace, streamed out of it (a download). */

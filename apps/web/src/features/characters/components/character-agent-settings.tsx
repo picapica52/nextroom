@@ -13,19 +13,11 @@ import { useConfirm } from "@/components/confirm";
 import { SaveTextarea } from "@/components/save-field";
 import { SettingsSection } from "@/components/settings-section";
 import { EmptyNote, ErrorNote } from "@/components/status";
+import { TOOL_GROUP_LABELS } from "@/features/agent/labels";
 import { useChatSettings } from "@/hooks/queries";
 import { formatDate } from "@/lib/api";
 import { useInstructionHistory, useSaveAgent } from "../queries";
 import { ModelChoiceField, useModelChoiceText } from "./model-choice-field";
-
-export const TOOL_GROUP_LABELS: Record<ToolGroup, string> = {
-	web_search: "Web 検索",
-	topic_search: "話題さがし",
-	computer: "コンピューター",
-	ask_user: "選択肢で聞く",
-	apps: "アプリ連携",
-	routines: "ルーティン",
-};
 
 /** The 詳細 tab: the character's own model, the tools it does without, and its instructions. */
 export function CharacterAgentSettings({ character }: { character: CharacterView }) {

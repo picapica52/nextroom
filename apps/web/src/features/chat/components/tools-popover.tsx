@@ -1,4 +1,4 @@
-import type { AgentSettingsPatch, AgentSettingsView } from "@nextroom/contracts";
+import type { AgentSettingsPatch, AgentSettingsView, ToolGroup } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
 import { Label } from "@nextroom/ui/components/label";
 import {
@@ -14,39 +14,35 @@ import { Switch } from "@nextroom/ui/components/switch";
 import { ChevronDown, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ErrorNote } from "@/components/status";
+import { TOOL_GROUP_LABELS } from "@/features/agent/labels";
 import { useAgentSettings, useSaveAgentSettings } from "@/features/agent/queries";
 
 const TOOLS: {
-	key: string;
-	label: string;
+	key: ToolGroup;
 	description: string;
 	on: (s: AgentSettingsView) => boolean;
 	patch: (on: boolean) => AgentSettingsPatch;
 }[] = [
 	{
 		key: "web_search",
-		label: "Web 検索",
 		description: "Exa で Web を検索する",
 		on: (s) => s.web_search.enabled,
 		patch: (enabled) => ({ web_search: { enabled } }),
 	},
 	{
 		key: "topic_search",
-		label: "話題さがし",
 		description: "「何か話して」と言われたら話題を探してくる",
 		on: (s) => s.topic_search.enabled,
 		patch: (enabled) => ({ topic_search: { enabled } }),
 	},
 	{
 		key: "computer",
-		label: "コンピューター",
 		description: "自分の Linux でコマンドを実行し、画面も操作する",
 		on: (s) => s.computer.enabled,
 		patch: (enabled) => ({ computer: { enabled } }),
 	},
 	{
 		key: "ask_user",
-		label: "選択肢を出す",
 		description: "決めてほしいことがあるとき、返答の最後に選択肢を出す",
 		on: (s) => s.ask_user.enabled,
 		patch: (enabled) => ({ ask_user: { enabled } }),
@@ -73,7 +69,7 @@ function ToolsPanel() {
 				{TOOLS.map((tool) => (
 					<div key={tool.key} className="flex items-start justify-between gap-3">
 						<Label htmlFor={`tool-${tool.key}`} className="flex flex-col items-start gap-0.5">
-							<span>{tool.label}</span>
+							<span>{TOOL_GROUP_LABELS[tool.key]}</span>
 							<span className="text-xs font-normal text-muted-foreground">{tool.description}</span>
 						</Label>
 						<Switch

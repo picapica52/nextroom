@@ -6,14 +6,13 @@
 import { z } from "zod";
 import type { AgentSettings } from "../../settings/agent";
 import { exaApiKey } from "../../settings/chat";
-import { NO_EXA_KEY, NO_TOPICS, SEARCH_UNREADABLE, searchFailed, TOPICS_NOTE } from "../prompts";
+import { NO_EXA_KEY, NO_TOPICS, TOPICS_NOTE } from "../prompts";
 import { defineTool, type ToolSet } from "../tool";
+import { exaSearch } from "./exa";
 
-const EXA_SEARCH_URL = "https://api.exa.ai/search";
 const NUM_RESULTS = 6;
 const PER_SLOT = 2;
 const HIGHLIGHT_CHARS = 400;
-const TIMEOUT_MS = 30_000;
 const INTEREST_DAYS = 7;
 const NEW_DAYS = 30;
 const KEPT_URLS = 60;
@@ -32,19 +31,6 @@ const FIELDS = [
 	{ field: "健康", query: "健康に関する新しい研究" },
 	{ field: "音楽", query: "音楽の話題" },
 ];
-
-const exaAnswerSchema = z.looseObject({
-	results: z
-		.array(
-			z.looseObject({
-				title: z.string().nullish(),
-				url: z.string(),
-				publishedDate: z.string().nullish(),
-				highlights: z.array(z.string()).nullish(),
-			}),
-		)
-		.nullish(),
-});
 
 interface Slot {
 	kind: "interest" | "new";
@@ -75,27 +61,13 @@ function pickFields(count: number) {
 
 async function search(slot: Slot, apiKey: string, abortSignal?: AbortSignal) {
 	const since = new Date(Date.now() - slot.days * 24 * 60 * 60 * 1000).toISOString();
-	const response = await fetch(EXA_SEARCH_URL, {
-		method: "POST",
-		headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-		body: JSON.stringify({
-			query: slot.query,
-			type: "instant",
-			numResults: NUM_RESULTS,
-			startPublishedDate: since,
-			contents: { highlights: { maxCharacters: HIGHLIGHT_CHARS } },
-		}),
-		signal: abortSignal
-			? AbortSignal.any([abortSignal, AbortSignal.timeout(TIMEOUT_MS)])
-			: AbortSignal.timeout(TIMEOUT_MS),
-	});
-	if (!response.ok) {
-		const detail = (await response.text().catch(() => "")).slice(0, 300);
-		throw new Error(searchFailed(response.status, detail));
-	}
-	const answer = exaAnswerSchema.safeParse(await response.json().catch(() => null));
-	if (!answer.success) throw new Error(SEARCH_UNREADABLE);
-	return (answer.data.results ?? [])
+	const answer = await exaSearch(
+		apiKey,
+		{ query: slot.query, numResults: NUM_RESULTS, highlightChars: HIGHLIGHT_CHARS, since },
+		abortSignal,
+	);
+	if ("error" in answer) throw new Error(answer.error);
+	return answer.results
 		.filter((r) => !recentUrls.includes(r.url) && r.highlights?.length)
 		.slice(0, PER_SLOT)
 		.map(

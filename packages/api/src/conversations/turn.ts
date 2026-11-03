@@ -153,7 +153,7 @@ const routinePrompt = (routine: Routine) =>
 
 /** Runs a routine as a turn of its character's conversation, nothing spoken; null while the
  *  character is busy with another turn. */
-export function submitRoutine(routine: Routine) {
+function submitRoutine(routine: Routine) {
 	const sessionId = routine.character_id;
 	if (turnRunning(sessionId)) return null;
 	const session = loadSession(sessionId);

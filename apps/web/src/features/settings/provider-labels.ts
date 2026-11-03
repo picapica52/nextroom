@@ -1,4 +1,9 @@
-import { type LlmProvider, OPENAI_COMPATIBLE } from "@nextroom/contracts";
+import {
+	type LlmProvider,
+	OPENAI_COMPATIBLE,
+	THINKING_LEVELS,
+	type ThinkingLevel,
+} from "@nextroom/contracts";
 import { useCallback, useMemo } from "react";
 import { useProviders } from "@/hooks/queries";
 
@@ -26,3 +31,19 @@ export function useProviderOptions(current?: LlmProvider | null) {
 		return ids.map((p) => ({ value: p, label: label(p) }));
 	}, [providers, current, label]);
 }
+
+export const THINKING_LABELS: Record<ThinkingLevel, string> = {
+	off: "オフ",
+	minimal: "最小",
+	low: "低",
+	medium: "中",
+	high: "高",
+	xhigh: "とても高い",
+	max: "最大",
+};
+
+/** The choices of the thinking select, the model's own default first. */
+export const THINKING_OPTIONS = [
+	{ value: null, label: "モデルの既定" },
+	...THINKING_LEVELS.map((t) => ({ value: t, label: THINKING_LABELS[t] })),
+];

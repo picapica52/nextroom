@@ -10,7 +10,8 @@ import {
 	type AffinityEventKind,
 	type EventDelivery,
 } from "@nextroom/contracts";
-import { calendarDays, localDate } from "./store";
+import { localDate } from "../lib/dates";
+import { calendarDays } from "./store";
 
 /** What the rules look at. */
 export interface EventContext {
@@ -115,7 +116,7 @@ const lateNights = (c: EventContext) => {
 const hour = (c: EventContext) => c.now.getHours();
 const firstToday = (c: EventContext) => c.affinity.today?.date !== localDate(c.now);
 
-export const EVENT_SPECS: Record<AffinityEventKind, EventSpec> = {
+const EVENT_SPECS: Record<AffinityEventKind, EventSpec> = {
 	good_morning: {
 		delivery: "opening",
 		level: 2,
