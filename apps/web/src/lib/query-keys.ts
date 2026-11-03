@@ -18,6 +18,7 @@ export const qk = {
 		provider === undefined ? ["llm-models"] : ["llm-models", provider],
 	docker: () => ["docker"] as const,
 	composio: () => ["composio"] as const,
+	composioCatalog: () => ["composio", "catalog"] as const,
 	discord: () => ["discord"] as const,
 	chatSessions: () => ["chat-sessions"] as const,
 	chat: (id?: string | null) => (id === undefined ? ["chat"] : ["chat", id]),

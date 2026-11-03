@@ -125,6 +125,20 @@ export interface ComposioStatus {
 	error: string | null;
 }
 
+/** An app of Composio, as the list the user picks apps from shows it. */
+export interface ComposioApp {
+	slug: string;
+	name: string;
+	logo: string | null;
+	no_auth: boolean;
+}
+
+export interface ComposioCatalog {
+	apps: ComposioApp[];
+	/** Why the list could not be read (no key, Composio did not answer…). */
+	error: string | null;
+}
+
 /** Where Composio's sign-in page sends the user back to once the account is connected. */
 export const composioConnectSchema = z.object({ callback_url: z.url() });
 

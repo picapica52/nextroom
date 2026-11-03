@@ -38,6 +38,16 @@ export function useComposioStatus(enabled: boolean) {
 	});
 }
 
+/** Every app of Composio, for the list the user picks apps from. */
+export function useComposioCatalog(enabled: boolean) {
+	return useQuery({
+		queryKey: qk.composioCatalog(),
+		queryFn: ({ signal }) => read(client.agent.composio.catalog.$get(undefined, signalled(signal))),
+		enabled,
+		staleTime: 60 * 60 * 1000,
+	});
+}
+
 /** Opens the sign-in page that connects an account to `toolkit`, which brings the user back here. */
 export function useConnectComposio() {
 	return useMutation({

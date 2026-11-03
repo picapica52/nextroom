@@ -10,7 +10,7 @@ import {
 	normalizeToolArguments,
 	type Tool,
 } from "@composio/core";
-import type { ComposioStatus } from "@nextroom/contracts";
+import type { ComposioApp, ComposioCatalog, ComposioStatus } from "@nextroom/contracts";
 import type { JsonSchemaTool, ToolSet } from "../agent/tool";
 import { BadRequestError, messageOf } from "../lib/errors";
 import { composioApiKey } from "../settings/chat";
@@ -113,6 +113,49 @@ export async function composioStatus(toolkits: string[]): Promise<ComposioStatus
 	} catch (error) {
 		forgetComposioSession();
 		return { toolkits: [], error: messageOf(error) };
+	}
+}
+
+const CATALOG_TTL_MS = 60 * 60 * 1000;
+
+let catalog: { key: string; at: number; apps: Promise<ComposioApp[]> } | null = null;
+
+/** Every app of Composio, read page by page through a session open to all of them. */
+async function loadCatalog(): Promise<ComposioApp[]> {
+	const session = await client().create(USER_ID, {
+		manageConnections: false,
+		sandbox: { enable: false },
+	});
+	const apps: ComposioApp[] = [];
+	let cursor: string | undefined;
+	do {
+		const page = await session.toolkits({ limit: 50, cursor });
+		for (const item of page.items) {
+			apps.push({
+				slug: item.slug.toLowerCase(),
+				name: item.name,
+				logo: item.logo ?? null,
+				no_auth: item.isNoAuth,
+			});
+		}
+		cursor = page.cursor || undefined;
+	} while (cursor);
+	return apps.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Every app the user can pick, read again after an hour. */
+export async function composioCatalog(): Promise<ComposioCatalog> {
+	const key = composioApiKey();
+	if (!key) return { apps: [], error: "Composio の API キーが未設定です" };
+	if (catalog?.key !== key || Date.now() - catalog.at > CATALOG_TTL_MS) {
+		catalog = { key, at: Date.now(), apps: loadCatalog() };
+	}
+	const entry = catalog;
+	try {
+		return { apps: await entry.apps, error: null };
+	} catch (error) {
+		if (catalog === entry) catalog = null;
+		return { apps: [], error: messageOf(error) };
 	}
 }
 
