@@ -1,19 +1,7 @@
-// The character agent: its settings (tools), the steps of a reply, and what the
+// The character agent: its settings, the steps of a reply, and what the
 // computer and memory screens are answered with.
 
 import { z } from "zod";
-
-/** The groups of tools a character can be kept from using (in its own settings). Its memory tool
- *  is always at hand. */
-export const TOOL_GROUPS = [
-	"web_search",
-	"topic_search",
-	"computer",
-	"ask_user",
-	"apps",
-	"routines",
-] as const;
-export type ToolGroup = (typeof TOOL_GROUPS)[number];
 
 /** How much a character may do without asking: never ask, let the approval model decide (it asks
  *  when an action is off the request or cannot be undone), or ask before any action that changes
