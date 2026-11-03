@@ -6,10 +6,12 @@
 
 - イメージ: `packages/api/desktop/`（Debian、Xvfb 1280x800、fluxbox、Chromium、xterm、xdotool、x11vnc、noVNC と websockify）。初めて使うときにアプリが `docker build` し、ファイルの中身から作ったタグ（`nextroom-desktop:<hash>`）を付けます。ファイルを変えると次に使うときに作り直します。
 - コンテナ: `nextroom-desktop-<キャラクター ID>`。ワークスペースを `/workspace` に、ホームをボリューム `nextroom-desktop-home-<キャラクター ID>` にマウントします。ブラウザのログイン状態などはホームに残ります。メモリと CPU は「設定 → コンピューター」で変えられます。
-- キャラクターの道具: `computer_observe`（スクリーンショット）と `computer_act`（クリック・入力・キー・スクロール・ドラッグ・ブラウザやターミナルを開く）。どちらも `docker exec` で xdotool と ImageMagick の `import` を動かします。スクリーンショットは画像としてモデルに渡し、会話の記録には残しません。画像を読めないモデルにはこの道具を渡しません。
+- キャラクターの道具: `computer_observe`（スクリーンショット）と `computer_act`（クリック・入力・キー・スクロール・ドラッグ・ブラウザやターミナルを開く）。スクリーンショットは画像としてモデルに渡し、会話の記録には残しません。画像を読めないモデルにはこの道具を渡しません。
+- 操作の経路: デスクトップごとに `docker exec -i` で制御プログラム（`control.py`）を1つ動かし続け、1行の JSON で頼みます。操作は中で xdotool を動かし、画面は MIT-SHM で X サーバーから直接読んで JPEG にします（使えないときは `import`）。プログラムが止まったら、次に使うときにまた起動します。
+- 同じ画面: スクリーンショットにはピクセルのハッシュを付け、同じ返答の中で前に見せたものと同じなら画像を省きます（画像はその返答の中でしかモデルに見えないため、返答ごとに数え直します）。同じ操作で画面が3回続けて変わらなければ、4回目は実行せずに別のやり方を促します。ツールバーの時計は秒を出さないようにしています（秒が出ると毎回別の画面になるため）。
 - 画面の表示: コンテナの中の x11vnc を2つ（見るだけのものと、操作できるもの）websockify が noVNC で出します。アプリのサーバーが `/api/desktops/<id>/vnc/` でページと WebSocket を中継します（`desktopSocket`）。「操作を代わる」で操作できる方につなぎ直します。
 - 15 分使われず、誰も画面を見ていないデスクトップは止めます。次に使うときにまた起動します。キャラクターを削除すると、コンテナとホームのボリュームも消します。
 
 ## 参考にした実装
 
-Rakazo（Apache License 2.0）のコンピューター（`infra/sandboxes/computer`、`computer_observe` / `computer_act`）の構成を参考にし、コードはこのアプリに合わせて書き直しました。Rakazo にある、操作の貸し出し（リース）・画面 URL の暗号化・複数ディスプレイ・コンテナ内の制御サーバーは入れていません。
+Rakazo（Apache License 2.0）のコンピューター（`infra/sandboxes/computer`、`computer_observe` / `computer_act`）の構成を参考にし、コードはこのアプリに合わせて書き直しました。制御プログラム、MIT-SHM での撮影、同じ画面の省略と繰り返しの検出も Rakazo の `control.py`・`xcapture.c`・`computer-tools.ts` を参考にしました。Rakazo にある、操作の貸し出し（リース）・画面 URL の暗号化・複数ディスプレイ・HTTP の制御サーバー（ここでは `docker exec` の標準入出力を使います）は入れていません。

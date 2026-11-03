@@ -32,6 +32,8 @@ done
 
 # A plain background: the style's wallpaper setter fails here and says so in a dialog.
 as_user sh -c 'mkdir -p ~/.fluxbox && echo "background: none" >~/.fluxbox/overlay'
+# A clock without seconds, so that a screen nothing happened on stays the same frame (control.py).
+as_user sh -c 'f=~/.fluxbox/init; touch "$f"; sed -i "/^session.screen0.strftimeFormat:/d" "$f"; echo "session.screen0.strftimeFormat: %H:%M" >>"$f"'
 as_user fbsetroot -solid "#2f3136"
 as_user fluxbox >/dev/null 2>&1 &
 as_user x11vnc -display :1 -forever -shared -viewonly -nopw -localhost -rfbport 5900 -quiet &

@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 		xvfb x11vnc fluxbox xterm xdotool x11-utils imagemagick \
-		novnc websockify python3 \
+		novnc websockify python3 python3-pil \
 		chromium dbus-x11 xdg-utils \
 		fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core \
 		ca-certificates curl git procps tzdata unzip \
@@ -20,7 +20,8 @@ RUN useradd -m -u 1000 -s /bin/bash user \
 
 COPY view.html /usr/share/novnc/nextroom.html
 COPY start.sh /usr/local/bin/nextroom-desktop
-RUN chmod 755 /usr/local/bin/nextroom-desktop
+COPY control.py /usr/local/bin/nextroom-control
+RUN chmod 755 /usr/local/bin/nextroom-desktop /usr/local/bin/nextroom-control
 
 WORKDIR /workspace
 EXPOSE 6080
