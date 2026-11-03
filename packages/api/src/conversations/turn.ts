@@ -23,7 +23,7 @@ import {
 	type ChatMessage,
 	type ChatSessionRecord,
 	type ChatSettings,
-	replyEffortOf,
+	type Routine,
 } from "@nextroom/contracts";
 import type { EventChoice } from "../affinity/events";
 import {
@@ -37,7 +37,8 @@ import { streamReply, TEXT_BREAK } from "../agent";
 import type { CharacterContext } from "../agent/context";
 import { compactSoon } from "../agent/memory";
 import { emptyReplyError } from "../agent/models";
-import { connectionOf, type LlmConnection } from "../agent/providers";
+import { type LlmConnection, replyConnections } from "../agent/providers";
+import type { RunStarter } from "../agent/routines";
 import { TurnReporter } from "../agent/steps";
 import { BRIEF_NOTE } from "../characters/instructions";
 import { conversationPrompt } from "../characters/prompt";
@@ -87,6 +88,8 @@ interface TurnPlan {
 	opening: EventChoice | null;
 	/** Told to answer in a word or a short sentence (in a Discord voice channel). */
 	brief: boolean;
+	/** The routine this turn runs, with no one at the device. */
+	routine: Routine | null;
 }
 
 /** Queue one exchange: the user's text or recording (WAV), and any images, in; a reply out
@@ -142,6 +145,51 @@ export async function submitOpening(sessionId: string, speak: boolean, brief = f
 	return queueTurn(session, character, user, null, speak, event, brief);
 }
 
+/** What the character is told when a routine's time comes. */
+const routinePrompt = (routine: Routine) =>
+	[
+		`[Routine: ${routine.name}]`,
+		`It is time for this, which the user set up: ${routine.instruction}`,
+		"The user is not at the device now. Do it now, with your tools if it needs them, and leave what you would say to them; they will read it later.",
+	].join("\n");
+
+/** Runs a routine as a turn of its character's conversation, nothing spoken; null while the
+ *  character is busy with another turn. */
+export function submitRoutine(routine: Routine) {
+	const sessionId = routine.character_id;
+	if (turnRunning(sessionId)) return null;
+	const session = loadSession(sessionId);
+	const character = getCharacter(sessionId);
+	const user: ChatMessage = {
+		id: newId("m_"),
+		role: "user",
+		text: routinePrompt(routine),
+		status: "done",
+		hidden: true,
+		created_at: now(),
+	};
+	return queueTurn(session, character, user, null, false, null, false, routine);
+}
+
+/** A routine's run, for the scheduler (agent/routines): how it ended and what was said. */
+export const runRoutineTurn: RunStarter = (routine) => {
+	const turn = submitRoutine(routine);
+	if (!turn) return null;
+	const { assistant } = turn;
+	return {
+		finished: turn.finished.then(() => ({
+			status:
+				assistant.status === "done"
+					? "done"
+					: assistant.status === "cancelled"
+						? "cancelled"
+						: "error",
+			reply: assistant.text,
+			error: assistant.error ?? null,
+		})),
+	};
+};
+
 function queueTurn(
 	session: ChatSessionRecord,
 	character: CharacterView,
@@ -150,6 +198,7 @@ function queueTurn(
 	speak: boolean,
 	opening: EventChoice | null,
 	brief: boolean,
+	routine: Routine | null = null,
 ) {
 	const sessionId = session.id;
 	const reply: ChatMessage = {
@@ -175,26 +224,32 @@ function queueTurn(
 		voice: character.voice,
 		opening,
 		brief,
+		routine,
 	};
-	const title = opening
-		? AFFINITY_EVENT_LABELS[opening.kind]
-		: user.text || (recording ? "音声入力" : "画像");
+	const title = routine
+		? `ルーティン: ${routine.name}`
+		: opening
+			? AFFINITY_EVENT_LABELS[opening.kind]
+			: user.text || (recording ? "音声入力" : "画像");
 	const job = queue.submit("chat", `会話: ${title.slice(0, 20)}`, (job) => runTurn(job, plan), {
 		session_id: sessionId,
 	});
 	user.job_id = reply.job_id = job.id;
 	startTurn(sessionId, user, reply);
 	saveSession(session);
-	return { user, assistant: reply, job: job.view() };
+	return { user, assistant: reply, job: job.view(), finished: job.finished };
 }
 
 async function runTurn(job: Job, plan: TurnPlan) {
 	const { sessionId, replyId } = plan;
-	const connection = connectionOf(plan.settings);
+	const connections = replyConnections(
+		plan.settings,
+		plan.routine?.model ?? plan.character.agent.model,
+	);
 	const userText = await heardText(job, plan);
 	if (userText === null) return { text: "" };
 	job.checkCancelled();
-	const turn = await prepareTurn(job, plan, connection, userText);
+	const turn = await prepareTurn(job, plan, connections, userText);
 
 	updateMessage(sessionId, replyId, { status: "thinking" });
 	job.update(0.2, "返答を生成中");
@@ -260,7 +315,7 @@ interface PreparedTurn {
 async function prepareTurn(
 	job: Job,
 	plan: TurnPlan,
-	connection: LlmConnection,
+	connections: LlmConnection[],
 	userText: string,
 ): Promise<PreparedTurn> {
 	const { sessionId, replyId, character, agentSettings } = plan;
@@ -270,9 +325,9 @@ async function prepareTurn(
 		character,
 		userText,
 		opening: plan.opening,
+		quiet: !!plan.routine,
 		spoken: !!plan.recording,
-		connection,
-		settings: plan.settings,
+		connection: connections,
 		signal: job.signal,
 	});
 	prompt.postHistory = [prompt.postHistory, affinity.note, plan.brief ? BRIEF_NOTE : ""]
@@ -291,16 +346,22 @@ async function prepareTurn(
 				signal: job.signal,
 			})
 		: null;
-	const reporter = new TurnReporter(sessionId, job.signal, (steps, status) =>
-		updateMessage(sessionId, replyId, { steps, ...(status ? { status } : {}) }),
+	const reporter = new TurnReporter(
+		sessionId,
+		job.signal,
+		(steps, status) => updateMessage(sessionId, replyId, { steps, ...(status ? { status } : {}) }),
+		!!plan.routine,
 	);
 	return {
 		context: {
 			...prompt,
-			connection,
+			connections,
+			connection: connections[0] as LlmConnection,
+			request: plan.routine?.instruction ?? userText,
 			sessionId,
 			characterId: sessionId,
 			settings: agentSettings,
+			disabledTools: character.agent.disabled_tools,
 			reporter,
 			addImages: (ids) =>
 				updateMessage(sessionId, replyId, {
@@ -371,7 +432,6 @@ async function streamTurn(
 	const stream = streamReply(turn.context, withImageNote(userText, plan.images), {
 		temperature: s.temperature,
 		maxTokens: s.max_tokens ?? undefined,
-		effort: replyEffortOf(s),
 		signal,
 		kept,
 	});
@@ -410,7 +470,7 @@ async function finishTurn(
 	try {
 		const affinity = finishAffinityTurn({
 			character: plan.character,
-			opened: !!plan.opening,
+			opened: !!plan.opening || !!plan.routine,
 			spoken: !!plan.recording,
 			tools: toolsOutcome(liveMessage(sessionId, replyId)?.steps ?? []),
 			event: turn.affinity.event,
@@ -425,8 +485,7 @@ async function finishTurn(
 	if (user && done) recordTurn(sessionId, user, done, kept);
 	settleTurn(sessionId);
 	compactSoon(sessionId, {
-		connection: turn.context.connection,
-		settings: plan.settings,
+		connections: turn.context.connections,
 		charName: plan.character.persona.name,
 		userName: plan.settings.user_name,
 	});

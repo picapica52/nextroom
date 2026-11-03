@@ -4,14 +4,9 @@
 // said (or at the notes): an event never makes up a past. Also reads the user's answer to a
 // confession.
 
-import {
-	type AffinityEventKind,
-	type CharacterView,
-	type ChatSettings,
-	replyEffortOf,
-} from "@nextroom/contracts";
+import type { AffinityEventKind, CharacterView } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import type { LlmConnection } from "../agent/providers";
+import type { Connections } from "../agent/llm";
 import { resourceTalk } from "../conversations/history";
 import { type EventChoice, type EventContext, guideOf, needsHistory } from "./events";
 
@@ -62,8 +57,7 @@ async function draftOf(
 	c: EventContext,
 	notes: string,
 	characterId: string,
-	connection: LlmConnection,
-	settings: ChatSettings,
+	connection: Connections,
 	signal: AbortSignal,
 ): Promise<Draft | null> {
 	const talk = resourceTalk(characterId, FIRST_MESSAGES, LAST_MESSAGES);
@@ -85,7 +79,6 @@ async function draftOf(
 	const draft = parseDraft(
 		await generateOnce(connection, DRAFT_INSTRUCTIONS, prompt, {
 			temperature: 0.7,
-			effort: replyEffortOf(settings),
 			signal,
 		}),
 	);
@@ -111,14 +104,13 @@ export async function prepareEvent(
 	c: EventContext,
 	character: CharacterView,
 	notes: string,
-	connection: LlmConnection,
-	settings: ChatSettings,
+	connection: Connections,
 	signal: AbortSignal,
 ): Promise<PreparedEvent | null> {
 	let topic: string = choice.label;
 	let points: string[] = [];
 	if (needsHistory(choice.kind)) {
-		const draft = await draftOf(choice.kind, c, notes, character.id, connection, settings, signal);
+		const draft = await draftOf(choice.kind, c, notes, character.id, connection, signal);
 		if (!draft) return null;
 		topic = draft.topic ?? topic;
 		points = draft.points ?? [];
@@ -138,15 +130,14 @@ export async function prepareEvent(
 /** Whether the user's words accept a confession: true, false, or null when they do not say. */
 export async function confessionAnswer(
 	userText: string,
-	connection: LlmConnection,
-	settings: ChatSettings,
+	connection: Connections,
 	signal: AbortSignal,
 ): Promise<boolean | null> {
 	const answer = await generateOnce(
 		connection,
 		'The character in a conversation app has just confessed their love to the user and asked them to go out. Read the user\'s reply and answer with one word: "yes" if they accept, "no" if they turn it down, "unclear" otherwise.',
 		userText,
-		{ temperature: 0, effort: replyEffortOf(settings), signal },
+		{ temperature: 0, signal },
 	);
 	const word = answer.trim().toLowerCase();
 	if (word.startsWith("yes")) return true;

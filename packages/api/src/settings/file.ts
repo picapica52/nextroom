@@ -1,9 +1,12 @@
 // Every setting the app keeps, in the database's `settings` table: the conversation's under
-// `chat`, the agent's under `agent`, and the Discord bot's under `discord`. Each section keeps
+// `chat`, the connections under `connections`, the agent's under `agent`, and the Discord bot's
+// under `discord`. Each section keeps
 // only the fields saved, so fields added later take their default.
 
 import {
 	agentSettingsSchema,
+	CONNECTION_KEYS,
+	CONNECTION_URLS,
 	chatSettingsSchema,
 	discordSettingsSchema,
 } from "@nextroom/contracts";
@@ -11,8 +14,17 @@ import { z } from "zod";
 
 import { readDoc, writeDoc } from "../lib/db";
 
-const { browser, sandbox, web_search, topic_search, ask_user, image_gen, composio } =
-	agentSettingsSchema.shape;
+const {
+	approvals,
+	browser,
+	sandbox,
+	web_search,
+	topic_search,
+	ask_user,
+	image_gen,
+	composio,
+	routines,
+} = agentSettingsSchema.shape;
 type ChatShape = typeof chatSettingsSchema.shape;
 /** A stored field that no longer fits (a choice since removed) takes its default. */
 const storedChatSchema = z.object(
@@ -24,6 +36,7 @@ const storedChatSchema = z.object(
 	) as { [K in keyof ChatShape]: z.ZodCatch<z.ZodOptional<ChatShape[K]>> },
 );
 const storedAgentSchema = z.object({
+	approvals: approvals.partial().optional(),
 	browser: browser.partial().optional(),
 	sandbox: sandbox.partial().optional(),
 	web_search: web_search.partial().optional(),
@@ -31,10 +44,17 @@ const storedAgentSchema = z.object({
 	ask_user: ask_user.partial().optional(),
 	image_gen: image_gen.partial().optional(),
 	composio: composio.partial().optional(),
+	routines: routines.partial().optional(),
 });
+const storedConnectionsSchema = z.object(
+	Object.fromEntries(
+		[...CONNECTION_KEYS, ...CONNECTION_URLS].map((k) => [k, z.string().optional()]),
+	),
+) as z.ZodType<Partial<Record<string, string>>>;
 /** The sections, each as stored. */
 export const SETTINGS_SECTIONS = {
 	chat: storedChatSchema,
+	connections: storedConnectionsSchema,
 	agent: storedAgentSchema,
 	discord: discordSettingsSchema.partial(),
 };

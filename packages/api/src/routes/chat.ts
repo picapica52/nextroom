@@ -1,7 +1,9 @@
 import {
 	type ChatSettingsView,
 	type ChatTurn,
+	type ConnectionsView,
 	chatSettingsPatchSchema,
+	connectionsPatchSchema,
 	LLM_PROVIDERS,
 	SUBSCRIPTION_PROVIDERS,
 	type SubscriptionLogin,
@@ -23,7 +25,7 @@ import { readChatImage } from "../conversations/images";
 import { clipOf } from "../conversations/live-turn";
 import { getSession, listSessions } from "../conversations/sessions";
 import { submitOpening, submitTurn } from "../conversations/turn";
-import { getSettings, updateSettings } from "../settings/chat";
+import { getConnections, getSettings, updateConnections, updateSettings } from "../settings/chat";
 import { approvalsRouter } from "./agent";
 import { bytesOf, json, query } from "./inputs";
 
@@ -55,10 +57,13 @@ export const chatRouter = new Hono()
 		c.json<ChatSettingsView>(updateSettings(c.req.valid("json"))),
 	)
 	.route("/subscriptions", subscriptionsRouter)
-	.get("/llm-models", query(z.object({ provider: z.string().optional() })), async (c) => {
-		const provider = LLM_PROVIDERS.find((p) => p === c.req.valid("query").provider);
-		return c.json(await listLlmModels(provider));
-	})
+	.get("/llm-models", query(z.object({ provider: z.enum(LLM_PROVIDERS) })), async (c) =>
+		c.json(await listLlmModels(c.req.valid("query").provider)),
+	)
+	.get("/connections", (c) => c.json<ConnectionsView>(getConnections()))
+	.patch("/connections", json(connectionsPatchSchema), (c) =>
+		c.json<ConnectionsView>(updateConnections(c.req.valid("json"))),
+	)
 	.get(
 		"/openrouter-image-models",
 		query(z.object({ output: z.enum(["image", "decisions"]) })),

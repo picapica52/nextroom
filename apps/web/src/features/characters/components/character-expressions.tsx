@@ -10,10 +10,9 @@ import { useConfirm } from "@/components/confirm";
 import { DROP_HIGHLIGHT, useFileDrop } from "@/components/drop-zone";
 import { SettingsSection } from "@/components/settings-section";
 import { ErrorNote, Meter } from "@/components/status";
-import { useChatSettings } from "@/hooks/queries";
 import { useFilePicker } from "@/hooks/use-file-picker";
 import { useExpressionActions } from "../expressions";
-import { IMAGE_ACCEPT } from "../queries";
+import { IMAGE_ACCEPT, useConnections } from "../queries";
 import { ExpressionCard } from "./expression-card";
 import { ExpressionGenerateDialog } from "./expression-generate-dialog";
 import { NeutralPanel } from "./neutral-panel";
@@ -25,8 +24,8 @@ export function CharacterExpressions({
 	character: CharacterView;
 	onChange: (c: CharacterView) => void;
 }) {
-	const settings = useChatSettings();
-	const keyMissing = settings.data ? !settings.data.has_openrouter_api_key : false;
+	const connections = useConnections();
+	const keyMissing = connections.data ? !connections.data.keys.openrouter_key.set : false;
 	const { upload, cutoutAll, cutting, tagAll, tagging, guesses, tagged, clearTags, batch, locked } =
 		useExpressionActions(character, onChange);
 	const pending = character.expressions.filter((e) => !e.cutout);
@@ -62,11 +61,11 @@ export function CharacterExpressions({
 			{keyMissing && (
 				<p className="m-0 rounded-lg border-2 bg-selected px-3 py-2 text-xs">
 					通話中の表情の切り替え・画像のタグ付け・表情画像の生成（OpenRouter のとき）には OpenRouter
-					の API キー（.env の OPENROUTER_API_KEY）が必要です。
-					<Link to="/settings/connections" className="font-bold text-warning">
-						設定 → 接続
+					の API キーが必要です。
+					<Link to="/settings/models" className="font-bold text-warning">
+						設定 → モデル
 					</Link>
-					で確認できます。
+					で入力できます。
 				</p>
 			)}
 			{drawing && (

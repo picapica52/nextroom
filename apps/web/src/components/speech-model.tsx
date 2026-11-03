@@ -35,8 +35,8 @@ export function SpeechModelNote({ task }: { task: Task }) {
 			)}
 			<span className="text-xs text-muted-foreground">
 				別に起動した speech.cpp サーバー（<span className="font-mono">{speech.url}</span>
-				）のモデルを使います。モデルは<Link to="/settings/models">「モデル」</Link>
-				で選び、接続先は .env の SPEECH_URL で設定します。
+				）のモデルを使います。接続先は<Link to="/settings/voice">設定 → 音声</Link>
+				で設定します。
 			</span>
 		</span>
 	);
@@ -78,8 +78,8 @@ export function SpeechModelPicker({
 			<span className="flex flex-col items-start gap-1">
 				<Dot tone="destructive">speech.cpp サーバーに接続できません</Dot>
 				<span className="text-xs text-muted-foreground">
-					サーバーの起動方法と本体のダウンロードは<Link to="/settings/connections">「接続」</Link>
-					にあります。モデルは、サーバーに接続できると選べます。
+					サーバーの接続先は<Link to="/settings/voice">設定 → 音声</Link>
+					で設定します。モデルは、サーバーに接続できると選べます。
 				</span>
 			</span>
 		);

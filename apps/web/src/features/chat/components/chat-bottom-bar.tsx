@@ -37,7 +37,7 @@ export function ChatBottomBar({
 					<Link to="/settings/models" className="text-warning">
 						設定 → モデル
 					</Link>
-					で接続先とモデルを指定してください。
+					でメインモデルを選んでください。
 				</p>
 			)}
 			{sessionId &&

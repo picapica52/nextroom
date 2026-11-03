@@ -1,11 +1,19 @@
-// The conversation's settings, under `chat` in the settings (settings/file.ts), and the connections (the
-// services' addresses and API keys), which are read from the environment (apps/server/.env).
+// The conversation's settings, under `chat` in the settings (settings/file.ts), and the connections
+// (the services' addresses and API keys), under `connections`: entered on the settings screens,
+// with the environment (apps/server/.env) as the fallback for those left empty.
 
 import {
 	type CharacterVoice,
 	type ChatSettings,
 	type ChatSettingsPatch,
 	type ChatSettingsView,
+	CONNECTION_KEYS,
+	CONNECTION_URLS,
+	type ConnectionKey,
+	type ConnectionSource,
+	type ConnectionsPatch,
+	type ConnectionsView,
+	type ConnectionUrl,
 	chatSettingsSchema,
 	DEFAULT_SPEECH_URL,
 } from "@nextroom/contracts";
@@ -15,18 +23,12 @@ import { readSettingsSection, writeSettingsSection } from "./file";
 export type { ChatSettings };
 
 const CHAT_DEFAULTS: ChatSettings = {
-	provider: "openai_compatible",
-	model: "",
-	anthropic_model: "",
-	openrouter_model: "",
-	chatgpt_model: "",
-	claude_model: "",
-	copilot_model: "",
-	grok_model: "",
+	main_model: null,
+	fallback_models: [],
+	approval_model: null,
 	custom_prompt: "",
 	temperature: 0.7,
 	max_tokens: null,
-	reasoning_effort: "",
 	/** {{user}} in the characters' settings. */
 	user_name: "ユーザー",
 	asr_provider: "parakeet",
@@ -37,35 +39,15 @@ const CHAT_DEFAULTS: ChatSettings = {
 	image_gen_model: "",
 };
 
-/** Fields that null clears. */
-const NULLABLE = new Set(["max_tokens"]);
-
 /** The saved settings; fields the settings no longer have are left out. */
 export function loadSettings(): ChatSettings {
 	return { ...CHAT_DEFAULTS, ...readSettingsSection("chat") };
 }
 
-/** Settings for the UI: the API keys themselves are never sent back, only whether one is set. */
-export function getSettings(): ChatSettingsView {
-	return {
-		...loadSettings(),
-		base_url: openaiCompatibleUrl(),
-		speech_url: speechUrl(),
-		has_api_key: Boolean(openaiCompatibleApiKey()),
-		has_anthropic_api_key: Boolean(anthropicApiKey()),
-		has_openrouter_api_key: Boolean(openrouterApiKey()),
-		has_exa_api_key: Boolean(exaApiKey()),
-		has_composio_api_key: Boolean(composioApiKey()),
-		has_elevenlabs_api_key: Boolean(elevenlabsApiKey()),
-	};
-}
+export const getSettings = (): ChatSettingsView => loadSettings();
 
 export function updateSettings(patch: ChatSettingsPatch) {
-	const current: Record<string, unknown> = { ...loadSettings() };
-	for (const [key, value] of Object.entries(patch)) {
-		if (value === undefined || (value === null && !NULLABLE.has(key))) continue;
-		current[key] = value;
-	}
+	const current = { ...loadSettings(), ...patch };
 	writeSettingsSection("chat", parseOrBadRequest(chatSettingsSchema, current));
 	return getSettings();
 }
@@ -75,21 +57,77 @@ export function updateSettings(patch: ChatSettingsPatch) {
 export const speaksWith = (voice: CharacterVoice | undefined, s = loadSettings()) =>
 	s.tts_enabled && (voice?.provider !== "elevenlabs" || Boolean(voice.elevenlabs_voice_id));
 
-const env = (name: string) => () => process.env[name]?.trim() || "";
-const url = (name: string, fallback: string) => () =>
-	(process.env[name]?.trim() || fallback).replace(/\/+$/, "");
+/** Each connection's variable in the environment, and the default of the addresses. */
+const ENV_NAMES: Record<ConnectionKey | ConnectionUrl, string> = {
+	openai_compatible_key: "OPENAI_COMPATIBLE_API_KEY",
+	openrouter_key: "OPENROUTER_API_KEY",
+	anthropic_key: "ANTHROPIC_API_KEY",
+	exa_key: "EXA_API_KEY",
+	composio_key: "COMPOSIO_API_KEY",
+	elevenlabs_key: "ELEVENLABS_API_KEY",
+	openai_compatible_url: "OPENAI_COMPATIBLE_BASE_URL",
+	speech_url: "SPEECH_URL",
+};
+const URL_DEFAULTS: Record<ConnectionUrl, string> = {
+	openai_compatible_url: "http://127.0.0.1:11434/v1",
+	speech_url: DEFAULT_SPEECH_URL,
+};
+
+const entered = () => readSettingsSection("connections") ?? {};
+
+function connection(name: ConnectionKey | ConnectionUrl): {
+	value: string;
+	source: ConnectionSource;
+} {
+	const own = entered()[name]?.trim();
+	if (own) return { value: own, source: "settings" };
+	const fromEnv = process.env[ENV_NAMES[name]]?.trim();
+	if (fromEnv) return { value: fromEnv, source: "env" };
+	if (name in URL_DEFAULTS)
+		return { value: URL_DEFAULTS[name as ConnectionUrl], source: "default" };
+	return { value: "", source: null };
+}
+
+const key = (name: ConnectionKey) => () => connection(name).value;
+const url = (name: ConnectionUrl) => () => connection(name).value.replace(/\/+$/, "");
 
 /** The endpoint of the replies set to "OpenAI compatible". */
-export const openaiCompatibleUrl = url("OPENAI_COMPATIBLE_BASE_URL", "http://127.0.0.1:11434/v1");
+export const openaiCompatibleUrl = url("openai_compatible_url");
 /** Empty for an endpoint that wants none, such as Ollama. */
-export const openaiCompatibleApiKey = env("OPENAI_COMPATIBLE_API_KEY");
-export const openrouterApiKey = env("OPENROUTER_API_KEY");
-export const anthropicApiKey = env("ANTHROPIC_API_KEY");
+export const openaiCompatibleApiKey = key("openai_compatible_key");
+export const openrouterApiKey = key("openrouter_key");
+export const anthropicApiKey = key("anthropic_key");
 /** The character's web search. */
-export const exaApiKey = env("EXA_API_KEY");
+export const exaApiKey = key("exa_key");
 /** The character's apps. */
-export const composioApiKey = env("COMPOSIO_API_KEY");
+export const composioApiKey = key("composio_key");
 /** Speech in and out, and the characters' ElevenLabs voices. */
-export const elevenlabsApiKey = env("ELEVENLABS_API_KEY");
+export const elevenlabsApiKey = key("elevenlabs_key");
 /** The speech.cpp server, which speaks and transcribes for the local providers. */
-export const speechUrl = url("SPEECH_URL", DEFAULT_SPEECH_URL);
+export const speechUrl = url("speech_url");
+
+/** The connections for the screens: the addresses, and only whether each key is set. */
+export function getConnections(): ConnectionsView {
+	const keys = Object.fromEntries(
+		CONNECTION_KEYS.map((k) => {
+			const { value, source } = connection(k);
+			return [k, { set: Boolean(value), source }];
+		}),
+	) as ConnectionsView["keys"];
+	const urls = Object.fromEntries(
+		CONNECTION_URLS.map((u) => [u, connection(u)]),
+	) as ConnectionsView["urls"];
+	return { keys, urls };
+}
+
+/** Changes the entered connections; an empty value clears one, so the environment applies again. */
+export function updateConnections(patch: ConnectionsPatch): ConnectionsView {
+	const next: Record<string, string | undefined> = { ...entered() };
+	for (const [name, value] of Object.entries(patch)) {
+		if (value === undefined) continue;
+		if (value.trim()) next[name] = value.trim();
+		else delete next[name];
+	}
+	writeSettingsSection("connections", next);
+	return getConnections();
+}

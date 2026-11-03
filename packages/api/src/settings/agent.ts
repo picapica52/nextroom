@@ -7,6 +7,7 @@ import {
 	type AgentSettings,
 	type AgentSettingsPatch,
 	type AgentSettingsView,
+	type ApprovalRule,
 	agentSettingsSchema,
 } from "@nextroom/contracts";
 
@@ -17,7 +18,8 @@ import { readSettingsSection, writeSettingsSection } from "./file";
 export type { AgentSettings };
 
 const AGENT_DEFAULTS: AgentSettings = {
-	browser: { enabled: false, headless: false, approve_act: true, approve_navigate: false },
+	approvals: { mode: "auto", rules: [] },
+	browser: { enabled: false, headless: false },
 	sandbox: {
 		enabled: false,
 		provider: "docker",
@@ -26,20 +28,16 @@ const AGENT_DEFAULTS: AgentSettings = {
 		cpus: 2,
 		network: true,
 		timeout_sec: 300,
-		approve_command: true,
-		approve_write: false,
-		approve_delete: true,
 	},
 	web_search: { enabled: false },
 	topic_search: { enabled: false },
 	ask_user: { enabled: false },
-	image_gen: { enabled: false, approve: false },
+	image_gen: { enabled: false },
 	composio: {
 		enabled: false,
 		toolkits: ["gmail", "googlecalendar"],
-		approve_read: false,
-		approve_write: true,
 	},
+	routines: { enabled: true },
 };
 
 const SECTIONS = Object.keys(AGENT_DEFAULTS) as (keyof AgentSettings)[];
@@ -79,4 +77,11 @@ export function updateAgentSettings(patch: AgentSettingsPatch) {
 	);
 	writeSettingsSection("agent", settings);
 	return getAgentSettings();
+}
+
+/** Adds an approval rule, replacing the one the action had. */
+export function addApprovalRule(rule: ApprovalRule): void {
+	const current = loadAgentSettings();
+	const rules = [...current.approvals.rules.filter((r) => r.tool !== rule.tool), rule];
+	updateAgentSettings({ approvals: { rules } });
 }

@@ -1,6 +1,7 @@
 import {
 	affinityPatchSchema,
 	type CharacterSummary,
+	characterAgentPatchSchema,
 	expressionBatchSchema,
 	expressionPatchSchema,
 	neutralGenerateSchema,
@@ -13,6 +14,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { backToFriends, getAffinity, resetAffinity } from "../affinity/store";
 import { forgetConversation, stopSandbox } from "../agent/cleanup";
+import { deleteRoutinesOf } from "../agent/routines";
+import {
+	forgetInstructionRevisions,
+	instructionRevisions,
+	updateCharacterAgent,
+} from "../characters/agent";
 import { exportArchive, exportName, importArchive } from "../characters/archive";
 import { generateNeutral, regenerateExpression, tagExpression } from "../characters/expression-ai";
 import {
@@ -119,9 +126,16 @@ export const charactersRouter = new Hono()
 		loadCharacter(id);
 		await stopSandbox(id);
 		deleteCharacter(id);
+		deleteRoutinesOf(id);
+		forgetInstructionRevisions(id);
 		await forgetConversation(id);
 		return c.json(ok);
 	})
+	// What the character does differently from the others: its model, tools and instructions.
+	.patch("/:id/agent", json(characterAgentPatchSchema), (c) =>
+		c.json(updateCharacterAgent(c.req.param("id"), c.req.valid("json"))),
+	)
+	.get("/:id/instructions/history", (c) => c.json(instructionRevisions(c.req.param("id"))))
 	.get("/:id/affinity", (c) => {
 		const id = c.req.param("id");
 		loadCharacter(id);

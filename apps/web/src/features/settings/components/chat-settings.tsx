@@ -1,9 +1,8 @@
 import type { ChatSettingsPatch, ChatSettingsView } from "@nextroom/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
 import { SettingsBody, SettingsErrorFooter } from "@/components/settings-section";
-import { Dot, ErrorNote } from "@/components/status";
+import { ErrorNote } from "@/components/status";
 import { useChatSettings } from "@/hooks/queries";
 import { client, read } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
@@ -55,19 +54,5 @@ export function ChatSettingsPage({ children }: { children: (f: ChatSettingsForm)
 			</SettingsBody>
 			<SettingsErrorFooter error={save.error} />
 		</>
-	);
-}
-
-/** Whether a key of the server's .env is set, with a link to the connection page. */
-export function ConnectionStatus({ isSet, name }: { isSet: boolean; name: string }) {
-	return (
-		<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-			{isSet ? (
-				<Dot tone="success">{name} のキーは設定済み</Dot>
-			) : (
-				<Dot tone="warning">{name} のキーが未設定</Dot>
-			)}
-			<Link to="/settings/connections">キーは .env で設定（「接続」で確認）</Link>
-		</div>
 	);
 }

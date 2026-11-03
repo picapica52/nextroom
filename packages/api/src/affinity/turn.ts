@@ -1,14 +1,9 @@
 // The affinity's part in a turn: what the character is told of the relationship and of an event
 // it starts, before the reply; the exchange counted and the event noted, after it.
 
-import type {
-	CharacterView,
-	ChatAffinityMark,
-	ChatSettings,
-	EventDelivery,
-} from "@nextroom/contracts";
+import type { CharacterView, ChatAffinityMark, EventDelivery } from "@nextroom/contracts";
+import type { Connections } from "../agent/llm";
 import { readNotes } from "../agent/memory";
-import type { LlmConnection } from "../agent/providers";
 import { otherCharactersTalks } from "../conversations/sessions";
 import { confessionAnswer, type PreparedEvent, prepareEvent } from "./draft";
 import { chooseEvent, type EventChoice, type EventContext, parseNotes } from "./events";
@@ -60,31 +55,28 @@ export async function prepareAffinityTurn(options: {
 	character: CharacterView;
 	userText: string;
 	opening: EventChoice | null;
+	/** No one is there (a routine's run): no confession is answered and no event starts. */
+	quiet?: boolean;
 	/** The user said it aloud. */
 	spoken: boolean;
-	connection: LlmConnection;
-	settings: ChatSettings;
+	connection: Connections;
 	signal: AbortSignal;
 }): Promise<AffinityTurn> {
-	const { character, opening, connection, settings, signal } = options;
+	const { character, opening, connection, signal } = options;
 	const confessed = loadAffinity(character.id).confessed_at;
-	if (!opening && confessed !== null) {
-		const accepted = await confessionAnswer(options.userText, connection, settings, signal).catch(
-			() => null,
-		);
+	if (!opening && !options.quiet && confessed !== null) {
+		const accepted = await confessionAnswer(options.userText, connection, signal).catch(() => null);
 		if (accepted !== null) answerConfession(character.id, accepted);
 		else if (Date.now() / 1000 - confessed > CONFESSION_WAIT_SECONDS)
 			answerConfession(character.id, false);
 	}
 	const { context, notes } = await contextOf(character, options.spoken);
-	const choice = opening ?? chooseEvent(context, ["reply"]);
+	const choice = opening ?? (options.quiet ? null : chooseEvent(context, ["reply"]));
 	const event = choice
-		? await prepareEvent(choice, context, character, notes, connection, settings, signal).catch(
-				(error) => {
-					console.warn(`Could not prepare the event ${choice.kind}:`, error);
-					return null;
-				},
-			)
+		? await prepareEvent(choice, context, character, notes, connection, signal).catch((error) => {
+				console.warn(`Could not prepare the event ${choice.kind}:`, error);
+				return null;
+			})
 		: null;
 	return {
 		note: [

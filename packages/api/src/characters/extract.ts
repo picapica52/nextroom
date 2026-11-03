@@ -6,10 +6,9 @@ import {
 	PERSONA_SOURCE_EXTENSIONS,
 	type Persona,
 	type PersonaExtract,
-	replyEffortOf,
 } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import { connectionOf } from "../agent/providers";
+import { replyConnections } from "../agent/providers";
 import { BadRequestError, ConflictError } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
 
@@ -127,7 +126,7 @@ export async function extractPersona(
 ): Promise<PersonaExtract> {
 	if (files.length === 0) throw new BadRequestError("ファイルを選んでください");
 	const settings = loadSettings();
-	const connection = connectionOf(settings);
+	const connection = replyConnections(settings);
 
 	const truncated: PersonaExtract["truncated"] = [];
 	const sources: string[] = [];
@@ -154,7 +153,6 @@ export async function extractPersona(
 
 	const answer = await generateOnce(connection, INSTRUCTIONS, prompt, {
 		temperature: 0.3,
-		effort: replyEffortOf(settings),
 		signal,
 	});
 	return { persona: personaOf(answer), truncated };

@@ -19,7 +19,7 @@ import {
 	type ChatSettings,
 	isSubscription,
 	type LlmProvider,
-	replyModelOf,
+	type ModelChoice,
 	type SubscriptionProvider,
 } from "@nextroom/contracts";
 
@@ -40,6 +40,8 @@ export interface LlmConnection {
 	/** Empty for an endpoint that wants none, such as Ollama, and for a subscription. */
 	apiKey: string;
 	model: string;
+	/** Null: the model's default. */
+	thinking: ModelChoice["thinking"];
 }
 
 const ANTHROPIC_BASE_URL = "https://api.anthropic.com/v1";
@@ -160,11 +162,9 @@ export function modelOf(connection: LlmConnection): Model<Api> {
 export const apiKeyOf = (connection: LlmConnection): string | undefined =>
 	isSubscription(connection.provider) ? undefined : connection.apiKey.trim() || "none";
 
-/** pi's thinking level for the effort of the settings; none for the model's default. */
-export function thinkingLevelOf(effort?: string): ThinkingLevel | undefined {
-	if (!effort) return undefined;
-	return (effort === "none" ? "off" : effort) as ThinkingLevel;
-}
+/** pi's thinking level for the connection; none for the model's default. */
+export const thinkingLevelOf = (connection: LlmConnection) =>
+	(connection.thinking ?? undefined) as ThinkingLevel | undefined;
 
 /** How a reply's agent calls the connection's model. */
 export function streamFnOf(connection: LlmConnection): StreamFn {
@@ -191,24 +191,52 @@ const ENDPOINTS: Record<
 	},
 };
 
-/** The connection for the chosen provider; `requireModel: false` for listing the models. */
-export function connectionOf(settings: ChatSettings, requireModel = true): LlmConnection {
-	const { provider } = settings;
-	const model = replyModelOf(settings);
-	if (requireModel && !model)
-		throw new BadRequestError("設定 → モデル で 返答モデル を指定してください");
+const NO_KEY: Record<string, string> = {
+	OPENROUTER_API_KEY: "OpenRouter",
+	ANTHROPIC_API_KEY: "Anthropic",
+};
+
+/** Where `provider` is and the key it takes, for any of its models (listing them, too). */
+export function providerConnection(provider: LlmProvider, model = ""): LlmConnection {
 	if (isSubscription(provider)) {
 		if (!isSignedIn(provider))
 			throw new BadRequestError(
 				`設定 → モデル で ${SUBSCRIPTION_NAMES[provider]} にサインインしてください`,
 			);
-		return { provider, baseUrl: "", apiKey: "", model };
+		return { provider, baseUrl: "", apiKey: "", model, thinking: null };
 	}
 	const spec = ENDPOINTS[provider];
 	const { baseUrl, apiKey } = spec.endpoint();
 	if (spec.keyName && !apiKey)
-		throw new BadRequestError(`.env で ${spec.keyName} を設定してください`);
-	return { provider, baseUrl, apiKey, model };
+		throw new BadRequestError(
+			`設定 → モデル で ${NO_KEY[spec.keyName] ?? spec.keyName} の API キーを登録してください`,
+		);
+	return { provider, baseUrl, apiKey, model, thinking: null };
+}
+
+/** The connection of a model the settings chose. */
+export const connectionOf = (choice: ModelChoice): LlmConnection => ({
+	...providerConnection(choice.provider, choice.model),
+	thinking: choice.thinking,
+});
+
+/** What a reply is tried with, in order: the character's own model or the main model, then the
+ *  fallbacks. A fallback that cannot be used now (no key, not signed in) is left out. */
+export function replyConnections(
+	settings: ChatSettings,
+	own?: ModelChoice | null,
+): LlmConnection[] {
+	const main = own ?? settings.main_model;
+	if (!main) throw new BadRequestError("設定 → モデル で メインモデル を選んでください");
+	const out = [connectionOf(main)];
+	for (const choice of settings.fallback_models) {
+		try {
+			out.push(connectionOf(choice));
+		} catch (error) {
+			console.warn(`Left out the fallback model ${choice.provider}/${choice.model}:`, error);
+		}
+	}
+	return out;
 }
 
 /** The request that lists an API endpoint's models. */

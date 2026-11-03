@@ -10,12 +10,13 @@ import {
 	agentLoop,
 } from "@earendil-works/pi-agent-core";
 import { createInitialSystemMessage, type Message, type UserMessage } from "@earendil-works/pi-ai";
+import type { ToolGroup } from "@nextroom/contracts";
 import type { CharacterContext } from "./context";
 import { assistantError, type CallOptions, llmFailure } from "./llm";
 import { historyForModel, memoryReady, readNotes } from "./memory";
 import { NOTES_TEMPLATE } from "./memory/notes";
 import { toolGuide } from "./prompts";
-import { modelOf, streamFnOf, thinkingLevelOf } from "./providers";
+import { type LlmConnection, modelOf, streamFnOf, thinkingLevelOf } from "./providers";
 import { type ToolSet, toAgentTool } from "./tool";
 import { askUserTools, offeredChoices } from "./tools/ask-user";
 import { browserTools } from "./tools/browser";
@@ -23,6 +24,7 @@ import { composioTools } from "./tools/composio";
 import { findTopicTools } from "./tools/find-topic";
 import { imageGenTools } from "./tools/image-gen";
 import { memoryTools } from "./tools/memory";
+import { routineTools } from "./tools/routines";
 import { sandboxTools } from "./tools/sandbox";
 import { webSearchTools } from "./tools/web-search";
 
@@ -36,19 +38,24 @@ const MAX_STEPS = 12;
  *  said so far is complete and should be spoken now, not when the next text arrives. */
 export const TEXT_BREAK = Symbol("text-break");
 
-/** Every tool the settings turn on. */
+/** Every tool the settings turn on, less the groups the character does without. */
 async function toolsOf(context: CharacterContext): Promise<ToolSet> {
-	const { settings, connection } = context;
-	return {
-		...memoryTools(),
-		...webSearchTools(settings),
-		...findTopicTools(settings),
-		...browserTools(settings, connection),
-		...sandboxTools(settings),
-		...imageGenTools(settings),
-		...askUserTools(settings),
-		...(await composioTools(settings)),
-	};
+	const { settings, connection, disabledTools } = context;
+	const groups: [ToolGroup, () => ToolSet | Promise<ToolSet>][] = [
+		["web_search", () => webSearchTools(settings)],
+		["topic_search", () => findTopicTools(settings)],
+		["browser", () => browserTools(settings, connection)],
+		["workspace", () => sandboxTools(settings)],
+		["send_photo", () => imageGenTools(settings)],
+		["ask_user", () => askUserTools(settings)],
+		["routines", () => routineTools(settings)],
+		["apps", () => composioTools(settings)],
+	];
+	const tools: ToolSet = { ...memoryTools() };
+	for (const [group, make] of groups) {
+		if (!disabledTools.includes(group)) Object.assign(tools, await make());
+	}
+	return tools;
 }
 
 const section = (title: string, body: string) => (body.trim() ? `# ${title}\n${body.trim()}` : "");
@@ -92,14 +99,23 @@ const isPrompt = (m: Message, prompt: UserMessage) =>
 const hasContent = (m: Message) =>
 	m.role !== "assistant" || m.content.some((c) => c.type !== "text" || c.text.trim());
 
+/** A model failed before the reply said or did anything, so the next one can take over. */
+class NothingSaid extends Error {
+	constructor(readonly cause: Error) {
+		super(cause.message);
+	}
+}
+
 /** The character's reply text pieces as they arrive. Its tool calls (and their output) go to the
- *  context's reporter; the messages it adds (the user's, then the reply's) go to `kept`. */
+ *  context's reporter; the messages it adds (the user's, then the reply's) go to `kept`. When a
+ *  model fails before the reply says or does anything, the next of the context's connections
+ *  takes over. */
 export async function* streamReply(
 	context: CharacterContext,
 	text: string,
 	options: CallOptions & { kept: Message[] },
 ): AsyncGenerator<string | typeof TEXT_BREAK> {
-	const { reporter, connection } = context;
+	const { reporter } = context;
 	try {
 		await memoryReady(context.characterId);
 		const tools: AgentTool[] = Object.values(await toolsOf(context)).map((t) =>
@@ -107,40 +123,77 @@ export async function* streamReply(
 		);
 		const { summary, messages } = historyForModel(context.characterId);
 		const system = createInitialSystemMessage(systemPrompt(context, summary), tools);
+		const history = [...(system ? [system] : []), ...messages];
 		const prompt: UserMessage = { role: "user", content: text, timestamp: Date.now() };
-		let steps = 0;
-		const stream = agentLoop(
-			[prompt],
-			{ messages: [...(system ? [system] : []), ...messages], tools },
-			{
-				model: modelOf(connection),
-				temperature: options.temperature,
-				maxTokens: options.maxTokens,
-				reasoning: thinkingLevelOf(options.effort),
-				maxRetries: 0,
-				sessionId: context.characterId,
-				convertToLlm: (all) =>
-					all
-						.filter(isMessage)
-						.filter(hasContent)
-						.map((m) => (isPrompt(m, prompt) ? withPostHistory(prompt, context.postHistory) : m)),
-				finishTurn: () => {
-					steps += 1;
-					if (offeredChoices(reporter) || steps >= MAX_STEPS) return { action: "end" };
-				},
-			},
-			options.signal,
-			streamFnOf(connection),
-		);
-		for await (const event of stream) {
-			const piece = handle(event, context, options.kept);
-			if (piece) yield piece;
+		for (const [index, connection] of context.connections.entries()) {
+			const last = index === context.connections.length - 1;
+			options.kept.length = 0;
+			try {
+				yield* replyWith(connection, context, history, tools, prompt, options, last);
+				return;
+			} catch (error) {
+				if (!(error instanceof NothingSaid)) throw error;
+				if (last) throw error.cause;
+				console.warn(
+					`${connection.provider}/${connection.model} failed, trying the next model:`,
+					error.cause,
+				);
+			}
 		}
 	} catch (error) {
 		if (options.signal?.aborted) return;
 		throw llmFailure(error);
 	} finally {
 		reporter.close();
+	}
+}
+
+async function* replyWith(
+	connection: LlmConnection,
+	context: CharacterContext,
+	history: Message[],
+	tools: AgentTool[],
+	prompt: UserMessage,
+	options: CallOptions & { kept: Message[] },
+	last: boolean,
+): AsyncGenerator<string | typeof TEXT_BREAK> {
+	const { reporter } = context;
+	let steps = 0;
+	let said = false;
+	const stream = agentLoop(
+		[prompt],
+		{ messages: history, tools },
+		{
+			model: modelOf(connection),
+			temperature: options.temperature,
+			maxTokens: options.maxTokens,
+			reasoning: thinkingLevelOf(connection),
+			maxRetries: 0,
+			sessionId: context.characterId,
+			convertToLlm: (all) =>
+				all
+					.filter(isMessage)
+					.filter(hasContent)
+					.map((m) => (isPrompt(m, prompt) ? withPostHistory(prompt, context.postHistory) : m)),
+			finishTurn: () => {
+				steps += 1;
+				if (offeredChoices(reporter) || steps >= MAX_STEPS) return { action: "end" };
+			},
+		},
+		options.signal,
+		streamFnOf(connection),
+	);
+	for await (const event of stream) {
+		let piece: ReturnType<typeof handle>;
+		try {
+			piece = handle(event, context, options.kept);
+		} catch (error) {
+			if (!said && !last && error instanceof Error) throw new NothingSaid(error);
+			throw error;
+		}
+		if (piece === null) continue;
+		if (piece !== TEXT_BREAK || event.type === "tool_execution_start") said = true;
+		yield piece;
 	}
 }
 

@@ -116,7 +116,7 @@ function FilesTab({ characterId, steps }: { characterId: string; steps: AgentSte
 			{!on && (
 				<TabNote>
 					ファイルとコマンドの道具はオフです。上の「道具」か
-					<Link to="/settings/tools">設定 → 道具と権限</Link>
+					<Link to="/settings/computer">設定 → コンピューター</Link>
 					でオンにできます。
 				</TabNote>
 			)}

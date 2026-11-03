@@ -1,9 +1,9 @@
 // A description of how a character sounds, for ElevenLabs' Voice Design: the conversation's LLM
 // imagines the voice from the character's persona.
 
-import { type Persona, replyEffortOf } from "@nextroom/contracts";
+import type { Persona } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import { connectionOf } from "../agent/providers";
+import { replyConnections } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
 
@@ -34,7 +34,7 @@ const INSTRUCTIONS = [
 
 export async function describeVoice(persona: Persona, signal?: AbortSignal): Promise<string> {
 	const settings = loadSettings();
-	const connection = connectionOf(settings);
+	const connection = replyConnections(settings);
 	const sources = Object.fromEntries(
 		SOURCE_FIELDS.filter((k) => persona[k].trim()).map((k) => [k, persona[k]]),
 	);
@@ -43,7 +43,6 @@ export async function describeVoice(persona: Persona, signal?: AbortSignal): Pro
 	const prompt = `<character_settings>\n${JSON.stringify(sources, null, 1)}\n</character_settings>`;
 	const answer = await generateOnce(connection, INSTRUCTIONS, prompt, {
 		temperature: 0.7,
-		effort: replyEffortOf(settings),
 		signal,
 	});
 	const value = answer

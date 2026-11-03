@@ -7,12 +7,6 @@ import { Dot, ErrorNote } from "@/components/status";
 import { useComposioStatus, useConnectComposio } from "@/features/agent/queries";
 import type { SetAgentSection } from "../agent-options";
 
-export function composioToolSummary(composio: AgentSettingsView["composio"]) {
-	if (!composio.has_api_key) return "Composio の API キーが未設定です（.env の COMPOSIO_API_KEY）";
-	if (!composio.toolkits.length) return "使うアプリが未設定です";
-	return `${composio.toolkits.join("・")} を使います`;
-}
-
 /** The apps the character may use through Composio, and the accounts connected to them. */
 export function ComposioToolSettings({
 	composio,

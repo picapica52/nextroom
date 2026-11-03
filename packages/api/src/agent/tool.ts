@@ -5,6 +5,7 @@
 import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import type { TSchema } from "@earendil-works/pi-ai";
 import { z } from "zod";
+import { mayRun } from "./approvals";
 import type { CharacterContext } from "./context";
 
 /** One call of a tool, in a reply. */
@@ -21,6 +22,11 @@ interface ToolBase {
 	description: string;
 	/** Runs one at a time with the other calls of the same step. */
 	sequential?: boolean;
+	/** The call changes something (acts on a page, writes, deletes, runs, sends): it is checked
+	 *  before it runs in the Auto and Ask approval modes (approvals.ts). */
+	changes?: boolean | ((input: unknown) => boolean);
+	/** What the approval rules know the call by; the tool's name unless it says otherwise. */
+	approvalKey?: (input: unknown) => string;
 }
 
 export interface ZodTool<S extends z.ZodType> extends ToolBase {
@@ -72,7 +78,8 @@ export function toAgentTool(tool: CharacterTool, context: CharacterContext): Age
 				},
 			};
 			const input = "jsonSchema" in tool ? params : tool.schema.parse(params);
-			const result = await tool.execute(input as never, call);
+			const allowed = await mayRun(tool, input, call);
+			const result = allowed === true ? await tool.execute(input as never, call) : allowed;
 			return { content: [{ type: "text", text: textOf(result) }], details: result };
 		},
 	};

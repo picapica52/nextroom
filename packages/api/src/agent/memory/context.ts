@@ -4,10 +4,10 @@
 // keeps what happened as a dated log.
 
 import type { Message } from "@earendil-works/pi-ai";
-import { type ChatSettings, replyEffortOf } from "@nextroom/contracts";
+
 import { newId, now } from "../../lib/storage";
-import { complete, generateOnce, replyText } from "../llm";
-import type { LlmConnection } from "../providers";
+import { type Connections, complete, generateOnce, replyText } from "../llm";
+
 import { addSummary, type ChatMessageEntry, latestSummary, spokenText, unsummarized } from "./log";
 import { NOTES_MAX_CHARS, NOTES_RULES, NOTES_TEMPLATE, readNotes, writeNotes } from "./notes";
 
@@ -119,8 +119,7 @@ const notesInstructions = [
 ].join("\n");
 
 interface CompactOptions {
-	connection: LlmConnection;
-	settings: ChatSettings;
+	connections: Connections;
 	charName: string;
 	userName: string;
 }
@@ -150,11 +149,11 @@ async function compact(characterId: string, options: CompactOptions): Promise<vo
 	const older = olderPart(messages);
 	const last = older.at(-1);
 	if (!last) return;
-	const { connection, settings, charName, userName } = options;
+	const { connections, charName, userName } = options;
 	const lines = transcript(older, charName, userName);
-	const call = { temperature: 0.3, effort: replyEffortOf(settings) };
+	const call = { temperature: 0.3 };
 	const text = await generateOnce(
-		connection,
+		connections,
 		summaryInstructions(charName, userName),
 		[
 			`<summary_so_far>\n${summary?.text || "(none)"}\n</summary_so_far>`,
@@ -165,7 +164,7 @@ async function compact(characterId: string, options: CompactOptions): Promise<vo
 	addSummary(characterId, { id: newId("sum_"), at: now(), until: last.id, text });
 	try {
 		const notes = await complete(
-			connection,
+			connections,
 			notesInstructions,
 			[
 				{

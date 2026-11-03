@@ -8,6 +8,7 @@
 //     voice_refs      by character id: the Voice Clone clips (their files stay in the folder)
 //     voice_files     by character id: what is known about the voice file
 //     credentials     by pi's provider id: the subscriptions signed in to
+//     routines        by routine id: what a character carries out on its own, and when
 //
 // The characters' memory has tables of its own (agent/memory/db.ts). Images, audio and the
 // workspaces stay files in the characters' folders.
@@ -25,6 +26,7 @@ export const DOC_TABLES = [
 	"voice_refs",
 	"voice_files",
 	"credentials",
+	"routines",
 ] as const;
 export type DocTable = (typeof DOC_TABLES)[number];
 

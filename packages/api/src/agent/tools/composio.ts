@@ -6,7 +6,7 @@ import { composioSessionTools, forgetComposioSession } from "../../composio/clie
 import { messageOf } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
 import { composioApiKey } from "../../settings/chat";
-import { APP_FAILED, DECLINED } from "../prompts";
+import { APP_FAILED } from "../prompts";
 import type { CharacterTool, ToolSet } from "../tool";
 
 const MULTI_EXECUTE = "COMPOSIO_MULTI_EXECUTE_TOOL";
@@ -26,21 +26,18 @@ function actionsOf(tool: string, input: unknown): string[] {
 	return items.map((i) => String(i?.tool_slug ?? "")).filter(Boolean);
 }
 
-function needsApproval(actions: string[], s: AgentSettings["composio"]): boolean {
-	return actions.some((a) => (readsOnly(a) ? s.approve_read : s.approve_write));
-}
-
-/** The session's tool, asking first where the settings of the call say so. */
+/** The session's tool: its app actions are what the approvals look at, and a call changes
+ *  something unless every action only reads. */
 function withApproval(tool: CharacterTool): CharacterTool {
 	return {
 		...tool,
-		execute: async (input: unknown, call) => {
-			const { reporter, settings } = call.context;
+		changes: (input: unknown) => actionsOf(tool.name, input).some((a) => !readsOnly(a)),
+		approvalKey: (input: unknown) => {
 			const actions = actionsOf(tool.name, input);
-			if (needsApproval(actions, settings.composio)) {
-				const key = [...new Set(actions)].sort().join(",");
-				if (!(await reporter.approve(call.id, key, input))) return DECLINED.app;
-			}
+			return actions.length ? [...new Set(actions)].sort().join(",") : tool.name;
+		},
+		execute: async (input: unknown, call) => {
+			const { reporter } = call.context;
 			try {
 				return await tool.execute(input as never, call);
 			} catch (error) {

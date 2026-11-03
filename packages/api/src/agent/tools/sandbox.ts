@@ -15,7 +15,6 @@ import { track } from "../../lib/children";
 import { messageOf } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
 import { workspaceDir } from "../../workspaces/store";
-import { DECLINED } from "../prompts";
 import { type CharacterTool, defineTool, type ToolCall, type ToolSet } from "../tool";
 import {
 	displayPath,
@@ -33,15 +32,10 @@ const MAX_RESULT_CHARS = 20_000;
 const KEEP_OUTPUT_CHARS = 200_000;
 const CREATE_TIMEOUT_MS = 10 * 60_000;
 
-/** Ask the user first when `needed`; false once they refuse. */
-async function allowed(needed: boolean, name: string, input: unknown, call: ToolCall) {
-	return !needed || (await call.context.reporter.approve(call.id, name, input));
-}
-
-/** A tool that asks the user first when `needs(settings)` says so. */
+/** A workspace tool, run in the character's workspace; `changes` when it writes, deletes or runs. */
 function gated<S extends z.ZodType>(
-	settings: AgentSettings,
-	needs: ((s: SandboxSettings) => boolean) | null,
+	_settings: AgentSettings,
+	changes: boolean,
 	tool: {
 		name: string;
 		description: string;
@@ -51,11 +45,8 @@ function gated<S extends z.ZodType>(
 ): CharacterTool {
 	return defineTool({
 		...tool,
-		execute: async (input, call) => {
-			if (!(await allowed(needs?.(settings.sandbox) ?? false, tool.name, input, call)))
-				return DECLINED.sandbox;
-			return tool.execute(input, call, workspaceDir(call.context.characterId));
-		},
+		changes,
+		execute: (input, call) => tool.execute(input, call, workspaceDir(call.context.characterId)),
 	});
 }
 
@@ -306,7 +297,7 @@ const inContainer = (root: string, full: string) => {
 export function sandboxTools(settings: AgentSettings): ToolSet {
 	if (!settings.sandbox.enabled) return {};
 	const tools = [
-		gated(settings, null, {
+		gated(settings, false, {
 			name: "workspace_read_file",
 			description:
 				"Read a file from the workspace. Text files come back as text with line numbers — use offset/limit to read a line range from large files. Binary files return only their metadata (path, size, type) unless you ask for an encoding.",
@@ -339,7 +330,7 @@ export function sandboxTools(settings: AgentSettings): ToolSet {
 			execute: async ({ path, ...options }, _call, root) =>
 				readWorkspaceFile(root, await resolveInside(root, path), options),
 		}),
-		gated(settings, (s) => s.approve_write, {
+		gated(settings, true, {
 			name: "workspace_write_file",
 			description:
 				"Write content to a file in the workspace. Creates parent directories if needed.",
@@ -364,7 +355,7 @@ export function sandboxTools(settings: AgentSettings): ToolSet {
 				return `Wrote ${Buffer.byteLength(content)} bytes to ${displayPath(root, full)}`;
 			},
 		}),
-		gated(settings, (s) => s.approve_write, {
+		gated(settings, true, {
 			name: "workspace_edit_file",
 			description: `Edit a file by replacing specific text. The old_string must match exactly and be unique in the file.
 
@@ -402,7 +393,7 @@ Usage:
 				return `Replaced ${count} occurrence${count > 1 ? "s" : ""} in ${displayPath(root, full)}`;
 			},
 		}),
-		gated(settings, null, {
+		gated(settings, false, {
 			name: "workspace_list_files",
 			description: `List files and directories in the workspace.
 Returns a compact tab-indented listing; directories end with "/".
@@ -451,7 +442,7 @@ To list ALL files, omit the pattern parameter — do NOT pass pattern: "*".`,
 			execute: async ({ path, ...options }, _call, root) =>
 				listWorkspace(root, await resolveInside(root, path), options),
 		}),
-		gated(settings, (s) => s.approve_delete, {
+		gated(settings, true, {
 			name: "workspace_delete",
 			description: "Delete a file or directory from the workspace.",
 			schema: z.object({
@@ -478,7 +469,7 @@ To list ALL files, omit the pattern parameter — do NOT pass pattern: "*".`,
 				return `Deleted ${displayPath(root, full)}`;
 			},
 		}),
-		gated(settings, (s) => s.approve_write, {
+		gated(settings, true, {
 			name: "workspace_mkdir",
 			description: "Create a directory in the workspace.",
 			schema: z.object({
@@ -495,7 +486,7 @@ To list ALL files, omit the pattern parameter — do NOT pass pattern: "*".`,
 				return `Created ${displayPath(root, full)}/`;
 			},
 		}),
-		gated(settings, null, {
+		gated(settings, false, {
 			name: "workspace_grep",
 			description: `Search file contents in the workspace using a regex pattern. Returns matching lines with file paths and line numbers ("path:line:text").
 
@@ -541,7 +532,7 @@ Usage:
 			}),
 			execute: async (input, _call, root) => grepWorkspace(root, input),
 		}),
-		gated(settings, (s) => s.approve_command, {
+		gated(settings, true, {
 			name: "workspace_execute_command",
 			description:
 				settings.sandbox.provider === "docker"

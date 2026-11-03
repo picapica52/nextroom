@@ -1,13 +1,23 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { Layout } from "@/components/layout";
 import CharacterDialog from "@/features/characters/components/character-dialog";
-import AgentSettings from "@/features/settings/components/agent-settings";
-import ConnectionSettings from "@/features/settings/components/connection-settings";
+import ApprovalSettings from "@/features/settings/components/approval-settings";
+import ComputerSettings from "@/features/settings/components/computer-settings";
 import DiscordSettings from "@/features/settings/components/discord-settings";
+import GeneralSettings from "@/features/settings/components/general-settings";
+import IntegrationSettings from "@/features/settings/components/integration-settings";
 import ModelSettings from "@/features/settings/components/model-settings";
-import PromptSettings from "@/features/settings/components/prompt-settings";
-import ReplySettings from "@/features/settings/components/reply-settings";
 import SettingsDialog from "@/features/settings/components/settings-dialog";
+import VoiceSettings from "@/features/settings/components/voice-settings";
+
+/** Pages that were moved, to where their contents went. */
+const MOVED: Record<string, string> = {
+	connections: "models",
+	reply: "voice",
+	prompt: "general",
+	tools: "computer",
+	discord: "messaging",
+};
 
 export const router = createBrowserRouter([
 	{
@@ -22,13 +32,18 @@ export const router = createBrowserRouter([
 				path: "/settings",
 				element: <SettingsDialog />,
 				children: [
-					{ index: true, element: <Navigate to="/settings/connections" replace /> },
-					{ path: "connections", element: <ConnectionSettings /> },
+					{ index: true, element: <Navigate to="/settings/general" replace /> },
+					{ path: "general", element: <GeneralSettings /> },
 					{ path: "models", element: <ModelSettings /> },
-					{ path: "reply", element: <ReplySettings /> },
-					{ path: "prompt", element: <PromptSettings /> },
-					{ path: "tools", element: <AgentSettings /> },
-					{ path: "discord", element: <DiscordSettings /> },
+					{ path: "voice", element: <VoiceSettings /> },
+					{ path: "approvals", element: <ApprovalSettings /> },
+					{ path: "messaging", element: <DiscordSettings /> },
+					{ path: "computer", element: <ComputerSettings /> },
+					{ path: "integrations", element: <IntegrationSettings /> },
+					...Object.entries(MOVED).map(([from, to]) => ({
+						path: from,
+						element: <Navigate to={`/settings/${to}`} replace />,
+					})),
 				],
 			},
 			{ path: "*", element: <Navigate to="/chat" replace /> },

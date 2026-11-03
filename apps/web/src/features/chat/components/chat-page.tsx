@@ -1,4 +1,4 @@
-import { type ChatMessage, replyModelOf } from "@nextroom/contracts";
+import type { ChatMessage } from "@nextroom/contracts";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCharacter } from "@/features/characters/queries";
@@ -76,7 +76,7 @@ export default function ChatPage() {
 	});
 	const character = useCharacter(characterId, { enabled: !!characterId, retry: false });
 	const name = characterDisplayName(character.data, characterId);
-	const llmReady = !!llm.data && !!replyModelOf(llm.data);
+	const llmReady = !!llm.data?.main_model;
 
 	// Stops writing and synthesizing the reply, and its voice; what was written shows at once.
 	const stopReply = () => {
