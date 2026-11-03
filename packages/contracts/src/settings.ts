@@ -11,12 +11,13 @@ export const DEFAULT_SPEECH_URL = "http://127.0.0.1:8080";
 export const ASR_PROVIDERS = ["parakeet", "elevenlabs"] as const;
 export type AsrProvider = (typeof ASR_PROVIDERS)[number];
 
-/** openai_compatible: any Chat Completions endpoint (the connection's URL and key);
+/** The providers the app sets up itself.
+ *  openai_compatible: any Chat Completions endpoint (the connection's URL and key);
  *  anthropic: Claude through Anthropic's API key;
  *  openrouter: OpenRouter with its key;
  *  chatgpt / claude / copilot / grok: a subscription the user signs in to (ChatGPT Plus/Pro,
  *  Claude Pro/Max, GitHub Copilot, SuperGrok / X Premium). */
-export const LLM_PROVIDERS = [
+export const APP_PROVIDERS = [
 	"openai_compatible",
 	"anthropic",
 	"openrouter",
@@ -25,13 +26,23 @@ export const LLM_PROVIDERS = [
 	"copilot",
 	"grok",
 ] as const;
-export type LlmProvider = (typeof LLM_PROVIDERS)[number];
+export type AppProvider = (typeof APP_PROVIDERS)[number];
+
+/** Any other provider pi offers, by pi's id: "pi:groq", "pi:opencode", ... */
+export type PiProviderId = `pi:${string}`;
+export const piProviderIdSchema = z
+	.string()
+	.regex(/^pi:[a-z0-9][a-z0-9.-]*$/) as z.ZodType<PiProviderId>;
+export const isPiProvider = (p: string): p is PiProviderId => p.startsWith("pi:");
+
+export type LlmProvider = AppProvider | PiProviderId;
+export const llmProviderSchema = z.union([z.enum(APP_PROVIDERS), piProviderIdSchema]);
 
 /** The providers the user signs in to with a subscription instead of an API key. */
 export const SUBSCRIPTION_PROVIDERS = ["chatgpt", "claude", "copilot", "grok"] as const;
 export type SubscriptionProvider = (typeof SUBSCRIPTION_PROVIDERS)[number];
 
-export const isSubscription = (p: LlmProvider): p is SubscriptionProvider =>
+export const isSubscription = (p: string): p is SubscriptionProvider =>
 	(SUBSCRIPTION_PROVIDERS as readonly string[]).includes(p);
 
 /** How hard the model thinks before it answers; null in a choice: the model's default. pi fits
@@ -41,7 +52,7 @@ export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
 /** A model of a provider, with how hard it thinks. */
 export const modelChoiceSchema = z.object({
-	provider: z.enum(LLM_PROVIDERS),
+	provider: llmProviderSchema,
 	model: z.string().trim().min(1),
 	thinking: z.enum(THINKING_LEVELS).nullable(),
 });
@@ -126,21 +137,46 @@ export interface SubscriptionStatus {
 	signed_in: boolean;
 }
 
+/** What a sign-in asks the user now: a code the page gave back, an API key or another value, or
+ *  one of a few choices (answered with the option's id). */
+export interface LoginPrompt {
+	type: "manual_code" | "secret" | "text" | "select";
+	message: string;
+	placeholder: string | null;
+	options: { id: string; label: string; description: string | null }[];
+}
+
 /** A sign-in in progress: what the user is shown (a page to open, a code to enter there, or a
- *  field to paste the code the page gives back) until it ends. */
+ *  question to answer) until it ends. */
 export interface SubscriptionLogin {
 	id: string;
-	provider: SubscriptionProvider;
+	provider: SubscriptionProvider | PiProviderId;
 	status: "pending" | "done" | "error" | "cancelled";
 	/** The page to open and sign in on. */
 	url: string | null;
 	/** The code to enter on `url` (device code sign-in). */
 	user_code: string | null;
-	/** The page shows a code that is pasted back here. */
-	needs_code: boolean;
+	/** What the sign-in waits for the user to answer. */
+	prompt: LoginPrompt | null;
 	/** What is happening now, in the provider's words. */
 	message: string | null;
 	error: string | null;
 }
 
-export const subscriptionCodeSchema = z.object({ code: z.string().trim().min(1) });
+/** One of pi's other providers: how it is signed in to, and whether it can be used now. */
+export interface PiProviderStatus {
+	id: PiProviderId;
+	name: string;
+	/** The names pi gives its ways of signing in; null for one it does not offer. */
+	auth: { api_key: string | null; oauth: string | null };
+	configured: boolean;
+	/** Where the credentials come from: entered here ("stored credential"), or the environment's
+	 *  variable that holds them. */
+	source: string | null;
+	/** Entered here, so they can be removed. */
+	stored: boolean;
+}
+
+export const piLoginSchema = z.object({ type: z.enum(["api_key", "oauth"]) });
+
+export const subscriptionCodeSchema = z.object({ code: z.string().trim() });

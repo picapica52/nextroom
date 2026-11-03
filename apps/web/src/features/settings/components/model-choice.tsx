@@ -1,5 +1,4 @@
 import {
-	LLM_PROVIDERS,
 	type LlmProvider,
 	type ModelChoice,
 	THINKING_LEVELS,
@@ -10,17 +9,8 @@ import { cn } from "@nextroom/ui/lib/utils";
 import { useState } from "react";
 import { ApiModelPicker } from "@/components/api-model-picker";
 import { SimpleSelect } from "@/components/simple-select";
-import { useConnections, useLlmModels, useSubscriptions } from "@/hooks/queries";
-
-export const LLM_LABELS: Record<LlmProvider, string> = {
-	chatgpt: "ChatGPT（サブスク）",
-	claude: "Claude（サブスク）",
-	copilot: "GitHub Copilot",
-	grok: "SuperGrok",
-	openrouter: "OpenRouter",
-	anthropic: "Anthropic API",
-	openai_compatible: "OpenAI 互換",
-};
+import { useConnections, useLlmModels, usePiProviders, useSubscriptions } from "@/hooks/queries";
+import { useProviderOptions } from "../provider-labels";
 
 const THINKING_LABELS: Record<ThinkingLevel, string> = {
 	off: "オフ",
@@ -36,8 +26,10 @@ const THINKING_LABELS: Record<ThinkingLevel, string> = {
 function useUsableProvider(): LlmProvider {
 	const signedIn = useSubscriptions().data?.find((s) => s.signed_in)?.provider;
 	const keys = useConnections().data?.keys;
+	const pi = usePiProviders().data?.find((p) => p.configured)?.id;
 	if (signedIn) return signedIn;
 	if (keys?.anthropic_key?.set && !keys.openrouter_key?.set) return "anthropic";
+	if (pi && !keys?.openrouter_key?.set) return pi;
 	return "openrouter";
 }
 
@@ -60,6 +52,7 @@ export function ModelChoiceFields({
 	const saved = value && value.provider === provider ? value : null;
 	const thinking = saved ? saved.thinking : (draft?.thinking ?? value?.thinking ?? null);
 	const models = useLlmModels(provider);
+	const options = useProviderOptions(provider);
 
 	return (
 		<div className={cn("grid gap-3 sm:grid-cols-[11rem_minmax(0,1fr)_8rem]", className)}>
@@ -71,7 +64,7 @@ export function ModelChoiceFields({
 					id={`${id}-provider`}
 					value={provider}
 					onChange={(next) => next && setDraft({ provider: next, thinking })}
-					options={LLM_PROVIDERS.map((p) => ({ value: p, label: LLM_LABELS[p] }))}
+					options={options}
 				/>
 			</Field>
 			<Field>

@@ -1,19 +1,23 @@
 // Signing in to the subscriptions the replies can use (ChatGPT, Claude, GitHub Copilot, SuperGrok),
-// through pi's OAuth flows. The credentials are kept in the database's `credentials` table and
-// refreshed by pi when they expire.
+// through pi's OAuth flows, and to pi's other providers with an API key or their own sign-in. The
+// credentials are kept in the database's `credentials` table and refreshed by pi when they expire.
 //
 // A sign-in runs on the server while the screen polls it: the screen shows the page to open and
-// the code to enter there (device code), or the page and a field for the code it gives back.
+// the code to enter there (device code), or what the sign-in asks (the code the page gives back,
+// a key, a choice).
 
 import type {
 	AuthEvent,
 	AuthInteraction,
 	AuthPrompt,
+	AuthType,
 	Credential,
 	CredentialInfo,
 	CredentialStore,
 } from "@earendil-works/pi-ai";
 import type {
+	PiProviderId,
+	PiProviderStatus,
 	SubscriptionLogin,
 	SubscriptionProvider,
 	SubscriptionStatus,
@@ -23,7 +27,7 @@ import { z } from "zod";
 import { appDb, deleteDoc, hasDoc, readDoc, writeDoc } from "../lib/db";
 import { BadRequestError, messageOf, NotFoundError } from "../lib/errors";
 import { newId } from "../lib/storage";
-import { piModels } from "./providers";
+import { piIdOf, piModels, piProviderIds, piProviderName } from "./providers";
 
 /** pi's provider of each subscription. */
 export const PI_PROVIDERS = {
@@ -97,7 +101,9 @@ const KEEP_FINISHED_MS = 5 * 60 * 1000;
 interface Login {
 	view: SubscriptionLogin;
 	abort: AbortController;
-	/** Resolves the pasted code the flow is waiting for. */
+	/** Asks the user what pi's prompts ask; a subscription's sign-in answers them itself. */
+	asks: boolean;
+	/** Resolves the answer the flow is waiting for. */
 	answer: ((code: string) => void) | null;
 }
 
@@ -111,7 +117,40 @@ function choose(prompt: Extract<AuthPrompt, { type: "select" }>): string {
 	return (headless ?? prompt.options[0])?.id ?? "";
 }
 
-function interaction(login: Login): AuthInteraction {
+function ask(login: Login, prompt: AuthPrompt): Promise<string> {
+	const { view } = login;
+	view.prompt = {
+		type: prompt.type,
+		message: prompt.message,
+		placeholder: ("placeholder" in prompt && prompt.placeholder) || null,
+		options:
+			prompt.type === "select"
+				? prompt.options.map((o) => ({
+						id: o.id,
+						label: o.label,
+						description: o.description ?? null,
+					}))
+				: [],
+	};
+	return new Promise((resolve, reject) => {
+		const signal = prompt.signal ?? login.abort.signal;
+		const stop = () => {
+			login.answer = null;
+			view.prompt = null;
+			reject(signal.reason ?? new Error("中断されました"));
+		};
+		if (signal.aborted) return stop();
+		signal.addEventListener("abort", stop, { once: true });
+		login.answer = (code) => {
+			signal.removeEventListener("abort", stop);
+			login.answer = null;
+			view.prompt = null;
+			resolve(code);
+		};
+	});
+}
+
+function interaction(login: Login, type: AuthType): AuthInteraction {
 	const { view } = login;
 	return {
 		signal: login.abort.signal,
@@ -124,31 +163,19 @@ function interaction(login: Login): AuthInteraction {
 				view.user_code = event.userCode;
 			} else {
 				view.message = event.message;
+				if (event.type === "info" && event.links?.[0]) view.url ??= event.links[0].url;
 			}
 		},
 		prompt(prompt: AuthPrompt): Promise<string> {
-			if (prompt.type === "select") return Promise.resolve(choose(prompt));
-			// GitHub Copilot asks for an Enterprise domain: github.com.
-			if (prompt.type === "text") return Promise.resolve("");
-			if (prompt.type === "secret")
-				return Promise.reject(new Error("このサインインには対応していません"));
-			view.needs_code = true;
-			return new Promise((resolve, reject) => {
-				const signal = prompt.signal ?? login.abort.signal;
-				const stop = () => {
-					login.answer = null;
-					view.needs_code = false;
-					reject(signal.reason ?? new Error("中断されました"));
-				};
-				if (signal.aborted) return stop();
-				signal.addEventListener("abort", stop, { once: true });
-				login.answer = (code) => {
-					signal.removeEventListener("abort", stop);
-					login.answer = null;
-					view.needs_code = false;
-					resolve(code);
-				};
-			});
+			if (prompt.type === "select" && (type === "oauth" || !login.asks))
+				return Promise.resolve(choose(prompt));
+			if (!login.asks) {
+				// GitHub Copilot asks for an Enterprise domain: github.com.
+				if (prompt.type === "text") return Promise.resolve("");
+				if (prompt.type === "secret")
+					return Promise.reject(new Error("このサインインには対応していません"));
+			}
+			return ask(login, prompt);
 		},
 	};
 }
@@ -156,7 +183,7 @@ function interaction(login: Login): AuthInteraction {
 function finish(id: string, login: Login, status: SubscriptionLogin["status"], error?: unknown) {
 	if (login.view.status !== "pending") return;
 	login.view.status = status;
-	login.view.needs_code = false;
+	login.view.prompt = null;
 	if (error !== undefined) login.view.error = messageOf(error);
 	login.abort.abort();
 	setTimeout(() => {
@@ -164,9 +191,12 @@ function finish(id: string, login: Login, status: SubscriptionLogin["status"], e
 	}, KEEP_FINISHED_MS);
 }
 
-/** Starts signing in to `provider`; the screen follows it with subscriptionLogin(). */
-export async function startSubscriptionLogin(
-	provider: SubscriptionProvider,
+/** Starts signing in to `piId` as `provider`; the screen follows it with subscriptionLogin(). */
+async function startLogin(
+	provider: SubscriptionLogin["provider"],
+	piId: string,
+	type: AuthType,
+	asks: boolean,
 ): Promise<SubscriptionLogin> {
 	for (const [id, other] of logins) {
 		if (other.view.provider === provider) finish(id, other, "cancelled");
@@ -179,11 +209,12 @@ export async function startSubscriptionLogin(
 			status: "pending",
 			url: null,
 			user_code: null,
-			needs_code: false,
+			prompt: null,
 			message: null,
 			error: null,
 		},
 		abort: new AbortController(),
+		asks,
 		answer: null,
 	};
 	logins.set(id, login);
@@ -192,13 +223,60 @@ export async function startSubscriptionLogin(
 		LOGIN_TIMEOUT_MS,
 	);
 	piModels()
-		.login(PI_PROVIDERS[provider], "oauth", interaction(login), { agentName: "nextroom" })
+		.login(piId, type, interaction(login, type), { agentName: "nextroom" })
 		.then(() => finish(id, login, "done"))
 		.catch((error) => finish(id, login, login.abort.signal.aborted ? "cancelled" : "error", error))
 		.finally(() => clearTimeout(timeout));
-	// The first page or code usually comes at once; the screen polls for the rest.
-	await new Promise((resolve) => setTimeout(resolve, 1500));
+	// The first page, code or question usually comes at once; the screen polls for the rest.
+	await new Promise((resolve) => setTimeout(resolve, type === "api_key" ? 200 : 1500));
 	return { ...login.view };
+}
+
+export const startSubscriptionLogin = (provider: SubscriptionProvider) =>
+	startLogin(provider, PI_PROVIDERS[provider], "oauth", false);
+
+function knownPiProvider(provider: PiProviderId) {
+	if (!piProviderIds().includes(provider))
+		throw new NotFoundError(`プロバイダー ${piIdOf(provider)} はありません`);
+	const found = piModels().getProvider(piIdOf(provider));
+	if (!found) throw new NotFoundError(`プロバイダー ${piIdOf(provider)} はありません`);
+	return found;
+}
+
+/** Signs in to another of pi's providers, with an API key (or whatever else it asks) or OAuth. */
+export function startPiLogin(provider: PiProviderId, type: AuthType): Promise<SubscriptionLogin> {
+	const found = knownPiProvider(provider);
+	if (!(type === "oauth" ? found.auth.oauth : found.auth.apiKey?.login))
+		throw new BadRequestError(`${found.name} はこの方法ではサインインできません`);
+	return startLogin(provider, found.id, type, true);
+}
+
+/** pi's other providers, and whether each can be used now. */
+export async function piProviderStatus(): Promise<PiProviderStatus[]> {
+	const models = piModels();
+	return Promise.all(
+		piProviderIds().map(async (id) => {
+			const provider = models.getProvider(piIdOf(id));
+			const check = await models.checkAuth(piIdOf(id)).catch(() => undefined);
+			return {
+				id,
+				name: piProviderName(id),
+				auth: {
+					api_key: provider?.auth.apiKey?.login ? provider.auth.apiKey.name : null,
+					oauth: provider?.auth.oauth?.name ?? null,
+				},
+				configured: Boolean(check),
+				source: check?.source ?? null,
+				stored: credentials.has(piIdOf(id)),
+			};
+		}),
+	);
+}
+
+/** Removes what was entered for the provider; credentials from the environment stay. */
+export async function forgetPiProvider(provider: PiProviderId): Promise<PiProviderStatus[]> {
+	await credentials.delete(knownPiProvider(provider).id);
+	return piProviderStatus();
 }
 
 function loginOf(id: string): Login {
@@ -209,10 +287,12 @@ function loginOf(id: string): Login {
 
 export const subscriptionLogin = (id: string): SubscriptionLogin => ({ ...loginOf(id).view });
 
-/** The code the sign-in page gave back, pasted by the user. */
+/** The user's answer to what the sign-in asks: the code the page gave back, a key, a choice; only
+ *  a text may be left empty. */
 export function answerSubscriptionLogin(id: string, code: string): SubscriptionLogin {
 	const login = loginOf(id);
-	if (!login.answer) throw new BadRequestError("コードを待っていません");
+	if (!login.answer) throw new BadRequestError("入力を待っていません");
+	if (!code && login.view.prompt?.type !== "text") throw new BadRequestError("入力してください");
 	login.answer(code);
 	return { ...login.view };
 }
