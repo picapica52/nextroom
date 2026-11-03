@@ -1,18 +1,16 @@
 // The models each provider offers, and the errors any call to the conversation's LLM ends with.
-// An API endpoint lists its own models; a subscription's, and those of pi's other providers, are
-// pi's catalog of what they may use.
+// pi's providers offer what pi's catalog says they may use; the OpenAI-compatible endpoint lists
+// its own.
 
-import { isPiProvider, isSubscription, type LlmProvider } from "@nextroom/contracts";
+import { type LlmProvider, OPENAI_COMPATIBLE } from "@nextroom/contracts";
 
 import { BadRequestError, ConflictError, messageOf } from "../lib/errors";
-import { PI_PROVIDERS } from "./auth";
 import {
 	type LlmConnection,
 	modelsRequest,
-	piIdOf,
 	piModels,
-	piProviderName,
 	providerConnection,
+	providerName,
 } from "./providers";
 
 const LIST_TIMEOUT_MS = 30_000;
@@ -39,9 +37,9 @@ export function llmErrorMessage(status: number | undefined, body: string): strin
 
 export interface LlmModel {
 	id: string;
-	/** The endpoint's display name (Anthropic's display_name, OpenRouter's name), else the id. */
+	/** The model's display name, else the id. */
 	name: string;
-	/** USD per million tokens, when the endpoint lists prices (OpenRouter). */
+	/** USD per million tokens, when they are known. */
 	price?: { input: number; output: number };
 }
 
@@ -94,33 +92,29 @@ export async function listModels(connection: LlmConnection): Promise<LlmModel[]>
 		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** The models pi's provider `id` may use, from its catalog brought up to date when it can be. */
-async function catalogModels(id: string): Promise<LlmModel[]> {
+/** The models of `provider` in pi's catalog that can be used now, brought up to date when it can be. */
+async function catalogModels(provider: LlmProvider): Promise<LlmModel[]> {
 	const models = piModels();
+	const auth = await models.checkAuth(provider).catch(() => undefined);
+	if (!auth)
+		throw new BadRequestError(`設定 → 接続 で ${providerName(provider)} を設定してください`);
 	await models
-		.refresh({ providers: [id], signal: AbortSignal.timeout(LIST_TIMEOUT_MS) })
-		.catch((error) => console.warn(`Could not refresh the models of ${id}:`, error));
-	return (await models.getAvailable(id))
-		.map((m) => ({ id: m.id, name: m.name || m.id }))
+		.refresh({ providers: [provider], signal: AbortSignal.timeout(LIST_TIMEOUT_MS) })
+		.catch((error) => console.warn(`Could not refresh the models of ${provider}:`, error));
+	return (await models.getAvailable(provider))
+		.map((m) => ({
+			id: m.id,
+			name: m.name || m.id,
+			...(m.cost.input > 0 || m.cost.output > 0
+				? { price: { input: m.cost.input, output: m.cost.output } }
+				: {}),
+		}))
 		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
 /** The models `provider` offers. */
 export function listLlmModels(provider: LlmProvider): Promise<LlmModel[]> {
 	const connection = providerConnection(provider);
-	if (isSubscription(provider)) return catalogModels(PI_PROVIDERS[provider]);
-	if (isPiProvider(provider)) return piCatalogModels(provider);
-	return listModels(connection);
-}
-
-async function piCatalogModels(provider: `pi:${string}`): Promise<LlmModel[]> {
-	const id = piIdOf(provider);
-	const auth = await piModels()
-		.checkAuth(id)
-		.catch(() => undefined);
-	if (!auth)
-		throw new BadRequestError(
-			`設定 → モデル → その他のプロバイダー で ${piProviderName(provider)} を設定してください`,
-		);
-	return catalogModels(id);
+	if (provider === OPENAI_COMPATIBLE) return listModels(connection);
+	return catalogModels(provider);
 }

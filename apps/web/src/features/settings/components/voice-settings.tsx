@@ -1,17 +1,9 @@
-import { ASR_PROVIDERS, type AsrProvider, DEFAULT_SPEECH_URL } from "@nextroom/contracts";
+import { ASR_PROVIDERS, type AsrProvider } from "@nextroom/contracts";
 import { SpeechModelPicker } from "@/components/speech-model";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
-import {
-	ElevenlabsCheck,
-	FishAudioCheck,
-	KeyBadge,
-	KeyField,
-	MissingKey,
-	SpeechCheck,
-	UrlField,
-} from "./connection-fields";
+import { MissingKey } from "./connection-fields";
 import { Segmented, SwitchRow } from "./settings-fields";
-import { SettingsDisclosure, SettingsGroup, SettingsInset, SettingsRow } from "./settings-layout";
+import { SettingsGroup, SettingsRow } from "./settings-layout";
 
 const ASR_LABELS: Record<AsrProvider, string> = {
 	parakeet: "speech.cpp",
@@ -25,13 +17,16 @@ const ASR_CLOUD = {
 	fishaudio: { model: "transcribe-1-pro", key: "fish_audio_key", service: "Fish Audio" },
 } as const;
 
-/** What is spoken and heard, and where: the speech.cpp server, ElevenLabs and Fish Audio. */
+/** What is spoken and heard. Where (the speech.cpp server and the services' keys) is in 接続. */
 export default function VoiceSettings() {
 	return (
 		<ChatSettingsPage>
 			{(f) => (
 				<>
-					<SettingsGroup title="読み上げ">
+					<SettingsGroup
+						title="読み上げ"
+						description="声はキャラクターごとに、キャラクターの「声」で選びます"
+					>
 						<SwitchRow
 							id="tts-enabled"
 							label="返答を読み上げる"
@@ -40,26 +35,6 @@ export default function VoiceSettings() {
 						/>
 					</SettingsGroup>
 					<SttGroup f={f} />
-					<SettingsGroup title="接続">
-						<SettingsDisclosure label="speech.cpp サーバー">
-							<SettingsInset>
-								<UrlField name="speech_url" label="URL" placeholder={DEFAULT_SPEECH_URL} />
-								<SpeechCheck />
-							</SettingsInset>
-						</SettingsDisclosure>
-						<SettingsDisclosure label="ElevenLabs" status={<KeyBadge name="elevenlabs_key" />}>
-							<SettingsInset>
-								<KeyField name="elevenlabs_key" />
-								<ElevenlabsCheck />
-							</SettingsInset>
-						</SettingsDisclosure>
-						<SettingsDisclosure label="Fish Audio" status={<KeyBadge name="fish_audio_key" />}>
-							<SettingsInset>
-								<KeyField name="fish_audio_key" />
-								<FishAudioCheck />
-							</SettingsInset>
-						</SettingsDisclosure>
-					</SettingsGroup>
 				</>
 			)}
 		</ChatSettingsPage>
@@ -70,7 +45,7 @@ function SttGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 	const cloud = form.asr_provider === "parakeet" ? null : ASR_CLOUD[form.asr_provider];
 	const local = !cloud;
 	return (
-		<SettingsGroup title="文字起こし">
+		<SettingsGroup id="stt" title="文字起こし" description="マイクで話した声を文字にします">
 			<SettingsRow
 				label="実行先"
 				control={
@@ -100,9 +75,7 @@ function SttGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 					)
 				}
 			>
-				{cloud && (
-					<MissingKey name={cloud.key} service={cloud.service} where="下の「接続」で入力します。" />
-				)}
+				{cloud && <MissingKey name={cloud.key} service={cloud.service} />}
 			</SettingsRow>
 		</SettingsGroup>
 	);

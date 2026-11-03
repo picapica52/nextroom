@@ -7,7 +7,7 @@
 //     chat_sessions   by character id: when the conversation was made and last changed
 //     voice_refs      by character id: the Voice Clone clips (their files stay in the folder)
 //     voice_files     by character id: what is known about the voice file
-//     credentials     by pi's provider id: the subscriptions signed in to
+//     credentials     by pi's provider id: the API keys entered and the sign-ins
 //     routines        by routine id: what a character carries out on its own, and when
 //
 // The characters' memory has tables of its own (agent/memory/db.ts). Images and audio stay files

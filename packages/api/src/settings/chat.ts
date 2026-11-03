@@ -62,8 +62,6 @@ export const speaksWith = (voice: CharacterVoice | undefined, s = loadSettings()
 /** Each connection's variable in the environment, and the default of the addresses. */
 const ENV_NAMES: Record<ConnectionKey | ConnectionUrl, string> = {
 	openai_compatible_key: "OPENAI_COMPATIBLE_API_KEY",
-	openrouter_key: "OPENROUTER_API_KEY",
-	anthropic_key: "ANTHROPIC_API_KEY",
 	exa_key: "EXA_API_KEY",
 	composio_key: "COMPOSIO_API_KEY",
 	elevenlabs_key: "ELEVENLABS_API_KEY",
@@ -98,8 +96,6 @@ const url = (name: ConnectionUrl) => () => connection(name).value.replace(/\/+$/
 export const openaiCompatibleUrl = url("openai_compatible_url");
 /** Empty for an endpoint that wants none, such as Ollama. */
 export const openaiCompatibleApiKey = key("openai_compatible_key");
-export const openrouterApiKey = key("openrouter_key");
-export const anthropicApiKey = key("anthropic_key");
 /** The character's web search. */
 export const exaApiKey = key("exa_key");
 /** The character's apps. */

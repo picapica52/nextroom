@@ -4,7 +4,7 @@
 
 ## 準備
 
-1. アプリの「設定 → メッセージ → Slack → 設定のしかた」で「コピー」を押し、マニフェストをコピーする。
+1. アプリの「設定 → Slack → 設定のしかた」で「コピー」を押し、マニフェストをコピーする。
 2. [Slack API](https://api.slack.com/apps?new_app=1) で「From a manifest」を選び、ワークスペースを選んでマニフェストを貼り付け、アプリを作る。
 3. 「Install App」でワークスペースにインストールし、「Bot User OAuth Token」（`xoxb-`）をコピーして、アプリの「Bot Token」に貼り付ける。
 4. 「Basic Information → App-Level Tokens」で `connections:write` を付けたトークン（`xapp-`）を作り、アプリの「App-Level Token」に貼り付ける。

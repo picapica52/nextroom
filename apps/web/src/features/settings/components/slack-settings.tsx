@@ -3,8 +3,9 @@ import { CopyButton } from "@/components/copy-button";
 import { SimpleSelect } from "@/components/simple-select";
 import { Dot, ErrorNote } from "@/components/status";
 import { useCharacters } from "@/features/characters/queries";
+import { useSaveSlackSettings, useSlackSettings } from "@/features/slack/queries";
 import { SecretField, SwitchRow } from "./settings-fields";
-import { SettingsDisclosure, SettingsGroup, SettingsRow } from "./settings-layout";
+import { SettingsDisclosure, SettingsGroup, SettingsPage, SettingsRow } from "./settings-layout";
 
 type Set = (patch: SlackSettingsPatch) => Promise<boolean>;
 
@@ -30,11 +31,28 @@ const MANIFEST = JSON.stringify(
 	2,
 );
 
-/** The Slack bot: how it connects and which character it talks as. */
-export function SlackSection({ form, set }: { form: SlackSettingsView; set: Set }) {
+/** The Slack bot: how it connects and which character it talks as. A change is saved as soon as
+ *  it is made. */
+export default function SlackSettings() {
+	const slack = useSlackSettings();
+	const save = useSaveSlackSettings();
+	const form = slack.data;
+	const set: Set = (patch) =>
+		save.mutateAsync(patch).then(
+			() => true,
+			() => false,
+		);
+	return (
+		<SettingsPage loadError={!form && slack.error} saveError={save.error}>
+			{form && <SlackGroup form={form} set={set} />}
+		</SettingsPage>
+	);
+}
+
+function SlackGroup({ form, set }: { form: SlackSettingsView; set: Set }) {
 	const characters = useCharacters();
 	return (
-		<SettingsGroup title="Slack" action={<StatusDot form={form} />}>
+		<SettingsGroup title="接続" action={<StatusDot form={form} />}>
 			<SwitchRow
 				id="slack-enabled"
 				label="Slack に接続する"
@@ -74,7 +92,10 @@ export function SlackSection({ form, set }: { form: SlackSettingsView; set: Set 
 					</div>
 				}
 			/>
-			<SettingsDisclosure label="設定のしかた">
+			<SettingsDisclosure
+				label="設定のしかた"
+				defaultOpen={!form.has_bot_token || !form.has_app_token}
+			>
 				<div className="flex flex-col gap-2 text-xs leading-relaxed text-muted-foreground">
 					<p className="m-0">
 						<a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noreferrer">

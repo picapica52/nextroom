@@ -28,8 +28,8 @@ export function DesktopPanel({ characterId, steps }: { characterId: string; step
 			{desktop && !desktop.enabled && (
 				<p className="m-0 text-sm text-warning">
 					デスクトップは今オフです。上の「道具」か
-					<Link to="/settings/computer" className="text-warning">
-						設定 → コンピューター
+					<Link to="/settings/tools#desktop-enabled" className="text-warning">
+						設定 → 道具
 					</Link>
 					でオンにすると、キャラクターが自分のデスクトップを使えるようになります。
 				</p>

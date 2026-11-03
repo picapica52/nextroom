@@ -1,7 +1,7 @@
 // Every setting the app keeps, in the database's `settings` table: the conversation's under
 // `chat`, the connections under `connections`, the agent's under `agent`, and the Discord and
-// Slack bots' under `discord` and `slack`. Each section keeps
-// only the fields saved, so fields added later take their default.
+// Slack bots' under `discord` and `slack`, and this installation's own id under `install`. Each
+// section keeps only the fields saved, so fields added later take their default.
 
 import {
 	agentSettingsSchema,
@@ -49,6 +49,8 @@ export const SETTINGS_SECTIONS = {
 	agent: storedAgentSchema,
 	discord: discordSettingsSchema.partial(),
 	slack: slackSettingsSchema.partial(),
+	/** Made on first use and never changed: the id some sign-ins send (ChatGPT's). */
+	install: z.object({ device_id: z.uuid() }),
 };
 type Sections = typeof SETTINGS_SECTIONS;
 type Section<K extends keyof Sections> = z.output<Sections[K]>;

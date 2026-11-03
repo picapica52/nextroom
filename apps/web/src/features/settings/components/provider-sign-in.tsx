@@ -1,9 +1,4 @@
-import type {
-	LoginPrompt,
-	PiProviderStatus,
-	SubscriptionLogin,
-	SubscriptionProvider,
-} from "@nextroom/contracts";
+import type { LoginPrompt, ProviderLogin, ProviderStatus } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
 import {
 	Dialog,
@@ -23,94 +18,26 @@ import { useConfirm } from "@/components/confirm";
 import { CopyButton } from "@/components/copy-button";
 import { SimpleSelect } from "@/components/simple-select";
 import { Dot, ErrorNote } from "@/components/status";
-import {
-	usePiProviderActions,
-	useSubscriptionActions,
-	useSubscriptionLogin,
-	useSubscriptions,
-} from "@/hooks/queries";
+import { useProviderActions, useProviderLogin } from "@/hooks/queries";
 import { qk } from "@/lib/query-keys";
 
-const SUBSCRIPTION_NAMES: Record<SubscriptionProvider, string> = {
-	chatgpt: "ChatGPT",
-	claude: "Claude",
-	copilot: "GitHub Copilot",
-	grok: "SuperGrok",
-};
-
-/** Whether the user is signed in to the subscription, with the button that signs in or out. */
-export function SubscriptionStatusRow({ provider }: { provider: SubscriptionProvider }) {
-	const confirm = useConfirm();
-	const status = useSubscriptions();
-	const { start, signOut } = useSubscriptionActions();
-	const [open, setOpen] = useState(false);
-	const [loginId, setLoginId] = useState<string | null>(null);
-	const name = SUBSCRIPTION_NAMES[provider];
-	const signedIn = status.data?.find((s) => s.provider === provider)?.signed_in;
-
-	const signIn = () => {
-		setLoginId(null);
-		setOpen(true);
-		start.mutate(provider, { onSuccess: (login) => setLoginId(login.id) });
-	};
-
-	return (
-		<div className="flex flex-col items-end gap-2">
-			<div className="flex flex-wrap items-center gap-2">
-				{status.isPending ? (
-					<Spinner className="size-3.5 text-muted-foreground" />
-				) : (
-					signedIn && <Dot tone="success">サインイン済み</Dot>
-				)}
-				{signedIn ? (
-					<Button
-						variant="ghost"
-						size="sm"
-						disabled={signOut.isPending}
-						onClick={async () => {
-							if (
-								await confirm({
-									title: `${name} からサインアウトしますか？`,
-									description: "サインインし直すまで、このサブスクリプションでは返答できません。",
-									action: "サインアウト",
-									destructive: true,
-								})
-							)
-								signOut.mutate(provider);
-						}}
-					>
-						<LogOut />
-						サインアウト
-					</Button>
-				) : (
-					<Button variant="outline" size="sm" onClick={signIn} disabled={status.isPending}>
-						<LogIn />
-						サインイン
-					</Button>
-				)}
-			</div>
-			<ErrorNote error={status.error ?? signOut.error} />
-			<LoginDialog
-				open={open}
-				onOpenChange={setOpen}
-				title={`${name} にサインイン`}
-				description={`${name} のアカウントでサインインすると、そのサブスクリプションで返答できます。`}
-				loginId={loginId}
-				startError={start.error}
-				onRetry={signIn}
-			/>
-		</div>
-	);
+/** Whether the provider can be used, and how: what was entered here, or the environment. */
+export function ProviderBadge({ provider }: { provider: ProviderStatus }) {
+	if (provider.stored === "oauth") return <Dot tone="success">サインイン済み</Dot>;
+	if (provider.stored === "api_key") return <Dot tone="success">キー設定済み</Dot>;
+	if (provider.configured)
+		return <Dot tone="success">{`設定済み（${provider.source ?? "環境変数"}）`}</Dot>;
+	return null;
 }
 
-/** One of pi's other providers: whether it can be used, entering its key or signing in, and
- *  removing what was entered. */
-export function PiProviderRow({ provider }: { provider: PiProviderStatus }) {
+/** A provider's ways of being set up, as pi offers them (an API key, a subscription's sign-in),
+ *  and removing what was entered. */
+export function ProviderActions({ provider }: { provider: ProviderStatus }) {
 	const confirm = useConfirm();
-	const { start, forget } = usePiProviderActions();
+	const { start, forget } = useProviderActions();
 	const [open, setOpen] = useState<"api_key" | "oauth" | null>(null);
 	const [loginId, setLoginId] = useState<string | null>(null);
-	const { name, auth } = provider;
+	const { name, auth, stored } = provider;
 
 	const begin = (type: "api_key" | "oauth") => {
 		setLoginId(null);
@@ -121,54 +48,54 @@ export function PiProviderRow({ provider }: { provider: PiProviderStatus }) {
 	return (
 		<div className="flex flex-col items-end gap-2">
 			<div className="flex flex-wrap items-center justify-end gap-2">
-				{provider.configured && (
-					<Dot tone="success">
-						{provider.stored ? "設定済み" : `設定済み（${provider.source ?? "環境変数"}）`}
-					</Dot>
-				)}
-				{auth.api_key && (
-					<Button variant="outline" size="sm" onClick={() => begin("api_key")}>
-						<KeyRound />
-						{provider.stored ? "入力し直す" : "API キー"}
-					</Button>
-				)}
-				{auth.oauth && (
-					<Button variant="outline" size="sm" onClick={() => begin("oauth")}>
-						<LogIn />
-						サインイン
-					</Button>
-				)}
-				{provider.stored && (
+				{stored ? (
 					<Button
 						variant="ghost"
-						size="icon-sm"
-						aria-label="削除"
-						className="text-destructive hover:text-destructive"
+						size="sm"
 						disabled={forget.isPending}
 						onClick={async () => {
 							if (
 								await confirm({
-									title: `${name} の設定を削除しますか？`,
-									description: "入力したキーやサインインを消します。",
-									action: "削除",
+									title:
+										stored === "oauth"
+											? `${name} からサインアウトしますか？`
+											: `${name} の API キーを削除しますか？`,
+									description: "設定し直すまで、このプロバイダーのモデルでは返答できません。",
+									action: stored === "oauth" ? "サインアウト" : "削除",
 									destructive: true,
 								})
 							)
 								forget.mutate(provider.id);
 						}}
 					>
-						<Trash2 />
+						{stored === "oauth" ? <LogOut /> : <Trash2 />}
+						{stored === "oauth" ? "サインアウト" : "削除"}
 					</Button>
+				) : (
+					<>
+						{auth.oauth && (
+							<Button variant="outline" size="sm" onClick={() => begin("oauth")}>
+								<LogIn />
+								サインイン
+							</Button>
+						)}
+						{auth.api_key && (
+							<Button variant="outline" size="sm" onClick={() => begin("api_key")}>
+								<KeyRound />
+								API キー
+							</Button>
+						)}
+					</>
 				)}
 			</div>
 			<ErrorNote error={forget.error} />
 			<LoginDialog
 				open={open !== null}
 				onOpenChange={(o) => !o && setOpen(null)}
-				title={open === "oauth" ? `${name} にサインイン` : `${name} の設定`}
+				title={open === "oauth" ? `${name} にサインイン` : `${name} の API キー`}
 				description={
 					open === "oauth"
-						? `${auth.oauth ?? name} でサインインします。`
+						? `${auth.oauth ?? name} のアカウントでサインインします。`
 						: `${auth.api_key ?? "API キー"} を入力します。キーはこの PC のデータベースに保存されます。`
 				}
 				loginId={loginId}
@@ -198,13 +125,13 @@ function LoginDialog({
 	onRetry: () => void;
 }) {
 	const qc = useQueryClient();
-	const { cancel } = useSubscriptionActions();
+	const { cancel } = useProviderActions();
 	return (
 		<Dialog
 			open={open}
 			onOpenChange={(o) => {
 				const login = loginId
-					? qc.getQueryData<SubscriptionLogin>(qk.subscriptionLogin(loginId))
+					? qc.getQueryData<ProviderLogin>(qk.providerLogin(loginId))
 					: undefined;
 				if (!o && login?.status === "pending") cancel.mutate(login.id);
 				onOpenChange(o);
@@ -253,8 +180,8 @@ function LoginFlow({
 	onClose: () => void;
 	onRetry: () => void;
 }) {
-	const query = useSubscriptionLogin(id);
-	const { cancel } = useSubscriptionActions();
+	const query = useProviderLogin(id);
+	const { cancel } = useProviderActions();
 	const l = query.data;
 
 	if (!l) return query.error ? <ErrorNote error={query.error} /> : <Waiting>読み込み中…</Waiting>;
@@ -263,7 +190,7 @@ function LoginFlow({
 		return (
 			<>
 				<div>
-					<Dot tone="success">サインインしました</Dot>
+					<Dot tone="success">設定できました</Dot>
 				</div>
 				<DialogFooter>
 					<Button onClick={onClose}>閉じる</Button>
@@ -334,13 +261,14 @@ function LoginFlow({
 }
 
 function promptTitle(prompt: LoginPrompt): string {
-	if (prompt.type === "manual_code") return "ページに表示されたコードを貼り付けます";
+	if (prompt.type === "manual_code")
+		return "サインイン後に表示されたコード（または移動先の URL）を貼り付けます";
 	return prompt.message;
 }
 
 /** The answer to what the sign-in asks: a code, a key, a value (which may be left empty) or a choice. */
 function PromptAnswer({ id, prompt }: { id: string; prompt: LoginPrompt }) {
-	const { answer } = useSubscriptionActions();
+	const { answer } = useProviderActions();
 	const [value, setValue] = useState("");
 	const [choice, setChoice] = useState<string | null>(prompt.options[0]?.id ?? null);
 	const send = (code: string) => answer.mutate({ id, code });

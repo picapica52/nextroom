@@ -1,12 +1,12 @@
 import type { ApprovalMode, ApprovalRule } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
 import { Trash2 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { stepLabel } from "@/features/agent/labels";
-import { useChatSettings } from "@/hooks/queries";
-import { type AgentSettingsForm, AgentSettingsPage } from "./agent-settings";
+import { type AgentSettingsForm, useAgentSettingsForm } from "./agent-settings";
+import { useChatSettingsForm } from "./chat-settings";
+import { ModelChoiceFields } from "./model-choice";
 import { Segmented } from "./settings-fields";
-import { SettingsGroup, SettingsRow } from "./settings-layout";
+import { SettingsBlock, SettingsGroup, SettingsPage, SettingsRow } from "./settings-layout";
 
 const MODES: { value: ApprovalMode; label: string; hint: string }[] = [
 	{ value: "ask", label: "確認", hint: "変更を伴う操作の前に毎回確認します" },
@@ -14,26 +14,60 @@ const MODES: { value: ApprovalMode; label: string; hint: string }[] = [
 	{ value: "never", label: "確認しない", hint: "すべての操作をそのまま実行します" },
 ];
 
-/** When a character asks before it acts, and the actions always allowed or blocked. */
+/** When a character asks before it acts, the model that decides in "auto", and the actions always
+ *  allowed or blocked. */
 export default function ApprovalSettings() {
+	const agent = useAgentSettingsForm();
+	const chat = useChatSettingsForm();
+	const f = agent.f;
+	const approvalModel = chat.f?.form.approval_model ?? null;
 	return (
-		<AgentSettingsPage>
-			{(f) => (
+		<SettingsPage
+			loadError={(!f && agent.loadError) || (!chat.f && chat.loadError)}
+			saveError={agent.saveError ?? chat.saveError}
+		>
+			{f && chat.f && (
 				<>
-					<ModeGroup f={f} />
+					<ModeGroup f={f} hasModel={!!approvalModel} />
+					{f.form.approvals.mode === "auto" && (
+						<SettingsGroup
+							id="approval-model"
+							title="承認モデル"
+							description="「自動」のとき、操作が依頼に合っているかをこのモデルが判断します。速くて安いモデルがおすすめです"
+							action={
+								approvalModel && (
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => chat.f?.set({ approval_model: null })}
+									>
+										外す
+									</Button>
+								)
+							}
+						>
+							<SettingsBlock>
+								<ModelChoiceFields
+									id="approval"
+									value={approvalModel}
+									onChange={(approval_model) => chat.f?.set({ approval_model })}
+								/>
+							</SettingsBlock>
+						</SettingsGroup>
+					)}
 					<RulesGroup f={f} />
 				</>
 			)}
-		</AgentSettingsPage>
+		</SettingsPage>
 	);
 }
 
-function ModeGroup({ f: { form, set } }: { f: AgentSettingsForm }) {
-	const hasModel = !!useChatSettings().data?.approval_model;
+function ModeGroup({ f: { form, set }, hasModel }: { f: AgentSettingsForm; hasModel: boolean }) {
 	const mode = form.approvals.mode;
 	return (
 		<SettingsGroup>
 			<SettingsRow
+				id="approval-mode"
 				label="操作の前に確認"
 				hint={MODES.find((m) => m.value === mode)?.hint}
 				control={
@@ -46,13 +80,7 @@ function ModeGroup({ f: { form, set } }: { f: AgentSettingsForm }) {
 				}
 			>
 				{mode === "auto" && !hasModel && (
-					<p className="m-0 text-xs text-warning">
-						承認モデルが未設定のため、今は「確認」と同じです（
-						<Link to="/settings/models" className="text-warning">
-							設定 → モデル
-						</Link>
-						で選べます）。
-					</p>
+					<p className="m-0 text-xs text-warning">下の承認モデルを選ぶまでは「確認」と同じです。</p>
 				)}
 			</SettingsRow>
 		</SettingsGroup>
@@ -72,7 +100,11 @@ function RulesGroup({ f: { form, set } }: { f: AgentSettingsForm }) {
 	if (!rules.length) return null;
 	const save = (next: ApprovalRule[]) => set("approvals", { rules: next });
 	return (
-		<SettingsGroup title="許可・ブロック">
+		<SettingsGroup
+			id="approval-rules"
+			title="許可・ブロック"
+			description="会話中に「常に許可」などを選んだ操作です"
+		>
 			{rules.map((rule, i) => (
 				<SettingsRow
 					key={rule.tool}

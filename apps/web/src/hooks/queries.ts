@@ -1,10 +1,4 @@
-import type {
-	ConnectionsPatch,
-	LlmProvider,
-	PiProviderId,
-	SubscriptionLogin,
-	SubscriptionProvider,
-} from "@nextroom/contracts";
+import type { ConnectionsPatch, LlmProvider, ProviderLogin } from "@nextroom/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { client, read, signalled } from "@/lib/api";
 import { POLL } from "@/lib/constants";
@@ -65,48 +59,47 @@ export function useLlmModels(provider: LlmProvider) {
 	});
 }
 
-/** Whether the user is signed in to each subscription. */
-export function useSubscriptions() {
+/** pi's providers, and whether each can be used now. */
+export function useProviders() {
 	return useQuery({
-		queryKey: qk.subscriptions(),
-		queryFn: ({ signal }) => read(client.chat.subscriptions.$get(undefined, signalled(signal))),
+		queryKey: qk.providers(),
+		queryFn: ({ signal }) => read(client.chat.providers.$get(undefined, signalled(signal))),
+		staleTime: 60_000,
 	});
 }
 
-/** A sign-in in progress, polled until it ends; signed in, the status and the models are read again. */
-export function useSubscriptionLogin(id: string | null) {
+/** A sign-in in progress, polled until it ends; signed in, the providers and the models are read
+ *  again. */
+export function useProviderLogin(id: string | null) {
 	const qc = useQueryClient();
 	return useQuery({
-		queryKey: qk.subscriptionLogin(id),
+		queryKey: qk.providerLogin(id),
 		queryFn: async ({ signal }) => {
 			const login = await read(
-				client.chat.subscriptions.logins[":id"].$get(
-					{ param: { id: id ?? "" } },
-					signalled(signal),
-				),
+				client.chat.providers.logins[":id"].$get({ param: { id: id ?? "" } }, signalled(signal)),
 			);
 			if (login.status === "done") {
-				qc.invalidateQueries({ queryKey: qk.subscriptions() });
-				qc.invalidateQueries({ queryKey: qk.piProviders() });
+				qc.invalidateQueries({ queryKey: qk.providers() });
 				qc.invalidateQueries({ queryKey: qk.llmModels(login.provider) });
 			}
 			return login;
 		},
 		enabled: !!id,
-		refetchInterval: (q) => (q.state.data?.status === "pending" ? POLL.subscriptionLogin : false),
+		refetchInterval: (q) => (q.state.data?.status === "pending" ? POLL.providerLogin : false),
 	});
 }
 
-/** Starts, answers, cancels a sign-in, or signs out of a subscription. */
-export function useSubscriptionActions() {
+/** Starts, answers or cancels signing in to a provider (with a key or a sign-in), or removes what
+ *  was entered for it. */
+export function useProviderActions() {
 	const qc = useQueryClient();
-	const logins = client.chat.subscriptions.logins[":id"];
-	const settle = (login: SubscriptionLogin) =>
-		qc.setQueryData(qk.subscriptionLogin(login.id), login);
+	const provider = client.chat.providers[":provider"];
+	const logins = client.chat.providers.logins[":id"];
+	const settle = (login: ProviderLogin) => qc.setQueryData(qk.providerLogin(login.id), login);
 	return {
 		start: useMutation({
-			mutationFn: (provider: SubscriptionProvider) =>
-				read(client.chat.subscriptions[":provider"].login.$post({ param: { provider } })),
+			mutationFn: ({ id, type }: { id: LlmProvider; type: "api_key" | "oauth" }) =>
+				read(provider.login.$post({ param: { provider: id }, json: { type } })),
 			onSuccess: settle,
 		}),
 		answer: useMutation({
@@ -118,41 +111,10 @@ export function useSubscriptionActions() {
 			mutationFn: (id: string) => read(logins.cancel.$post({ param: { id } })),
 			onSuccess: settle,
 		}),
-		signOut: useMutation({
-			mutationFn: (provider: SubscriptionProvider) =>
-				read(client.chat.subscriptions[":provider"].$delete({ param: { provider } })),
-			onSuccess: (data, provider) => {
-				qc.setQueryData(qk.subscriptions(), data);
-				qc.invalidateQueries({ queryKey: qk.llmModels(provider) });
-			},
-		}),
-	};
-}
-
-/** pi's other providers, and whether each can be used now. */
-export function usePiProviders() {
-	return useQuery({
-		queryKey: qk.piProviders(),
-		queryFn: ({ signal }) => read(client.chat["pi-providers"].$get(undefined, signalled(signal))),
-		staleTime: 60_000,
-	});
-}
-
-/** Starts signing in to one of pi's other providers (followed with useSubscriptionLogin), or
- *  removes what was entered for it. */
-export function usePiProviderActions() {
-	const qc = useQueryClient();
-	const provider = client.chat["pi-providers"][":provider"];
-	return {
-		start: useMutation({
-			mutationFn: ({ id, type }: { id: PiProviderId; type: "api_key" | "oauth" }) =>
-				read(provider.login.$post({ param: { provider: id }, json: { type } })),
-			onSuccess: (login) => qc.setQueryData(qk.subscriptionLogin(login.id), login),
-		}),
 		forget: useMutation({
-			mutationFn: (id: PiProviderId) => read(provider.$delete({ param: { provider: id } })),
+			mutationFn: (id: LlmProvider) => read(provider.$delete({ param: { provider: id } })),
 			onSuccess: (data, id) => {
-				qc.setQueryData(qk.piProviders(), data);
+				qc.setQueryData(qk.providers(), data);
 				qc.invalidateQueries({ queryKey: qk.llmModels(id) });
 			},
 		}),

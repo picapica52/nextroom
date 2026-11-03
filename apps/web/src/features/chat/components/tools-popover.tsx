@@ -95,7 +95,7 @@ function ToolsPanel() {
 			<ErrorNote error={save.error} />
 			<Separator />
 			<div className="flex flex-wrap justify-between gap-2 text-xs">
-				<Link to="/settings/computer">詳しい設定 →</Link>
+				<Link to="/settings/tools">詳しい設定 →</Link>
 				<Link to="/settings/approvals">確認のしかた →</Link>
 			</div>
 		</>

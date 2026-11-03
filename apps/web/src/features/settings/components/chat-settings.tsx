@@ -1,12 +1,10 @@
 import type { ChatSettingsPatch, ChatSettingsView } from "@nextroom/contracts";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { SettingsErrorFooter } from "@/components/settings-section";
-import { ErrorNote } from "@/components/status";
 import { useChatSettings } from "@/hooks/queries";
 import { client, read } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
-import { SettingsPageBody as SettingsBody } from "./settings-layout";
+import { SettingsPage } from "./settings-layout";
 
 export type ChatSettingsForm = {
 	form: ChatSettingsView;
@@ -14,12 +12,10 @@ export type ChatSettingsForm = {
 	set: (changes: ChatSettingsPatch) => Promise<boolean>;
 };
 
-/** One page of the chat settings (stored together under `chat`). A change is saved as soon as it is
- *  made; typed text waits for its field's save button. */
-export function ChatSettingsPage({ children }: { children: (f: ChatSettingsForm) => ReactNode }) {
+/** The chat settings (stored together under `chat`), saved as soon as a change is made. */
+export function useChatSettingsForm() {
 	const qc = useQueryClient();
 	const saved = useChatSettings();
-
 	const save = useMutation({
 		mutationFn: (patch: ChatSettingsPatch) => read(client.chat.settings.$patch({ json: patch })),
 		onSuccess: (data) => {
@@ -28,32 +24,29 @@ export function ChatSettingsPage({ children }: { children: (f: ChatSettingsForm)
 		},
 		onError: () => qc.invalidateQueries({ queryKey: qk.chatSettings() }),
 	});
-
-	if (!saved.data)
-		return (
-			<SettingsBody>
-				<ErrorNote error={saved.error} />
-			</SettingsBody>
+	const set: ChatSettingsForm["set"] = (changes) => {
+		qc.setQueryData<ChatSettingsView>(
+			qk.chatSettings(),
+			(old) => old && ({ ...old, ...changes } as ChatSettingsView),
 		);
+		return save.mutateAsync(changes).then(
+			() => true,
+			() => false,
+		);
+	};
+	return {
+		f: saved.data ? { form: saved.data, set } : undefined,
+		loadError: saved.error,
+		saveError: save.error,
+	};
+}
 
+/** One page of the chat settings. Typed text waits for its field's save button. */
+export function ChatSettingsPage({ children }: { children: (f: ChatSettingsForm) => ReactNode }) {
+	const { f, loadError, saveError } = useChatSettingsForm();
 	return (
-		<>
-			<SettingsBody>
-				{children({
-					form: saved.data,
-					set: (changes) => {
-						qc.setQueryData<ChatSettingsView>(
-							qk.chatSettings(),
-							(old) => old && ({ ...old, ...changes } as ChatSettingsView),
-						);
-						return save.mutateAsync(changes).then(
-							() => true,
-							() => false,
-						);
-					},
-				})}
-			</SettingsBody>
-			<SettingsErrorFooter error={save.error} />
-		</>
+		<SettingsPage loadError={f ? null : loadError} saveError={saveError}>
+			{f && children(f)}
+		</SettingsPage>
 	);
 }

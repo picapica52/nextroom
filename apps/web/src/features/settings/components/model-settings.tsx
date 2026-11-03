@@ -1,47 +1,54 @@
-import {
-	type ModelChoice,
-	type PiProviderStatus,
-	SUBSCRIPTION_PROVIDERS,
-} from "@nextroom/contracts";
-import { Button } from "@nextroom/ui/components/button";
+import type { ModelChoice } from "@nextroom/contracts";
+import { Button, buttonVariants } from "@nextroom/ui/components/button";
+import { cn } from "@nextroom/ui/lib/utils";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Dot } from "@/components/status";
-import { useConnections, usePiProviders, useSubscriptions } from "@/hooks/queries";
-import { APP_PROVIDER_LABELS } from "../provider-labels";
+import { Link } from "react-router-dom";
+import { settingsPath } from "../pages";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
-import { ConnectionCheck, KeyBadge, KeyField, UrlField } from "./connection-fields";
+import { useHasLlmProvider } from "./connection-fields";
 import { ModelChoiceFields } from "./model-choice";
 import { NumberField } from "./settings-fields";
-import {
-	SettingsBlock,
-	SettingsDisclosure,
-	SettingsGroup,
-	SettingsInset,
-	SettingsRow,
-} from "./settings-layout";
-import { PiProviderRow, SubscriptionStatusRow } from "./subscription-sign-in";
+import { SettingsBlock, SettingsGroup } from "./settings-layout";
 
 const MAX_FALLBACKS = 5;
 
 const keyOf = (c: ModelChoice) => `${c.provider}/${c.model}`;
 
-/** The models the app uses, and the providers it reaches them through. */
+/** The model the characters talk with, the ones tried when it fails, and how they are run. */
 export default function ModelSettings() {
-	// Until a provider is connected the models cannot be listed, so the providers come first.
-	const signedIn = useSubscriptions().data?.some((s) => s.signed_in);
-	const keys = useConnections().data?.keys;
-	const pi = usePiProviders().data?.some((p) => p.configured);
-	const connected =
-		signedIn || pi || keys?.openrouter_key?.set || keys?.anthropic_key?.set || keys === undefined;
+	const ready = useHasLlmProvider();
 	return (
 		<ChatSettingsPage>
 			{(f) => (
 				<>
-					{!connected && <ProvidersGroup />}
-					<MainModelGroup f={f} />
-					<ApprovalModelGroup f={f} />
-					{connected && <ProvidersGroup />}
+					{ready === false && (
+						<div className="flex flex-wrap items-center gap-3 rounded-xl border-2 bg-pastel-peach px-4 py-3 text-sm shadow-puff">
+							<span className="min-w-0 flex-1">
+								モデルを選ぶには、まず AI のプロバイダーに接続してください。
+							</span>
+							<Link
+								to={settingsPath("connections")}
+								className={cn(buttonVariants({ size: "sm" }), "no-underline")}
+							>
+								接続を開く
+							</Link>
+						</div>
+					)}
+					<SettingsGroup
+						id="main-model"
+						title="メインモデル"
+						description="キャラクターが会話に使うモデル（キャラクターごとに変えることもできます）"
+					>
+						<SettingsBlock>
+							<ModelChoiceFields
+								id="main"
+								value={f.form.main_model}
+								onChange={(main_model) => f.set({ main_model })}
+							/>
+						</SettingsBlock>
+					</SettingsGroup>
+					<FallbackGroup f={f} />
 					<AdvancedGroup f={f} />
 				</>
 			)}
@@ -49,8 +56,8 @@ export default function ModelSettings() {
 	);
 }
 
-/** The main model, then the fallbacks tried in turn when it fails before saying anything. */
-function MainModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
+/** The models tried in turn when the main one fails before saying anything. */
+function FallbackGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 	const [adding, setAdding] = useState(false);
 	const list = form.fallback_models;
 	const save = (next: ModelChoice[]) =>
@@ -65,14 +72,11 @@ function MainModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 	};
 
 	return (
-		<SettingsGroup title="メインモデル">
-			<SettingsBlock>
-				<ModelChoiceFields
-					id="main-model"
-					value={form.main_model}
-					onChange={(main_model) => set({ main_model })}
-				/>
-			</SettingsBlock>
+		<SettingsGroup
+			id="fallbacks"
+			title="フォールバック"
+			description="メインモデルが返答を始める前に失敗したとき、上から順に試します"
+		>
 			{list.map((choice, i) => (
 				<SettingsBlock key={keyOf(choice)}>
 					<div className="flex items-center gap-1">
@@ -137,7 +141,7 @@ function MainModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 						<Button
 							variant="ghost"
 							size="sm"
-							className="self-start text-muted-foreground"
+							className="self-start"
 							onClick={() => setAdding(true)}
 						>
 							<Plus />
@@ -150,120 +154,29 @@ function MainModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 	);
 }
 
-function ApprovalModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
-	return (
-		<SettingsGroup
-			title="承認モデル"
-			action={
-				form.approval_model && (
-					<Button variant="ghost" size="sm" onClick={() => set({ approval_model: null })}>
-						外す
-					</Button>
-				)
-			}
-		>
-			<SettingsBlock>
-				<ModelChoiceFields
-					id="approval-model"
-					value={form.approval_model}
-					onChange={(approval_model) => set({ approval_model })}
-				/>
-			</SettingsBlock>
-		</SettingsGroup>
-	);
-}
-
-function ProvidersGroup() {
-	return (
-		<SettingsGroup title="プロバイダー">
-			{SUBSCRIPTION_PROVIDERS.map((p) => (
-				<SettingsRow
-					key={p}
-					label={APP_PROVIDER_LABELS[p]}
-					control={<SubscriptionStatusRow provider={p} />}
-				/>
-			))}
-			<SettingsDisclosure label="OpenRouter" status={<KeyBadge name="openrouter_key" />}>
-				<SettingsInset>
-					<KeyField name="openrouter_key" />
-					<ConnectionCheck provider="openrouter" />
-				</SettingsInset>
-			</SettingsDisclosure>
-			<SettingsDisclosure label="Anthropic API" status={<KeyBadge name="anthropic_key" />}>
-				<SettingsInset>
-					<KeyField name="anthropic_key" />
-					<ConnectionCheck provider="anthropic" />
-				</SettingsInset>
-			</SettingsDisclosure>
-			<SettingsDisclosure label="OpenAI 互換（Ollama・LM Studio など）">
-				<SettingsInset>
-					<UrlField
-						name="openai_compatible_url"
-						label="URL"
-						placeholder="http://127.0.0.1:11434/v1"
-					/>
-					<KeyField name="openai_compatible_key" label="API キー（任意）" optional />
-					<ConnectionCheck provider="openai_compatible" />
-				</SettingsInset>
-			</SettingsDisclosure>
-			<PiProvidersDisclosure />
-		</SettingsGroup>
-	);
-}
-
-/** Every other provider pi offers (Groq, Gemini, Mistral, OpenCode, Meta, ...). */
-function PiProvidersDisclosure() {
-	const providers = usePiProviders().data ?? [];
-	const configured = providers.filter((p) => p.configured).length;
-	return (
-		<SettingsDisclosure
-			label="その他のプロバイダー"
-			status={configured > 0 && <Dot tone="success">{configured} 件設定済み</Dot>}
-		>
-			<p className="m-0 text-xs text-muted-foreground">
-				API キーを入力するかサインインすると、モデルの選択に出てきます。apps/server/.env
-				にあるキーも使われます。
-			</p>
-			<SettingsInset>
-				{providers.map((p) => (
-					<PiProviderSettings key={p.id} provider={p} />
-				))}
-			</SettingsInset>
-		</SettingsDisclosure>
-	);
-}
-
-function PiProviderSettings({ provider }: { provider: PiProviderStatus }) {
-	return <SettingsRow label={provider.name} control={<PiProviderRow provider={provider} />} />;
-}
-
 function AdvancedGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 	return (
-		<SettingsGroup>
-			<SettingsDisclosure label="詳細">
-				<SettingsInset>
-					<NumberField
-						id="llm-temperature"
-						label="温度（0〜2）"
-						value={form.temperature}
-						step={0.1}
-						min={0}
-						max={2}
-						onChange={(temperature) => set({ temperature })}
-					/>
-					<NumberField
-						id="llm-max-tokens"
-						label="最大トークン数"
-						description="空欄でモデルの既定"
-						value={form.max_tokens}
-						step={50}
-						min={16}
-						placeholder="指定なし"
-						onChange={(max_tokens) => set({ max_tokens })}
-						nullable
-					/>
-				</SettingsInset>
-			</SettingsDisclosure>
+		<SettingsGroup title="詳細" description="ふつうは変えなくて大丈夫です">
+			<NumberField
+				id="llm-temperature"
+				label="温度（0〜2）"
+				value={form.temperature}
+				step={0.1}
+				min={0}
+				max={2}
+				onChange={(temperature) => set({ temperature })}
+			/>
+			<NumberField
+				id="llm-max-tokens"
+				label="最大トークン数"
+				description="空欄でモデルの既定"
+				value={form.max_tokens}
+				step={50}
+				min={16}
+				placeholder="指定なし"
+				onChange={(max_tokens) => set({ max_tokens })}
+				nullable
+			/>
 		</SettingsGroup>
 	);
 }

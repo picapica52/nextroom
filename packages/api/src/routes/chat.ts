@@ -5,26 +5,20 @@ import {
 	chatSettingsPatchSchema,
 	connectionsPatchSchema,
 	llmProviderSchema,
-	type PiProviderStatus,
-	piLoginSchema,
-	piProviderIdSchema,
-	SUBSCRIPTION_PROVIDERS,
-	type SubscriptionLogin,
-	type SubscriptionStatus,
-	subscriptionCodeSchema,
+	loginCodeSchema,
+	type ProviderLogin,
+	type ProviderStatus,
+	providerLoginSchema,
 } from "@nextroom/contracts";
 import { Hono } from "hono";
 import { z } from "zod";
 import {
-	answerSubscriptionLogin,
-	cancelSubscriptionLogin,
-	forgetPiProvider,
-	piProviderStatus,
-	signOut,
-	startPiLogin,
-	startSubscriptionLogin,
-	subscriptionLogin,
-	subscriptionStatus,
+	answerLogin,
+	cancelLogin,
+	forgetProvider,
+	providerLogin,
+	providerStatus,
+	startProviderLogin,
 } from "../agent/auth";
 import { listLlmModels } from "../agent/models";
 import { readChatImage } from "../conversations/images";
@@ -35,49 +29,32 @@ import { getConnections, getSettings, updateConnections, updateSettings } from "
 import { approvalsRouter } from "./agent";
 import { bytesOf, json, query } from "./inputs";
 
-const subscriptionParam = z.object({ provider: z.enum(SUBSCRIPTION_PROVIDERS) });
+const providerParam = z.object({ provider: llmProviderSchema });
 
-/** Signing in to the subscriptions the replies can use. */
-const subscriptionsRouter = new Hono()
-	.get("/", (c) => c.json<SubscriptionStatus[]>(subscriptionStatus()))
-	.post("/:provider/login", async (c) => {
-		const { provider } = subscriptionParam.parse(c.req.param());
-		return c.json<SubscriptionLogin>(await startSubscriptionLogin(provider));
+/** pi's providers: whether each can be used, and signing in to them (an API key or a sign-in),
+ *  which the screen follows until it ends. */
+const providersRouter = new Hono()
+	.get("/", async (c) => c.json<ProviderStatus[]>(await providerStatus()))
+	.post("/:provider/login", json(providerLoginSchema), async (c) => {
+		const { provider } = providerParam.parse(c.req.param());
+		return c.json<ProviderLogin>(await startProviderLogin(provider, c.req.valid("json").type));
 	})
 	.delete("/:provider", async (c) => {
-		const { provider } = subscriptionParam.parse(c.req.param());
-		await signOut(provider);
-		return c.json<SubscriptionStatus[]>(subscriptionStatus());
+		const { provider } = providerParam.parse(c.req.param());
+		return c.json<ProviderStatus[]>(await forgetProvider(provider));
 	})
-	.get("/logins/:id", (c) => c.json<SubscriptionLogin>(subscriptionLogin(c.req.param("id"))))
-	.post("/logins/:id/code", json(subscriptionCodeSchema), (c) =>
-		c.json<SubscriptionLogin>(answerSubscriptionLogin(c.req.param("id"), c.req.valid("json").code)),
+	.get("/logins/:id", (c) => c.json<ProviderLogin>(providerLogin(c.req.param("id"))))
+	.post("/logins/:id/code", json(loginCodeSchema), (c) =>
+		c.json<ProviderLogin>(answerLogin(c.req.param("id"), c.req.valid("json").code)),
 	)
-	.post("/logins/:id/cancel", (c) =>
-		c.json<SubscriptionLogin>(cancelSubscriptionLogin(c.req.param("id"))),
-	);
-
-const piProviderParam = z.object({ provider: piProviderIdSchema });
-
-/** pi's other providers: signing in to them (the sign-in is followed like a subscription's). */
-const piProvidersRouter = new Hono()
-	.get("/", async (c) => c.json<PiProviderStatus[]>(await piProviderStatus()))
-	.post("/:provider/login", json(piLoginSchema), async (c) => {
-		const { provider } = piProviderParam.parse(c.req.param());
-		return c.json<SubscriptionLogin>(await startPiLogin(provider, c.req.valid("json").type));
-	})
-	.delete("/:provider", async (c) => {
-		const { provider } = piProviderParam.parse(c.req.param());
-		return c.json<PiProviderStatus[]>(await forgetPiProvider(provider));
-	});
+	.post("/logins/:id/cancel", (c) => c.json<ProviderLogin>(cancelLogin(c.req.param("id"))));
 
 export const chatRouter = new Hono()
 	.get("/settings", (c) => c.json<ChatSettingsView>(getSettings()))
 	.patch("/settings", json(chatSettingsPatchSchema), (c) =>
 		c.json<ChatSettingsView>(updateSettings(c.req.valid("json"))),
 	)
-	.route("/subscriptions", subscriptionsRouter)
-	.route("/pi-providers", piProvidersRouter)
+	.route("/providers", providersRouter)
 	.get("/llm-models", query(z.object({ provider: llmProviderSchema })), async (c) =>
 		c.json(await listLlmModels(c.req.valid("query").provider)),
 	)

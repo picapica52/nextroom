@@ -1,26 +1,18 @@
 import type { AgentSettingsPatch, AgentSettingsView } from "@nextroom/contracts";
 import { useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { SettingsErrorFooter } from "@/components/settings-section";
-import { ErrorNote } from "@/components/status";
 import { useAgentSettings, useSaveAgentSettings } from "@/features/agent/queries";
 import { qk } from "@/lib/query-keys";
 import type { SetAgentSection } from "../agent-options";
-import { SettingsPageBody as SettingsBody } from "./settings-layout";
+import { SettingsPage } from "./settings-layout";
 
 export type AgentSettingsForm = { form: AgentSettingsView; set: SetAgentSection };
 
-/** One page of the agent settings. A change is saved as soon as it is made. */
-export function AgentSettingsPage({ children }: { children: (f: AgentSettingsForm) => ReactNode }) {
+/** The agent settings, saved as soon as a change is made. */
+export function useAgentSettingsForm() {
 	const qc = useQueryClient();
 	const saved = useAgentSettings();
 	const save = useSaveAgentSettings();
-	if (!saved.data)
-		return (
-			<SettingsBody>
-				<ErrorNote error={saved.error} />
-			</SettingsBody>
-		);
 	const set: SetAgentSection = (section, changes) => {
 		qc.setQueryData<AgentSettingsView>(
 			qk.agentSettings(),
@@ -34,11 +26,19 @@ export function AgentSettingsPage({ children }: { children: (f: AgentSettingsFor
 			},
 		);
 	};
+	return {
+		f: saved.data ? { form: saved.data, set } : undefined,
+		loadError: saved.error,
+		saveError: save.error,
+	};
+}
 
+/** One page of the agent settings. */
+export function AgentSettingsPage({ children }: { children: (f: AgentSettingsForm) => ReactNode }) {
+	const { f, loadError, saveError } = useAgentSettingsForm();
 	return (
-		<>
-			<SettingsBody>{children({ form: saved.data, set })}</SettingsBody>
-			<SettingsErrorFooter error={save.error} />
-		</>
+		<SettingsPage loadError={f ? null : loadError} saveError={saveError}>
+			{f && children(f)}
+		</SettingsPage>
 	);
 }
