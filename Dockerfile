@@ -4,7 +4,7 @@ WORKDIR /app
 
 ENV TURBO_TELEMETRY_DISABLED=1
 
-# The characters' desktops and workspace containers are made through the host's Docker.
+# The characters' computers are made through the host's Docker.
 COPY --from=docker:cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker:cli /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
 

@@ -1,15 +1,9 @@
-// The docker CLI, shared by the workspace's container (sandbox.ts) and the desktop (desktop.ts).
+// The docker CLI, for the characters' computers (computer.ts).
 //
-// When the app itself runs in a container (compose.yaml), its paths are not the host's, so a
-// container it makes cannot bind-mount them. NEXTROOM_DOCKER_DATA_VOLUME names the volume the
-// data folder lives in, and the workspace is mounted from it instead; NEXTROOM_DOCKER_NETWORK
-// names the network the app is on, so that it reaches the desktops by their names.
+// When the app itself runs in a container (compose.yaml), NEXTROOM_DOCKER_NETWORK names the
+// network the app is on, so that it reaches the computers by their names.
 
-import { relative, sep } from "node:path";
 import { track } from "../../lib/children";
-import { dataDir } from "../../lib/config";
-import { workspaceDir } from "../../workspaces/store";
-import { MOUNT } from "./workspace-files";
 
 export interface DockerResult {
 	code: number;
@@ -56,12 +50,3 @@ export const dockerError = (result: DockerResult) =>
 const env = (name: string) => process.env[name]?.trim() || null;
 
 export const dockerNetwork = () => env("NEXTROOM_DOCKER_NETWORK");
-
-/** The `docker run` arguments that mount the character's workspace at /workspace. */
-export function workspaceMount(characterId: string): string[] {
-	const dir = workspaceDir(characterId);
-	const volume = env("NEXTROOM_DOCKER_DATA_VOLUME");
-	if (!volume) return ["-v", `${dir}:${MOUNT}`];
-	const subpath = relative(dataDir(), dir).split(sep).join("/");
-	return ["--mount", `type=volume,src=${volume},dst=${MOUNT},volume-subpath=${subpath}`];
-}

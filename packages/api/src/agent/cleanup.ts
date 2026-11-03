@@ -1,13 +1,12 @@
 // What the agent drops when a character or its memory goes.
 
 import { clearSession } from "../conversations/sessions";
-import { loadAgentSettings } from "../settings/agent";
 import { clearMemory } from "./memory";
-import { removeDesktop } from "./tools/desktop";
-import { resetSandbox } from "./tools/sandbox";
+import { removeComputer } from "./tools/computer";
+import { stopCommands } from "./tools/sandbox";
 
 /** Everything the agent kept of the character's conversation: its memory and
- *  approvals, and the files beside it. The workspace's files stay, as the user's work. */
+ *  approvals. The workspace's files stay, as the user's work. */
 export async function forgetConversation(characterId: string) {
 	clearSession(characterId);
 	try {
@@ -17,13 +16,10 @@ export async function forgetConversation(characterId: string) {
 	}
 }
 
-/** Stops the character's sandbox container and removes its desktop, before its workspace goes
- *  with it. */
-export async function stopSandbox(characterId: string) {
-	await resetSandbox(characterId, loadAgentSettings()).catch((error) =>
-		console.warn(`Could not stop the sandbox of character ${characterId}:`, error),
-	);
-	await removeDesktop(characterId).catch((error) =>
-		console.warn(`Could not remove the desktop of character ${characterId}:`, error),
+/** Stops the character's commands and removes its computer, with its workspace and home. */
+export async function removeComputerOf(characterId: string) {
+	stopCommands(characterId);
+	await removeComputer(characterId).catch((error) =>
+		console.warn(`Could not remove the computer of character ${characterId}:`, error),
 	);
 }

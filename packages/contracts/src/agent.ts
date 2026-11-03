@@ -36,21 +36,20 @@ export const agentSettingsSchema = z.object({
 		mode: z.enum(APPROVAL_MODES),
 		rules: z.array(approvalRuleSchema),
 	}),
-	desktop: z.object({
-		/** A Linux desktop of its own per character (a Docker container), which the user can watch
-		 *  and take over. Only for models that can see images. */
-		enabled: z.boolean(),
+	/** The character's own Linux computer (a Docker container) that the desktop and the files and
+	 *  commands work in; nothing of this PC is mounted in it. */
+	container: z.object({
 		memory_mb: z.number().int().min(512).max(65536),
 		cpus: z.number().min(0.5).max(64),
 	}),
-	sandbox: z.object({
+	desktop: z.object({
+		/** Its screen, which the user can watch and take over. Only for models that can see
+		 *  images. */
 		enabled: z.boolean(),
-		/** docker: a container per workspace; local: commands run on this PC unisolated. */
-		provider: z.enum(["docker", "local"]),
-		image: z.string().trim().min(1),
-		memory_mb: z.number().int().min(128).max(65536),
-		cpus: z.number().min(0.25).max(64),
-		network: z.boolean(),
+	}),
+	sandbox: z.object({
+		/** Files and commands in it. */
+		enabled: z.boolean(),
 		timeout_sec: z.number().int().min(5).max(3600),
 	}),
 	web_search: z.object({
@@ -85,6 +84,7 @@ const { shape } = agentSettingsSchema;
 /** A change to the settings: any fields of any section. */
 export const agentSettingsPatchSchema = z.object({
 	approvals: shape.approvals.partial().optional(),
+	container: shape.container.partial().optional(),
 	desktop: shape.desktop.partial().optional(),
 	sandbox: shape.sandbox.partial().optional(),
 	web_search: shape.web_search.partial().optional(),
@@ -202,7 +202,7 @@ export interface DesktopView {
 export interface DockerStatus {
 	ok: boolean;
 	version: string | null;
-	/** Running containers of this app's workspaces (null when Docker does not answer). */
+	/** Running computers of the characters (null when Docker does not answer). */
 	containers: number | null;
 	error: string | null;
 }

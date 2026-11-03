@@ -10,7 +10,7 @@ import {
 import { Hono } from "hono";
 import { z } from "zod";
 import { backToFriends, getAffinity, resetAffinity } from "../affinity/store";
-import { forgetConversation, stopSandbox } from "../agent/cleanup";
+import { forgetConversation, removeComputerOf } from "../agent/cleanup";
 import { deleteRoutinesOf } from "../agent/routines";
 import {
 	forgetInstructionRevisions,
@@ -106,7 +106,7 @@ export const charactersRouter = new Hono()
 	.delete("/:id", async (c) => {
 		const id = c.req.param("id");
 		loadCharacter(id);
-		await stopSandbox(id);
+		await removeComputerOf(id);
 		deleteCharacter(id);
 		deleteRoutinesOf(id);
 		forgetInstructionRevisions(id);

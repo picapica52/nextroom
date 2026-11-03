@@ -1,5 +1,5 @@
-// Workspaces: each character has one (_data/characters/<id>/workspace), where the agent's file
-// and command tools work.
+// Workspaces: each character has one, /workspace of its computer (a Docker volume), where the
+// agent's file and command tools work.
 
 import { z } from "zod";
 

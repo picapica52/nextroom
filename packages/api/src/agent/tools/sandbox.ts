@@ -1,125 +1,45 @@
-// The agent's file and command tools (workspace_*): its files are the character's workspace
-// (workspaces/store.ts), and its commands run in a Docker container with that folder mounted at
-// /workspace (one container per character). The user sees its files in the files tab and can
-// download them or add some.
-//
-// On Windows the "local" provider runs commands on this PC with no isolation at all; Docker
-// (Docker Desktop) is the one that keeps them in a box.
+// The agent's file and command tools (workspace_*), all in the character's computer
+// (computer.ts): the file tools through files.py in it, the commands through `docker exec`, as its
+// user. Paths may be anywhere in the computer; relative ones are under /workspace, the workspace
+// the user sees in the files tab.
 
-import { lstat, mkdir, readFile, rm, rmdir, writeFile } from "node:fs/promises";
-import { dirname, relative, sep } from "node:path";
 import type { DockerStatus } from "@nextroom/contracts";
 import type { Subprocess } from "bun";
 import { z } from "zod";
 import { track } from "../../lib/children";
 import { messageOf } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
-import { workspaceDir } from "../../workspaces/store";
 import { type CharacterTool, defineTool, type ToolCall, type ToolSet } from "../tool";
-import { docker, dockerError, workspaceMount } from "./docker";
 import {
-	displayPath,
-	grepWorkspace,
-	listWorkspace,
-	MOUNT,
-	readWorkspaceFile,
-	resolveInside,
-} from "./workspace-files";
-
-type SandboxSettings = AgentSettings["sandbox"];
+	asUser,
+	containerName,
+	fileRequest,
+	holdComputer,
+	useComputer,
+	WORKSPACE,
+} from "./computer";
+import { docker } from "./docker";
 
 const DEFAULT_TAIL_LINES = 200;
 const MAX_RESULT_CHARS = 20_000;
 const KEEP_OUTPUT_CHARS = 200_000;
-const CREATE_TIMEOUT_MS = 10 * 60_000;
 
-/** A workspace tool, run in the character's workspace; `changes` when it writes, deletes or runs. */
-function gated<S extends z.ZodType>(
-	_settings: AgentSettings,
+/** A file tool: its input sent to files.py in the computer as the request `op`. */
+function fileTool<S extends z.ZodType>(
+	settings: AgentSettings,
+	op: string,
 	changes: boolean,
-	tool: {
-		name: string;
-		description: string;
-		schema: S;
-		execute: (input: z.infer<S>, call: ToolCall, root: string) => Promise<unknown>;
-	},
+	tool: { name: string; description: string; schema: S },
 ): CharacterTool {
 	return defineTool({
 		...tool,
 		changes,
-		execute: (input, call) => tool.execute(input, call, workspaceDir(call.context.characterId)),
+		execute: (input, call) =>
+			fileRequest<string>(call.context.characterId, settings.container, {
+				...(input as Record<string, unknown>),
+				op,
+			}),
 	});
-}
-
-// Containers
-
-const containerName = (characterId: string) => `nextroom-${characterId}`;
-
-/** What the container is made with; a container made otherwise is made again. */
-function settingsHash(s: SandboxSettings, mount: string[]): string {
-	const made = [s.image, s.memory_mb, s.cpus, s.network, mount];
-	return Bun.hash(JSON.stringify(made)).toString(36);
-}
-
-const preparing = new Map<string, Promise<string>>();
-
-/** The character's running container, made or started when needed. */
-function ensureContainer(characterId: string, s: SandboxSettings): Promise<string> {
-	const running = preparing.get(characterId);
-	if (running) return running;
-	const job = prepareContainer(characterId, s).finally(() => preparing.delete(characterId));
-	preparing.set(characterId, job);
-	return job;
-}
-
-async function prepareContainer(characterId: string, s: SandboxSettings): Promise<string> {
-	const name = containerName(characterId);
-	const mount = workspaceMount(characterId);
-	const hash = settingsHash(s, mount);
-	const info = await docker([
-		"inspect",
-		"--format",
-		'{{index .Config.Labels "nextroom.settings"}} {{.State.Running}}',
-		name,
-	]);
-	if (info.code === 0) {
-		const [label, isRunning] = info.out.split(" ");
-		if (label === hash) {
-			if (isRunning === "true") return name;
-			const started = await docker(["start", name], 60_000);
-			if (started.code === 0) return name;
-		}
-		await docker(["rm", "-f", name], 60_000);
-	}
-	const created = await docker(
-		[
-			"run",
-			"-d",
-			"--name",
-			name,
-			"--label",
-			`nextroom.workspace=${characterId}`,
-			"--label",
-			`nextroom.settings=${hash}`,
-			"--memory",
-			`${s.memory_mb}m`,
-			"--cpus",
-			String(s.cpus),
-			...(s.network ? [] : ["--network", "none"]),
-			"--init",
-			...mount,
-			"-w",
-			MOUNT,
-			s.image,
-			"sleep",
-			"infinity",
-		],
-		CREATE_TIMEOUT_MS,
-	);
-	if (created.code !== 0) {
-		throw new Error(`Could not start the Docker container: ${dockerError(created)}`);
-	}
-	return name;
 }
 
 // Commands
@@ -154,45 +74,24 @@ interface Running {
 	kill: () => void;
 }
 
-function spawnInContainer(container: string, command: string, cwd: string): Running {
+function spawnInComputer(characterId: string, command: string, cwd: string): Running {
 	const pidFile = `/tmp/.nextroom/${crypto.randomUUID()}`;
 	const proc = track(
 		Bun.spawn(
-			["docker", "exec", "-w", cwd, container, "sh", "-c", SPAWN_WRAPPER, "sh", pidFile, command],
+			["docker", ...asUser(characterId, cwd), "sh", "-c", SPAWN_WRAPPER, "sh", pidFile, command],
 			{ stdin: "ignore", stdout: "pipe", stderr: "pipe", windowsHide: true },
 		),
 	);
 	const kill = () => {
-		void docker(["exec", container, "sh", "-c", KILL_SCRIPT, "sh", pidFile]).finally(() =>
-			setTimeout(() => proc.kill(), 2000),
-		);
-	};
-	return { proc, kill };
-}
-
-function spawnLocal(command: string, cwd: string): Running {
-	const windows = process.platform === "win32";
-	const proc = track(
-		Bun.spawn(windows ? ["cmd.exe", "/d", "/s", "/c", `"${command}"`] : ["sh", "-c", command], {
-			cwd,
-			stdin: "ignore",
-			stdout: "pipe",
-			stderr: "pipe",
-			windowsHide: true,
-			windowsVerbatimArguments: true,
-			detached: !windows,
-		}),
-	);
-	const kill = () => {
-		if (windows) {
-			Bun.spawn(["taskkill", "/pid", String(proc.pid), "/t", "/f"], { windowsHide: true });
-			return;
-		}
-		try {
-			process.kill(-proc.pid, "SIGKILL");
-		} catch {
-			proc.kill("SIGKILL");
-		}
+		void docker([
+			"exec",
+			containerName(characterId),
+			"sh",
+			"-c",
+			KILL_SCRIPT,
+			"sh",
+			pidFile,
+		]).finally(() => setTimeout(() => proc.kill(), 2000));
 	};
 	return { proc, kill };
 }
@@ -229,6 +128,7 @@ async function runCommand(
 	const timer = setTimeout(() => stop("timeout"), timeoutSec * 1000);
 	call.signal.addEventListener("abort", cancel, { once: true });
 	kills.add(cancel);
+	const release = holdComputer(characterId);
 	if (call.signal.aborted) cancel();
 
 	let output = "";
@@ -261,13 +161,17 @@ async function runCommand(
 		clearTimeout(timer);
 		call.signal.removeEventListener("abort", cancel);
 		kills.delete(cancel);
+		release();
 	}
 }
 
-/** The container's path for a host path inside the workspace. */
-const inContainer = (root: string, full: string) => {
-	const rel = relative(root, full).split(sep).join("/");
-	return rel ? `${MOUNT}/${rel}` : MOUNT;
+/** A working directory as the computer sees it: relative ones are under /workspace. */
+const cwdOf = (cwd: string | null | undefined) => {
+	const given = cwd?.trim().replaceAll("\\", "/");
+	if (!given || given === ".") return WORKSPACE;
+	if (given.startsWith("/")) return given;
+	if (given === "~" || given.startsWith("~/")) return `/home/user${given.slice(1)}`;
+	return `${WORKSPACE}/${given.replace(/^\.\//, "")}`;
 };
 
 // Tools
@@ -275,10 +179,10 @@ const inContainer = (root: string, full: string) => {
 export function sandboxTools(settings: AgentSettings): ToolSet {
 	if (!settings.sandbox.enabled) return {};
 	const tools = [
-		gated(settings, false, {
+		fileTool(settings, "read", false, {
 			name: "workspace_read_file",
 			description:
-				"Read a file from the workspace. Text files come back as text with line numbers — use offset/limit to read a line range from large files. Binary files return only their metadata (path, size, type) unless you ask for an encoding.",
+				"Read a file on your computer (relative paths are under /workspace). Text files come back as text with line numbers — use offset/limit to read a line range from large files. Binary files return only their metadata (path, size, type) unless you ask for an encoding.",
 			schema: z.object({
 				path: z.string().describe('The path to the file to read (e.g., "data/config.json")'),
 				offset: z
@@ -305,13 +209,11 @@ export function sandboxTools(settings: AgentSettings): ToolSet {
 						"Usually omit this. Pass `base64` or `hex` to get a binary file's raw bytes encoded as text.",
 					),
 			}),
-			execute: async ({ path, ...options }, _call, root) =>
-				readWorkspaceFile(root, await resolveInside(root, path), options),
 		}),
-		gated(settings, true, {
+		fileTool(settings, "write", true, {
 			name: "workspace_write_file",
 			description:
-				"Write content to a file in the workspace. Creates parent directories if needed.",
+				"Write content to a file on your computer (relative paths are under /workspace). Creates parent directories if needed.",
 			schema: z.object({
 				path: z.string().describe('The path where to write the file (e.g., "data/output.txt")'),
 				content: z.string().describe("The content to write to the file"),
@@ -321,19 +223,8 @@ export function sandboxTools(settings: AgentSettings): ToolSet {
 					.default(true)
 					.describe("Whether to overwrite the file if it already exists"),
 			}),
-			execute: async ({ path, content, overwrite }, _call, root) => {
-				const full = await resolveInside(root, path);
-				if (full === root) throw new Error("Give the path of a file.");
-				await mkdir(dirname(full), { recursive: true });
-				await writeFile(full, content, { flag: overwrite ? "w" : "wx" }).catch((error) => {
-					if ((error as NodeJS.ErrnoException).code === "EEXIST")
-						throw new Error(`${path} already exists; pass overwrite: true to replace it.`);
-					throw error;
-				});
-				return `Wrote ${Buffer.byteLength(content)} bytes to ${displayPath(root, full)}`;
-			},
 		}),
-		gated(settings, true, {
+		fileTool(settings, "edit", true, {
 			name: "workspace_edit_file",
 			description: `Edit a file by replacing specific text. The old_string must match exactly and be unique in the file.
 
@@ -357,23 +248,10 @@ Usage:
 						"If true, replace all occurrences. If false (default), old_string must be unique.",
 					),
 			}),
-			execute: async ({ path, old_string, new_string, replace_all }, _call, root) => {
-				const full = await resolveInside(root, path);
-				const text = await readFile(full, "utf-8");
-				const parts = text.split(old_string);
-				const count = parts.length - 1;
-				if (count === 0) throw new Error(`old_string was not found in ${path}.`);
-				if (count > 1 && !replace_all)
-					throw new Error(
-						`old_string was found ${count} times in ${path}; include more context to make it unique, or pass replace_all: true.`,
-					);
-				await writeFile(full, parts.join(new_string));
-				return `Replaced ${count} occurrence${count > 1 ? "s" : ""} in ${displayPath(root, full)}`;
-			},
 		}),
-		gated(settings, false, {
+		fileTool(settings, "list", false, {
 			name: "workspace_list_files",
-			description: `List files and directories in the workspace.
+			description: `List files and directories on your computer (relative paths are under /workspace).
 Returns a compact tab-indented listing; directories end with "/".
 Options mirror common tree command flags.
 
@@ -417,12 +295,11 @@ To list ALL files, omit the pattern parameter — do NOT pass pattern: "*".`,
 						'Glob pattern(s), relative to path, that files must match. Use "**/*.ext" to match files recursively; "*" only matches within a single directory level.',
 					),
 			}),
-			execute: async ({ path, ...options }, _call, root) =>
-				listWorkspace(root, await resolveInside(root, path), options),
 		}),
-		gated(settings, true, {
+		fileTool(settings, "delete", true, {
 			name: "workspace_delete",
-			description: "Delete a file or directory from the workspace.",
+			description:
+				"Delete a file or directory on your computer (relative paths are under /workspace).",
 			schema: z.object({
 				path: z.string().describe("The path to the file or directory to delete"),
 				recursive: z
@@ -433,23 +310,10 @@ To list ALL files, omit the pattern parameter — do NOT pass pattern: "*".`,
 						"If true, delete directories and their contents recursively. Required for non-empty directories.",
 					),
 			}),
-			execute: async ({ path, recursive }, _call, root) => {
-				const full = await resolveInside(root, path, true);
-				if (full === root) throw new Error("The workspace itself cannot be deleted.");
-				const info = await lstat(full).catch(() => null);
-				if (info?.isDirectory() && !recursive)
-					await rmdir(full).catch((error) => {
-						if ((error as NodeJS.ErrnoException).code === "ENOTEMPTY")
-							throw new Error(`${path} is not empty; pass recursive: true to delete it.`);
-						throw error;
-					});
-				else await rm(full, { recursive });
-				return `Deleted ${displayPath(root, full)}`;
-			},
 		}),
-		gated(settings, true, {
+		fileTool(settings, "mkdir", true, {
 			name: "workspace_mkdir",
-			description: "Create a directory in the workspace.",
+			description: "Create a directory on your computer (relative paths are under /workspace).",
 			schema: z.object({
 				path: z.string().describe("The path of the directory to create"),
 				recursive: z
@@ -458,15 +322,10 @@ To list ALL files, omit the pattern parameter — do NOT pass pattern: "*".`,
 					.default(true)
 					.describe("Whether to create parent directories if they do not exist"),
 			}),
-			execute: async ({ path, recursive }, _call, root) => {
-				const full = await resolveInside(root, path);
-				await mkdir(full, { recursive });
-				return `Created ${displayPath(root, full)}/`;
-			},
 		}),
-		gated(settings, false, {
+		fileTool(settings, "grep", false, {
 			name: "workspace_grep",
-			description: `Search file contents in the workspace using a regex pattern. Returns matching lines with file paths and line numbers ("path:line:text").
+			description: `Search file contents on your computer (relative paths are under /workspace) using a regex pattern (Python syntax). Returns matching lines with file paths and line numbers ("path:line:text").
 
 Usage:
 - Basic search: { pattern: "TODO" }
@@ -508,14 +367,11 @@ Usage:
 					.default(false)
 					.describe('Include hidden files and directories (names starting with ".")'),
 			}),
-			execute: async (input, _call, root) => grepWorkspace(root, input),
 		}),
-		gated(settings, true, {
+		defineTool({
+			changes: true,
 			name: "workspace_execute_command",
-			description:
-				settings.sandbox.provider === "docker"
-					? `Run a shell command in your workspace's Linux container (image ${settings.sandbox.image}), where the workspace is ${MOUNT}. Output streams to the user as it runs; you get the exit code and the last lines of output. Commands cannot read input, so pass flags such as -y.`
-					: `Run a shell command on the user's computer (${process.platform === "win32" ? "cmd.exe" : "sh"}), in the workspace folder. Output streams to the user as it runs; you get the exit code and the last lines of output. Commands cannot read input, so pass flags such as -y.`,
+			description: `Run a shell command (sh) on your own Linux computer (Debian), as the user "user", in ${WORKSPACE} unless cwd says otherwise. sudo works without a password, e.g. to apt-get install packages. Output streams to the user as it runs; you get the exit code and the last lines of output. Commands cannot read input, so pass flags such as -y.`,
 			schema: z.object({
 				command: z
 					.string()
@@ -533,7 +389,9 @@ Usage:
 				cwd: z
 					.string()
 					.nullish()
-					.describe("Working directory for the command, inside the workspace"),
+					.describe(
+						`Working directory for the command (default ${WORKSPACE}; relative paths are under it)`,
+					),
 				tail: z
 					.number()
 					.int()
@@ -543,18 +401,12 @@ Usage:
 						`Limit the output you get back to the last N lines, like tail -n. Defaults to ${DEFAULT_TAIL_LINES}. Use 0 for no limit.`,
 					),
 			}),
-			execute: async ({ command, timeout, cwd, tail }, call, root) => {
-				const s = settings.sandbox;
-				const dir = await resolveInside(root, cwd ?? ".");
-				const timeoutSec = Math.min(timeout ?? s.timeout_sec, s.timeout_sec);
-				const running =
-					s.provider === "docker"
-						? spawnInContainer(
-								await ensureContainer(call.context.characterId, s),
-								command,
-								inContainer(root, dir),
-							)
-						: spawnLocal(command, dir);
+			execute: async ({ command, timeout, cwd, tail }, call) => {
+				const { characterId } = call.context;
+				const limit = settings.sandbox.timeout_sec;
+				const timeoutSec = Math.min(timeout ?? limit, limit);
+				await useComputer(characterId, settings.container);
+				const running = spawnInComputer(characterId, command, cwdOf(cwd));
 				return runCommand(running, call, timeoutSec, tail ?? DEFAULT_TAIL_LINES);
 			},
 		}),
@@ -562,19 +414,13 @@ Usage:
 	return Object.fromEntries(tools.map((tool) => [tool.name, tool]));
 }
 
-/** Stop and remove the character's container (its workspace's files stay). */
-export async function resetSandbox(characterId: string, settings: AgentSettings): Promise<void> {
-	if (!settings.sandbox.enabled) return;
+/** Stops the commands the character is running (its computer stays). */
+export function stopCommands(characterId: string): void {
 	for (const cancel of runningCommands.get(characterId) ?? []) cancel();
 	runningCommands.delete(characterId);
-	if (settings.sandbox.provider !== "docker") return;
-	await preparing.get(characterId)?.catch(() => {});
-	const removed = await docker(["rm", "-f", containerName(characterId)], 60_000);
-	if (removed.code !== 0 && !/no such container/i.test(removed.err))
-		throw new Error(removed.err.split("\n")[0] || `exit ${removed.code}`);
 }
 
-/** Whether Docker answers, with its version and the running workspace containers, or the
+/** Whether Docker answers, with its version and the running computers, or the
  *  reason it does not. */
 export async function dockerStatus(): Promise<DockerStatus> {
 	try {
@@ -583,7 +429,7 @@ export async function dockerStatus(): Promise<DockerStatus> {
 			const error = version.err.split("\n")[0] || `exit ${version.code}`;
 			return { ok: false, version: null, containers: null, error };
 		}
-		const ps = await docker(["ps", "-q", "--filter", "label=nextroom.workspace"]);
+		const ps = await docker(["ps", "-q", "--filter", "label=nextroom.desktop"]);
 		const containers = ps.code === 0 ? ps.out.split("\n").filter(Boolean).length : null;
 		return { ok: true, version: version.out, containers, error: null };
 	} catch (error) {

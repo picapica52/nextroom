@@ -9,9 +9,8 @@ services:
       - path: apps/server/.env
         required: false
     environment:
-      # The desktops join this network, and mount the workspaces from this volume.
+      # The characters' computers join this network, where the app reaches their screens.
       NEXTROOM_DOCKER_NETWORK: nextroom
-      NEXTROOM_DOCKER_DATA_VOLUME: nextroom-data
     volumes:
       - data:/data
       - /var/run/docker.sock:/var/run/docker.sock

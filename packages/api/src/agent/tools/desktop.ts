@@ -1,14 +1,8 @@
-// The character's own Linux desktop: a Docker container per character (Xvfb, fluxbox, Chromium;
-// packages/api/desktop) with its workspace at /workspace and its home in a volume of its own.
-// The agent looks at it with computer_observe and works it with computer_act, both through a
-// program kept running in the container (control.py); the user watches it through noVNC, relayed
-// by the app (desktopSocket), and can take it over.
-//
-// A desktop no one has used or watched for a while is stopped; the next use starts it again.
+// The screen of the character's computer (computer.ts): Xvfb, fluxbox and Chromium. The agent
+// looks at it with computer_observe and works it with computer_act, both through a program kept
+// running in the computer (control.py); the user watches it through noVNC, relayed by the app
+// (desktopSocket), and can take it over.
 
-import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { DesktopView } from "@nextroom/contracts";
 import { z } from "zod";
 import { track } from "../../lib/children";
@@ -16,264 +10,29 @@ import { messageOf } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
 import { type LlmConnection, modelOf } from "../providers";
 import { defineTool, ImageResult, type ToolCall, type ToolSet } from "../tool";
-import { docker, dockerError, dockerNetwork, workspaceMount } from "./docker";
-import { MOUNT } from "./workspace-files";
+import {
+	asUser,
+	computerState,
+	forgetComputer,
+	onComputerGone,
+	runningComputer,
+	useComputer,
+	watchComputer,
+} from "./computer";
 
-type DesktopSettings = AgentSettings["desktop"];
-
-const IMAGE_DIR = join(import.meta.dir, "../../../desktop");
-const IMAGE_FILES = ["Dockerfile", "start.sh", "control.py", "view.html"];
-const VNC_PORT = 6080;
 const WIDTH = 1280;
 const HEIGHT = 800;
-const BUILD_TIMEOUT_MS = 30 * 60_000;
-const START_TIMEOUT_MS = 60_000;
-const IDLE_MS = 15 * 60_000;
 /** After the actions, before the screenshot: let the screen catch up. */
 const SETTLE_MS = 600;
 const COMMAND_TIMEOUT_MS = 40_000;
 /** The same actions leaving the screen as it was this many times in a row are not run again. */
 const MAX_UNCHANGED_REPEATS = 3;
 
-const containerName = (characterId: string) => `nextroom-desktop-${characterId}`;
-const homeVolume = (characterId: string) => `nextroom-desktop-home-${characterId}`;
-
-/** The image, tagged by its files so that a changed Dockerfile is built again. */
-function imageTag(): string {
-	const hash = createHash("sha256");
-	for (const file of IMAGE_FILES) hash.update(readFileSync(join(IMAGE_DIR, file)));
-	return `nextroom-desktop:${hash.digest("hex").slice(0, 12)}`;
-}
-
-let building: Promise<string> | null = null;
-
-function ensureImage(): Promise<string> {
-	building ??= (async () => {
-		const tag = imageTag();
-		if ((await docker(["image", "inspect", tag])).code === 0) return tag;
-		const built = await docker(["build", "-t", tag, IMAGE_DIR], BUILD_TIMEOUT_MS);
-		if (built.code !== 0)
-			throw new Error(`Could not build the desktop image: ${dockerError(built)}`);
-		// Images of earlier versions; one still used by a container stays until it is made again.
-		const images = await docker([
-			"images",
-			"nextroom-desktop",
-			"--format",
-			"{{.Repository}}:{{.Tag}}",
-		]);
-		const old = images.out.split("\n").filter((image) => image && image !== tag);
-		if (old.length) await docker(["rmi", ...old], 60_000);
-		return tag;
-	})().finally(() => {
-		building = null;
-	});
-	return building;
-}
-
-/** What the container is made with; a container made otherwise is made again. */
-function settingsHash(s: DesktopSettings, image: string, mount: string[]): string {
-	return Bun.hash(JSON.stringify([image, s.memory_mb, s.cpus, mount, dockerNetwork()])).toString(
-		36,
-	);
-}
-
-interface Desktop {
-	/** host:port of its websockify. */
-	address: string;
-	lastUsed: number;
-}
-
-/** The desktops started since the app started, by character. */
-const desktops = new Map<string, Desktop>();
-const preparing = new Map<string, Promise<Desktop>>();
-const failures = new Map<string, string>();
-/** Open screens per character; a desktop someone is watching is not stopped. */
-const viewers = new Map<string, number>();
-
-/** The character's running desktop, made or started when needed. */
-export function ensureDesktop(characterId: string, s: DesktopSettings): Promise<Desktop> {
-	const running = preparing.get(characterId);
-	if (running) return running;
-	const job = prepareDesktop(characterId, s)
-		.then((desktop) => {
-			failures.delete(characterId);
-			desktops.set(characterId, desktop);
-			startSweeping();
-			return desktop;
-		})
-		.catch((error) => {
-			failures.set(characterId, messageOf(error));
-			throw error;
-		})
-		.finally(() => preparing.delete(characterId));
-	preparing.set(characterId, job);
-	return job;
-}
-
-async function prepareDesktop(characterId: string, s: DesktopSettings): Promise<Desktop> {
-	const name = containerName(characterId);
-	const image = await ensureImage();
-	const mount = workspaceMount(characterId);
-	const hash = settingsHash(s, image, mount);
-	const info = await docker([
-		"inspect",
-		"--format",
-		'{{index .Config.Labels "nextroom.settings"}} {{.State.Running}}',
-		name,
-	]);
-	let ready = false;
-	if (info.code === 0) {
-		const [label, isRunning] = info.out.split(" ");
-		if (label !== hash || isRunning !== "true") closeControl(characterId);
-		if (label === hash) {
-			// A running one whose screen is down is made again rather than trusted.
-			ready =
-				isRunning === "true"
-					? await screenUp(name)
-					: (await docker(["start", name], START_TIMEOUT_MS)).code === 0;
-		}
-		if (!ready) {
-			closeControl(characterId);
-			await docker(["rm", "-f", name], 60_000);
-		}
-	}
-	if (!ready) {
-		const network = dockerNetwork();
-		const created = await docker(
-			[
-				"run",
-				"-d",
-				"--name",
-				name,
-				"--label",
-				`nextroom.desktop=${characterId}`,
-				"--label",
-				`nextroom.settings=${hash}`,
-				"--memory",
-				`${s.memory_mb}m`,
-				"--cpus",
-				String(s.cpus),
-				"--shm-size",
-				"512m",
-				"--init",
-				...(network ? ["--network", network] : ["-p", `127.0.0.1::${VNC_PORT}`]),
-				...mount,
-				"-v",
-				`${homeVolume(characterId)}:/home/user`,
-				image,
-			],
-			START_TIMEOUT_MS,
-		);
-		if (created.code !== 0)
-			throw new Error(`Could not start the desktop container: ${dockerError(created)}`);
-	}
-	const address = await addressOf(name);
-	await waitUntilUp(name, address);
-	return { address, lastUsed: Date.now() };
-}
-
-/** Where the app reaches the container's websockify. */
-async function addressOf(name: string): Promise<string> {
-	if (dockerNetwork()) return `${name}:${VNC_PORT}`;
-	const port = await docker(["port", name, `${VNC_PORT}/tcp`]);
-	const published = port.out.split("\n").find((line) => line.includes(":"));
-	if (port.code !== 0 || !published) throw new Error("The desktop's screen port is not published.");
-	return `127.0.0.1:${published.split(":").at(-1)}`;
-}
-
-/** Whether the display and both VNC servers (watching and taking over) answer. */
-async function screenUp(name: string): Promise<boolean> {
-	const check = await docker([
-		"exec",
-		"-u",
-		"user",
-		name,
-		"bash",
-		"-c",
-		"xdpyinfo -display :1 >/dev/null && exec 3<>/dev/tcp/127.0.0.1/5900 4<>/dev/tcp/127.0.0.1/5901",
-	]);
-	return check.code === 0;
-}
-
-async function waitUntilUp(name: string, address: string): Promise<void> {
-	const until = Date.now() + START_TIMEOUT_MS;
-	while (Date.now() < until) {
-		const web = await fetch(`http://${address}/nextroom.html`).then(
-			(r) => r.ok,
-			() => false,
-		);
-		if (web && (await screenUp(name))) return;
-		await Bun.sleep(500);
-	}
-	// Left running, it would look started with nothing on its screen.
-	await docker(["stop", name], 60_000);
-	throw new Error("The desktop's screen did not come up in time.");
-}
-
-let sweeper: ReturnType<typeof setInterval> | null = null;
-
-/** Stops the desktops no one has used or watched for IDLE_MS. */
-function startSweeping(): void {
-	sweeper ??= setInterval(() => {
-		const now = Date.now();
-		for (const [characterId, desktop] of desktops) {
-			if ((viewers.get(characterId) ?? 0) > 0 || now - desktop.lastUsed < IDLE_MS) continue;
-			desktops.delete(characterId);
-			closeControl(characterId);
-			void docker(["stop", containerName(characterId)], 60_000);
-		}
-	}, 60_000);
-	sweeper.unref?.();
-}
-
-/** Stops the character's desktop (its home and workspace stay). */
-export async function stopDesktop(characterId: string): Promise<void> {
-	await preparing.get(characterId)?.catch(() => {});
-	desktops.delete(characterId);
-	closeControl(characterId);
-	await docker(["stop", containerName(characterId)], 60_000);
-}
-
-/** Removes the character's desktop and its home, when the character goes. */
-export async function removeDesktop(characterId: string): Promise<void> {
-	if (!Bun.which("docker")) return;
-	await preparing.get(characterId)?.catch(() => {});
-	desktops.delete(characterId);
-	closeControl(characterId);
-	failures.delete(characterId);
-	await docker(["rm", "-f", containerName(characterId)], 60_000);
-	await docker(["volume", "rm", "-f", homeVolume(characterId)], 60_000);
-}
-
 export async function desktopView(
 	characterId: string,
 	settings: AgentSettings,
 ): Promise<DesktopView> {
-	const starting = preparing.has(characterId);
-	const enabled = settings.desktop.enabled;
-	if (!Bun.which("docker"))
-		return { enabled, running: false, starting, error: "Docker が見つかりません" };
-	const name = containerName(characterId);
-	const state = await docker(["inspect", "--format", "{{.State.Running}}", name]);
-	const up = !starting && state.code === 0 && state.out === "true" && (await screenUp(name));
-	if (!up && !starting) {
-		desktops.delete(characterId);
-		closeControl(characterId);
-	}
-	if (up && !desktops.has(characterId)) {
-		// Left running from before the app restarted.
-		const address = await addressOf(name).catch(() => null);
-		if (address) {
-			desktops.set(characterId, { address, lastUsed: Date.now() });
-			startSweeping();
-		}
-	}
-	return {
-		enabled,
-		running: up && desktops.has(characterId),
-		starting,
-		error: failures.get(characterId) ?? null,
-	};
+	return { enabled: settings.desktop.enabled, ...(await computerState(characterId)) };
 }
 
 // Working the screen: requests to control.py, one JSON line each way
@@ -297,24 +56,10 @@ const controls = new Map<string, Control>();
 function controlFor(characterId: string): Control {
 	const running = controls.get(characterId);
 	if (running) return running;
+	const [exec, ...args] = asUser(characterId);
 	const proc = track(
 		Bun.spawn(
-			[
-				"docker",
-				"exec",
-				"-i",
-				"-u",
-				"user",
-				"-e",
-				"DISPLAY=:1",
-				"-e",
-				"HOME=/home/user",
-				"-w",
-				MOUNT,
-				containerName(characterId),
-				"python3",
-				"/usr/local/bin/nextroom-control",
-			],
+			["docker", exec as string, "-i", ...args, "python3", "/usr/local/bin/nextroom-control"],
 			{ stdin: "pipe", stdout: "pipe", stderr: "ignore", windowsHide: true },
 		),
 	);
@@ -325,7 +70,7 @@ function controlFor(characterId: string): Control {
 		// Stopped by itself, not by closeControl: the container may be gone; checked on the next use.
 		if (controls.get(characterId) === control) {
 			controls.delete(characterId);
-			desktops.delete(characterId);
+			forgetComputer(characterId);
 		}
 		for (const settle of control.pending.values())
 			settle(new Error("The desktop's control program stopped."));
@@ -361,6 +106,8 @@ function closeControl(characterId: string): void {
 	controls.delete(characterId);
 	control?.proc.kill();
 }
+
+onComputerGone(closeControl);
 
 function command(characterId: string, request: Record<string, unknown>): Promise<ControlAnswer> {
 	const control = controlFor(characterId);
@@ -533,15 +280,11 @@ const seesImages = (connection: LlmConnection) => modelOf(connection).input.incl
 export const hasDesktop = (settings: AgentSettings, connection: LlmConnection) =>
 	settings.desktop.enabled && seesImages(connection);
 
-/** The character's desktop, started when need be. */
-async function desktopFor(call: ToolCall, settings: AgentSettings): Promise<string> {
+/** The character's computer, started when need be. */
+export async function computerFor(call: ToolCall, settings: AgentSettings): Promise<string> {
 	const { characterId } = call.context;
-	let desktop = desktops.get(characterId);
-	if (!desktop) {
-		call.output("デスクトップを起動しています…\n");
-		desktop = await ensureDesktop(characterId, settings.desktop);
-	}
-	desktop.lastUsed = Date.now();
+	if (!runningComputer(characterId)) call.output("コンピューターを起動しています…\n");
+	await useComputer(characterId, settings.container);
 	return characterId;
 }
 
@@ -569,7 +312,7 @@ export function desktopTools(settings: AgentSettings, connection: LlmConnection)
 			description: `Look at your desktop: a screenshot of the whole screen (${WIDTH}x${HEIGHT}). Look before you click at coordinates, and again whenever the screen may have changed (the user can use it too).`,
 			schema: z.object({}),
 			sequential: true,
-			execute: async (_input, call) => show(await look(await desktopFor(call, settings))),
+			execute: async (_input, call) => show(await look(await computerFor(call, settings))),
 		}),
 		computer_act: defineTool({
 			name: "computer_act",
@@ -589,7 +332,7 @@ export function desktopTools(settings: AgentSettings, connection: LlmConnection)
 				const key = JSON.stringify(actions);
 				if (repeats.key === key && repeats.count >= MAX_UNCHANGED_REPEATS)
 					return `Not run: these same actions have left the screen unchanged ${repeats.count} times in a row. Try something else: another place or element, a keyboard shortcut, or look again with computer_observe.`;
-				const characterId = await desktopFor(call, settings);
+				const characterId = await computerFor(call, settings);
 				const before = shown;
 				for (const [index, step] of steps.entries()) {
 					if (call.signal.aborted) throw new Error("Cancelled.");
@@ -601,8 +344,8 @@ export function desktopTools(settings: AgentSettings, connection: LlmConnection)
 							throw new Error(`${action.kind} failed: ${messageOf(error)}`);
 						});
 				}
-				const desktop = desktops.get(characterId);
-				if (desktop) desktop.lastUsed = Date.now();
+				const computer = runningComputer(characterId);
+				if (computer) computer.lastUsed = Date.now();
 				if (!observe) {
 					repeats = { key: "", count: 0 };
 					return `Done: ${actions.length} action(s).`;
@@ -624,7 +367,7 @@ export function desktopTools(settings: AgentSettings, connection: LlmConnection)
 
 /** The page that shows the screen (noVNC), served from the container. */
 export async function desktopPage(characterId: string, path: string): Promise<Response> {
-	const desktop = desktops.get(characterId);
+	const desktop = runningComputer(characterId);
 	if (!desktop) return new Response("The desktop is not running.", { status: 404 });
 	const upstream = await fetch(`http://${desktop.address}/${path}`).catch(() => null);
 	if (!upstream) return new Response("The desktop did not answer.", { status: 502 });
@@ -651,7 +394,7 @@ export function upgradeDesktopSocket(req: Request, server: Bun.Server<DesktopSoc
 	if (req.headers.get("upgrade")?.toLowerCase() !== "websocket") return false;
 	const url = new URL(req.url);
 	const match = SOCKET_PATH.exec(url.pathname);
-	if (!match?.[1] || !desktops.has(decodeURIComponent(match[1]))) return false;
+	if (!match?.[1] || !runningComputer(decodeURIComponent(match[1]))) return false;
 	const token = url.searchParams.get("token") === "control" ? "control" : "view";
 	const data: DesktopSocketData = {
 		characterId: decodeURIComponent(match[1]),
@@ -666,13 +409,12 @@ export function upgradeDesktopSocket(req: Request, server: Bun.Server<DesktopSoc
 export const desktopSocket: Bun.WebSocketHandler<DesktopSocketData> = {
 	open(ws) {
 		const { characterId, token } = ws.data;
-		const desktop = desktops.get(characterId);
+		const desktop = runningComputer(characterId);
 		if (!desktop) {
 			ws.close(1011, "The desktop is not running.");
 			return;
 		}
-		viewers.set(characterId, (viewers.get(characterId) ?? 0) + 1);
-		desktop.lastUsed = Date.now();
+		watchComputer(characterId, 1);
 		const upstream = new WebSocket(`ws://${desktop.address}/websockify?token=${token}`);
 		upstream.binaryType = "arraybuffer";
 		ws.data.upstream = upstream;
@@ -690,10 +432,7 @@ export const desktopSocket: Bun.WebSocketHandler<DesktopSocketData> = {
 		else ws.data.pending.push(typeof message === "string" ? message : message.slice());
 	},
 	close(ws) {
-		const { characterId } = ws.data;
-		viewers.set(characterId, Math.max(0, (viewers.get(characterId) ?? 1) - 1));
-		const desktop = desktops.get(characterId);
-		if (desktop) desktop.lastUsed = Date.now();
+		watchComputer(ws.data.characterId, -1);
 		ws.data.upstream?.close();
 	},
 };

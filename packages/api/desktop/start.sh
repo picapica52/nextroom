@@ -3,15 +3,11 @@
 # and websockify, which serves noVNC and turns the token in the URL into one of the two.
 set -u
 
-# Work as the owner of the mounted workspace, so that files stay the host user's; a workspace
-# owned by root (the app in a container) is handed to the desktop's user instead.
-owner=$(stat -c %u /workspace)
-if [ "$owner" = 0 ]; then
-	chown user:user /workspace
-elif [ "$owner" != "$(id -u user)" ]; then
-	usermod -o -u "$owner" user
-fi
-chown user:user /home/user
+# The workspace and the home are volumes of their own, kept as the character's user's (a home
+# from before may be another user id's).
+for dir in /workspace /home/user; do
+	[ "$(stat -c %u "$dir")" = "$(id -u user)" ] || chown -R user:user "$dir"
+done
 
 # A container stopped and started again keeps /tmp, and with it the last display's lock when
 # Xvfb was killed before it could remove it; Xvfb then refuses to start.
