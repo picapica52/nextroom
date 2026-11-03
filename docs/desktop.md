@@ -6,7 +6,7 @@
 
 ## 構成
 
-- イメージ: `packages/api/desktop/`（Debian、Xvfb 1280x800、fluxbox、Chromium、xterm、xdotool、x11vnc、noVNC と websockify、Python、sudo）。初めて使うときにアプリが `docker build` し、ファイルの中身から作ったタグ（`nextroom-desktop:<hash>`）を付けます。ファイルを変えると次に使うときに作り直します。
+- イメージ: `packages/api/desktop/`（Debian、Xvfb 1280x800、fluxbox、Chromium、xterm、xdotool、x11vnc、noVNC と websockify、Python、sudo）。タグはファイルの中身から作ります（`ghcr.io/picapica52/nextroom-desktop:<hash>`、`agent/tools/desktop-image.ts`）。main に push すると GitHub Actions がこのタグで公開し（amd64・arm64）、アプリは初めて使うときに `docker pull` します。まだ公開されていないタグ（ファイルを手元で変えたときなど）や、取得できないときはアプリが `docker build` します。
 - コンテナ: `nextroom-desktop-<キャラクター ID>`（`agent/tools/computer.ts`）。ワークスペースをボリューム `nextroom-workspace-<キャラクター ID>` から `/workspace` に、ホームをボリューム `nextroom-desktop-home-<キャラクター ID>` から `/home/user` にマウントします。ブラウザのログイン状態などはホームに残ります。メモリと CPU は「設定 → コンピューター」で変えられます。
 - コマンド: 道具は `execute_command` の1つだけで、`docker exec` でユーザー `user` として実行します（作業フォルダの既定は `/workspace`。sudo はパスワードなしで使えます）。ファイルの読み書きや検索も、キャラクターはコマンド（`cat`・`sed`・`grep`・ヒアドキュメントなど）で行います。「ファイル」タブはコンテナの中の `files.py` に1回ずつ JSON で頼み、`/workspace` の中だけを扱います。
 - キャラクターの道具: `computer_observe`（スクリーンショット）と `computer_act`（クリック・入力・キー・スクロール・ドラッグ・ブラウザやターミナルを開く）。スクリーンショットは画像としてモデルに渡し、会話の記録には残しません。画像を読めないモデルにはこの道具を渡しません。

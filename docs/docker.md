@@ -1,15 +1,16 @@
 # Docker Compose
 
-リポジトリ直下の `compose.yaml` で、サーバー（ビルド済みの画面も配信）をコンテナで起動できます。
+リポジトリ直下の `compose.yaml` で、サーバー（ビルド済みの画面も配信）をコンテナで起動できます。イメージは main に push するたびに GitHub Actions（`.github/workflows/images.yml`）が `ghcr.io/picapica52/nextroom:latest` に公開します（amd64・arm64）。
 
 ```sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 - 画面: `http://127.0.0.1:8767`、同じネットワークのスマホからは `https://<PC の IP>:8768`
 - データ（データベース・キャラクター・証明書・ダウンロードしたモデル）は、コンテナの `/data` にマウントした名前付きボリューム `data` に残ります。コンテナを作り直しても消えません（`docker compose down -v` で消えます）。
 - API キーなどは、画面で入力するか `apps/server/.env` に書きます（あれば compose が読みます。書き換えたら `docker compose up -d` で作り直します）。
-- 更新したら `docker compose up -d --build` でビルドし直します。
+- 更新は `docker compose pull && docker compose up -d` です。手元のソースから作るときは `docker compose up -d --build` でビルドします。
 
 ## ホストのサービスへの接続
 
