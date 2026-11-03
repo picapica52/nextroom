@@ -16,7 +16,14 @@ import { SettingsDisclosure, SettingsGroup, SettingsInset, SettingsRow } from ".
 const ASR_LABELS: Record<AsrProvider, string> = {
 	parakeet: "speech.cpp",
 	elevenlabs: "ElevenLabs",
+	fishaudio: "Fish Audio",
 };
+
+/** The model and the key of each provider other than speech.cpp. */
+const ASR_CLOUD = {
+	elevenlabs: { model: "Scribe v2", key: "elevenlabs_key", service: "ElevenLabs" },
+	fishaudio: { model: "transcribe-1-pro", key: "fish_audio_key", service: "Fish Audio" },
+} as const;
 
 /** What is spoken and heard, and where: the speech.cpp server, ElevenLabs and Fish Audio. */
 export default function VoiceSettings() {
@@ -60,7 +67,8 @@ export default function VoiceSettings() {
 }
 
 function SttGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
-	const local = form.asr_provider === "parakeet";
+	const cloud = form.asr_provider === "parakeet" ? null : ASR_CLOUD[form.asr_provider];
+	const local = !cloud;
 	return (
 		<SettingsGroup title="文字起こし">
 			<SettingsRow
@@ -88,16 +96,12 @@ function SttGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 							/>
 						</div>
 					) : (
-						<span className="text-sm text-muted-foreground">Scribe v2</span>
+						<span className="text-sm text-muted-foreground">{cloud?.model}</span>
 					)
 				}
 			>
-				{!local && (
-					<MissingKey
-						name="elevenlabs_key"
-						service="ElevenLabs"
-						where="下の「接続」で入力します。"
-					/>
+				{cloud && (
+					<MissingKey name={cloud.key} service={cloud.service} where="下の「接続」で入力します。" />
 				)}
 			</SettingsRow>
 		</SettingsGroup>
