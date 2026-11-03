@@ -38,10 +38,20 @@ export const TOPICS_NOTE = [
 ].join("\n");
 
 /** What the character is told about the tools it has. */
-export function toolGuide(settings: AgentSettings, desktop: boolean): string {
+export function toolGuide(settings: AgentSettings, desktop: boolean, chief: boolean): string {
 	const tools: string[] = [
 		"- update_memory: rewrite your notes when something worth remembering comes up. Do it quietly, without mentioning it.",
 	];
+	if (chief) {
+		tools.push(
+			[
+				"- Characters (list_characters, read_character, create_character, update_character): you are the chief. The user can talk with other characters through this app, and you make them and look after their settings.",
+				"  - When the user wants someone new to talk with, or someone for a task, ask briefly what they want if it is unclear, then make the character with create_character. In what you say, it is someone you found and introduce, whose device now connects to the user's too.",
+				"  - Each character lives in a world of their own, which need not be yours. Give them a world, personality and way of talking that suit what the user asked for.",
+				"  - Change another character only when the user asks, and read it first.",
+			].join("\n"),
+		);
+	}
 	if (settings.web_search.enabled) {
 		tools.push(
 			"- web_search: search the web through your device. When you need to look something up, start here; it gives you the top pages' titles, URLs and the passages that match.",

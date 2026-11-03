@@ -69,6 +69,7 @@ function summary(character: Character): CharacterSummary {
 		profile: persona.profile.slice(0, 120),
 		voice: character.voice.provider,
 		has_avatar: existsSync(avatarPath(character.id)),
+		chief: character.chief,
 		created_at: character.created_at,
 		updated_at: character.updated_at,
 	};
@@ -82,14 +83,22 @@ export function listCharacters() {
 
 export const getCharacter = (characterId: string) => viewOf(loadCharacter(characterId));
 
-export function createCharacter(name = ""): CharacterView {
+export function createCharacter(
+	name = "",
+	persona: Partial<Persona> = {},
+	options: { instructions?: string; chief?: boolean } = {},
+): CharacterView {
 	const character: Character = {
 		id: newId("ch_"),
 		created_at: now(),
 		updated_at: now(),
-		persona: { ...personaSchema.parse({}), name: name.trim() || NEW_CHARACTER_NAME },
+		persona: {
+			...personaSchema.parse(persona),
+			name: name.trim() || NEW_CHARACTER_NAME,
+		},
 		voice: defaultCharacterVoice(),
-		agent: { model: null, disabled_tools: [], instructions: "" },
+		agent: { model: null, disabled_tools: [], instructions: options.instructions ?? "" },
+		chief: options.chief ?? false,
 	};
 	saveCharacter(character);
 	return viewOf(character);
@@ -118,8 +127,13 @@ export function updateCharacter(
 	return viewOf(character);
 }
 
+/** Stops the chief from being deleted, before anything of it is removed. */
+export function assertDeletable(characterId: string): void {
+	if (loadCharacter(characterId).chief) throw new BadRequestError("チーフは削除できません");
+}
+
 export function deleteCharacter(characterId: string): void {
-	loadCharacter(characterId);
+	assertDeletable(characterId);
 	for (const table of CHARACTER_TABLES) deleteDoc(table, characterId);
 	rmSync(characterDir(characterId), { recursive: true, force: true });
 }

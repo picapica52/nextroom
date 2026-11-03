@@ -79,6 +79,7 @@ export function ConversationList({
 					)}
 					{shown.map((s) => {
 						const selected = s.id === currentId;
+						const character = characters.find((c) => c.id === s.character_id) ?? null;
 						return (
 							<NavLink
 								key={s.id}
@@ -89,13 +90,22 @@ export function ConversationList({
 									selected && SELECTED_ITEM,
 								)}
 							>
-								<CharacterAvatar
-									character={characters.find((c) => c.id === s.character_id) ?? null}
-									className="size-10 shrink-0"
-								/>
+								<CharacterAvatar character={character} className="size-10 shrink-0" />
 								<span className="flex min-w-0 flex-1 flex-col gap-0.5">
 									<span className="flex items-baseline gap-2">
-										<span className="min-w-0 flex-1 truncate font-medium">{s.character_name}</span>
+										<span className="min-w-0 flex-1 truncate font-medium">
+											{s.character_name}
+											{character?.chief && (
+												<span
+													className={cn(
+														"ml-1.5 text-[11px] font-bold",
+														selected ? "text-selected-foreground/80" : "text-muted-foreground",
+													)}
+												>
+													チーフ
+												</span>
+											)}
+										</span>
 										{s.last_message && (
 											<span
 												className={cn(

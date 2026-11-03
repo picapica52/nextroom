@@ -147,6 +147,8 @@ const STEP_KINDS = [
 	"ask",
 	"memory",
 	"app",
+	/** The chief's tools for the other characters. */
+	"character",
 	"other",
 ] as const;
 const STEP_STATUSES = ["running", "awaiting", "done", "error", "declined"] as const;
