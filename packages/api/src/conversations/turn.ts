@@ -43,6 +43,7 @@ import { TurnReporter } from "../agent/steps";
 import { BRIEF_NOTE } from "../characters/instructions";
 import { conversationPrompt } from "../characters/prompt";
 import { getCharacter } from "../characters/store";
+import { hasVoiceFile } from "../characters/voice-files";
 import { canDecide } from "../decisions/client";
 import type { VoiceSettings } from "../engine/voice";
 import { BadRequestError, Cancelled, ConflictError, messageOf } from "../lib/errors";
@@ -220,7 +221,12 @@ function queueTurn(
 		character,
 		settings,
 		agentSettings: loadAgentSettings(),
-		speaks: speak && speaksWith(character.voice, settings),
+		// Without its voice file, Voice Clone would fail the first sentence and stop the reply
+		// before its tools run; the reply is then only written.
+		speaks:
+			speak &&
+			speaksWith(character.voice, settings) &&
+			(character.voice.provider !== "irodori" || hasVoiceFile(character.id)),
 		voice: character.voice,
 		opening,
 		brief,

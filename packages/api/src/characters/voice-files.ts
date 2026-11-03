@@ -67,6 +67,9 @@ const mainPath = (characterId: string) =>
 		existsSync(path),
 	);
 
+/** Whether the character has the file its Voice Clone speaks with. */
+export const hasVoiceFile = (characterId: string) => !!mainPath(characterId);
+
 /** The clips in list order, which is also the order they are joined in the voice file. */
 const loadClips = (characterId: string): Clip[] =>
 	[...(readDoc("voice_refs", characterId, refsSchema)?.clips ?? [])].sort((a, b) =>
