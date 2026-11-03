@@ -36,13 +36,6 @@ function filePaths(clipIds: string[]): string[] {
 	return [AVATAR_FILE, ...VOICE_FILES, ...clipIds.map(clipFilePath)];
 }
 
-/** The picture of a zip exported when characters had faces: the neutral one. */
-function legacyAvatar(raw: unknown, files: Record<string, Uint8Array>): Uint8Array | undefined {
-	const neutral = (raw as { neutral?: unknown } | null)?.neutral;
-	if (typeof neutral !== "string" || !/^ex_[0-9a-f]+$/.test(neutral)) return undefined;
-	return files[`expressions/${neutral}.png`];
-}
-
 /** The clip ids of a voice/refs.json, kept only where they are well-formed. */
 function clipIdsOf(data: Uint8Array | undefined): string[] {
 	if (!data) return [];
@@ -108,7 +101,7 @@ export function importArchive(data: Uint8Array): CharacterView {
 	const character = parsed.data;
 	character.id = newId("ch_");
 	character.updated_at = now();
-	const avatar = files[AVATAR_FILE] ?? legacyAvatar(raw, files);
+	const avatar = files[AVATAR_FILE];
 	if (avatar && isPng(avatar)) files[AVATAR_FILE] = avatar;
 	else delete files[AVATAR_FILE];
 

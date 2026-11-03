@@ -7,9 +7,8 @@
 // A computer no one has used or watched for a while is stopped; the next use starts it again.
 
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, renameSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { characterDir } from "../../characters/paths";
 import { track } from "../../lib/children";
 import { BadRequestError, ConflictError, messageOf, NotFoundError } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
@@ -31,8 +30,6 @@ const FILES_TIMEOUT_MS = 60_000;
 export const containerName = (characterId: string) => `nextroom-desktop-${characterId}`;
 const homeVolume = (characterId: string) => `nextroom-desktop-home-${characterId}`;
 const workspaceVolume = (characterId: string) => `nextroom-workspace-${characterId}`;
-/** The container files and commands had before they moved into the computer. */
-const oldSandbox = (characterId: string) => `nextroom-${characterId}`;
 
 /** `docker exec` as the character's user, in the workspace, seeing the screen. */
 export const asUser = (characterId: string, cwd = WORKSPACE) => [
@@ -174,7 +171,6 @@ async function prepareComputer(characterId: string, s: ContainerSettings): Promi
 		}
 	}
 	if (!ready) {
-		await docker(["rm", "-f", oldSandbox(characterId)], 60_000);
 		const network = dockerNetwork();
 		const created = await docker(
 			[
@@ -204,23 +200,7 @@ async function prepareComputer(characterId: string, s: ContainerSettings): Promi
 	}
 	const address = await addressOf(name);
 	await waitUntilUp(name, address);
-	await moveOldWorkspace(characterId);
 	return { address, lastUsed: Date.now() };
-}
-
-/** Moves a workspace kept on this PC (before workspaces were in the computer) into the computer;
- *  the folder is left renamed to workspace.moved. */
-async function moveOldWorkspace(characterId: string): Promise<void> {
-	const dir = join(characterDir(characterId), "workspace");
-	if (!existsSync(dir)) return;
-	const name = containerName(characterId);
-	if (readdirSync(dir).length) {
-		const copied = await docker(["cp", `${dir}/.`, `${name}:${WORKSPACE}`], 10 * 60_000);
-		if (copied.code !== 0)
-			throw new Error(`Could not move the workspace into the computer: ${dockerError(copied)}`);
-		await docker(["exec", name, "chown", "-R", "user:user", WORKSPACE], 5 * 60_000);
-	}
-	renameSync(dir, `${dir}.moved`);
 }
 
 /** Where the app reaches the container's websockify. */
@@ -315,7 +295,7 @@ export async function removeComputer(characterId: string): Promise<void> {
 	await preparing.get(characterId)?.catch(() => {});
 	gone(characterId);
 	failures.delete(characterId);
-	await docker(["rm", "-f", containerName(characterId), oldSandbox(characterId)], 60_000);
+	await docker(["rm", "-f", containerName(characterId)], 60_000);
 	await docker(
 		["volume", "rm", "-f", homeVolume(characterId), workspaceVolume(characterId)],
 		60_000,
