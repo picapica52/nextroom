@@ -97,7 +97,7 @@ export function createCharacter(
 			name: name.trim() || NEW_CHARACTER_NAME,
 		},
 		voice: defaultCharacterVoice(),
-		agent: { model: null, disabled_tools: [], instructions: options.instructions ?? "" },
+		agent: { model: null, instructions: options.instructions ?? "" },
 		chief: options.chief ?? false,
 	};
 	saveCharacter(character);

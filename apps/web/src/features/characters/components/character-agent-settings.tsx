@@ -1,25 +1,17 @@
-import {
-	type CharacterView,
-	type ModelChoice,
-	TOOL_GROUPS,
-	type ToolGroup,
-} from "@nextroom/contracts";
+import type { CharacterView, ModelChoice } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
-import { Checkbox } from "@nextroom/ui/components/checkbox";
-import { Label } from "@nextroom/ui/components/label";
 import { History, Undo2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useConfirm } from "@/components/confirm";
 import { SaveTextarea } from "@/components/save-field";
 import { SettingsSection } from "@/components/settings-section";
 import { EmptyNote, ErrorNote } from "@/components/status";
-import { TOOL_GROUP_LABELS } from "@/features/agent/labels";
 import { useChatSettings } from "@/hooks/queries";
 import { formatDate } from "@/lib/api";
 import { useInstructionHistory, useSaveAgent } from "../queries";
 import { ModelChoiceField, useModelChoiceText } from "./model-choice-field";
 
-/** The 詳細 tab: the character's own model, the tools it does without, and its instructions. */
+/** The 詳細 tab: the character's own model and its instructions. */
 export function CharacterAgentSettings({ character }: { character: CharacterView }) {
 	const save = useSaveAgent(character.id);
 	const { agent } = character;
@@ -31,10 +23,6 @@ export function CharacterAgentSettings({ character }: { character: CharacterView
 				value={agent.model}
 				pending={save.isPending}
 				onChange={(model) => save.mutate({ model })}
-			/>
-			<ToolsSection
-				disabled={agent.disabled_tools}
-				onChange={(disabled_tools) => save.mutate({ disabled_tools })}
 			/>
 			<InstructionsSection
 				characterId={character.id}
@@ -91,40 +79,6 @@ function ModelSection({
 						? `メインモデル（${modelChoiceText(main)}）で返答します。`
 						: "メインモデルがまだ選ばれていません。"}
 			</p>
-		</SettingsSection>
-	);
-}
-
-function ToolsSection({
-	disabled,
-	onChange,
-}: {
-	disabled: ToolGroup[];
-	onChange: (disabled: ToolGroup[]) => void;
-}) {
-	const toggle = (group: ToolGroup, off: boolean) =>
-		onChange(
-			off
-				? TOOL_GROUPS.filter((g) => g === group || disabled.includes(g))
-				: disabled.filter((g) => g !== group),
-		);
-	return (
-		<SettingsSection
-			title="ツールを無効にする"
-			description="チェックしたツールを、このキャラクターは使いません。設定でオフのツールは、ここに関係なく使えません。記憶はいつでも使えます。"
-		>
-			<div className="grid gap-3 sm:grid-cols-2">
-				{TOOL_GROUPS.map((group) => (
-					<div key={group} className="flex items-center gap-2.5">
-						<Checkbox
-							id={`disable-${group}`}
-							checked={disabled.includes(group)}
-							onCheckedChange={(checked) => toggle(group, checked)}
-						/>
-						<Label htmlFor={`disable-${group}`}>{TOOL_GROUP_LABELS[group]}</Label>
-					</div>
-				))}
-			</div>
 		</SettingsSection>
 	);
 }

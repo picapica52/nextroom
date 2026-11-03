@@ -3,7 +3,6 @@
 
 import { z } from "zod";
 
-import { TOOL_GROUPS } from "./agent";
 import { modelChoiceSchema } from "./settings";
 import { characterVoiceSchema, type TtsProvider } from "./voice";
 
@@ -96,17 +95,15 @@ export interface PersonaExtract {
 	truncated: { name: string; read: number; total: number }[];
 }
 
-/** What a character does differently from the others: its own model, the tools it never uses,
- *  and its standing instructions (added after the custom prompt of the settings). */
+/** What a character does differently from the others: its own model and its standing
+ *  instructions (added after the custom prompt of the settings). */
 const characterAgentSchema = z.object({
 	model: modelChoiceSchema.nullable().default(null),
-	disabled_tools: z.array(z.enum(TOOL_GROUPS)).default([]),
 	instructions: z.string().default(""),
 });
 
 export const characterAgentPatchSchema = z.object({
 	model: modelChoiceSchema.nullable().optional(),
-	disabled_tools: z.array(z.enum(TOOL_GROUPS)).optional(),
 	instructions: z.string().max(20_000).optional(),
 });
 export type CharacterAgentPatch = z.infer<typeof characterAgentPatchSchema>;
@@ -126,7 +123,7 @@ export const characterSchema = z.object({
 	persona: personaSchema,
 	/** The voice its replies are spoken with, and the model that speaks it. */
 	voice: characterVoiceSchema,
-	agent: characterAgentSchema.default({ model: null, disabled_tools: [], instructions: "" }),
+	agent: characterAgentSchema.default({ model: null, instructions: "" }),
 	/** The chief, who is there from the start and makes and looks after the other characters.
 	 *  There is one, and it cannot be deleted. */
 	chief: z.boolean().default(false),

@@ -1,4 +1,4 @@
-import type { AgentStep, StepKind, ToolGroup } from "@nextroom/contracts";
+import type { AgentStep, StepKind } from "@nextroom/contracts";
 import {
 	Globe,
 	ImageIcon,
@@ -86,13 +86,3 @@ export function stepLabel(step: Pick<AgentStep, "tool">): string {
 /** The label without the "Claude: " in front, where Claude's calls are already grouped. */
 export const shortStepLabel = (step: Pick<AgentStep, "tool">) =>
 	stepLabel(step).replace("Claude: ", "");
-
-/** The tool groups, as named in the settings. */
-export const TOOL_GROUP_LABELS: Record<ToolGroup, string> = {
-	web_search: "Web 検索",
-	topic_search: "話題さがし",
-	computer: "コンピューター",
-	ask_user: "選択肢を出す",
-	apps: "アプリ連携",
-	routines: "ルーティン",
-};

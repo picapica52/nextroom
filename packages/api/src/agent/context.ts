@@ -1,7 +1,6 @@
 // What every reply of the character agent runs with, so that its tools know which conversation
 // they serve.
 
-import type { ToolGroup } from "@nextroom/contracts";
 import type { AgentSettings } from "../settings/agent";
 import type { LlmConnection } from "./providers";
 import type { TurnReporter } from "./steps";
@@ -24,8 +23,6 @@ export type CharacterContext = {
 	/** Also whose workspace the file tools work in. */
 	characterId: string;
 	settings: AgentSettings;
-	/** The groups of tools this character does without. */
-	disabledTools: ToolGroup[];
 	/** The character is the chief, with the tools that make and change the other characters. */
 	chief: boolean;
 	reporter: TurnReporter;

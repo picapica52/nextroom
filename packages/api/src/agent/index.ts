@@ -10,7 +10,6 @@ import {
 	agentLoop,
 } from "@earendil-works/pi-agent-core";
 import { createInitialSystemMessage, type Message, type UserMessage } from "@earendil-works/pi-ai";
-import type { ToolGroup } from "@nextroom/contracts";
 import type { CharacterContext } from "./context";
 import { assistantError, type CallOptions, llmFailure } from "./llm";
 import { historyForModel, memoryReady, readNotes } from "./memory";
@@ -38,28 +37,25 @@ const MAX_STEPS = 12;
  *  said so far is complete and should be spoken now, not when the next text arrives. */
 export const TEXT_BREAK = Symbol("text-break");
 
-/** Every tool the settings turn on, less the groups the character does without, and the chief's
- *  own. */
+/** Every tool the settings turn on, and the chief's own. */
 async function toolsOf(context: CharacterContext): Promise<ToolSet> {
-	const { settings, connection, disabledTools, chief } = context;
-	const groups: [ToolGroup, () => ToolSet | Promise<ToolSet>][] = [
-		["web_search", () => webSearchTools(settings)],
-		["topic_search", () => findTopicTools(settings)],
-		["computer", () => ({ ...commandTools(settings), ...desktopTools(settings, connection) })],
-		["ask_user", () => askUserTools(settings)],
-		["routines", () => routineTools(settings)],
-		["apps", () => composioTools(settings)],
-	];
-	const tools: ToolSet = { ...memoryTools(), ...(chief ? characterTools() : {}) };
-	for (const [group, make] of groups) {
-		if (!disabledTools.includes(group)) Object.assign(tools, await make());
-	}
-	return tools;
+	const { settings, connection, chief } = context;
+	return {
+		...memoryTools(),
+		...(chief ? characterTools() : {}),
+		...webSearchTools(settings),
+		...findTopicTools(settings),
+		...commandTools(settings),
+		...desktopTools(settings, connection),
+		...askUserTools(settings),
+		...routineTools(settings),
+		...(await composioTools(settings)),
+	};
 }
 
 /** Whether the character has its computer's shell, and its screen too. */
-function computerOf({ settings, connection, disabledTools }: CharacterContext) {
-	const shell = settings.computer.enabled && !disabledTools.includes("computer");
+function computerOf({ settings, connection }: CharacterContext) {
+	const shell = settings.computer.enabled;
 	return { shell, screen: shell && hasDesktop(settings, connection) };
 }
 

@@ -5,10 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { AffinityBadge } from "@/features/characters/components/affinity";
 import { CharacterAvatar } from "@/features/characters/components/character-avatar";
 import { PaneToggle } from "./pane-rail";
-import { ToolsPopover } from "./tools-popover";
 
-/** The conversation's partner and how long the two have talked, with the tools, desktop and
- *  the character's settings. */
+/** The conversation's partner and how long the two have talked, with the desktop and the
+ *  character's settings. */
 export function ChatPageHeader({
 	wide,
 	currentId,
@@ -49,7 +48,6 @@ export function ChatPageHeader({
 				<div className="truncate text-xs text-muted-foreground">{subtitle}</div>
 			</div>
 			<div className="flex items-center gap-1">
-				<ToolsPopover />
 				<Button
 					variant="ghost"
 					size="icon-sm"
