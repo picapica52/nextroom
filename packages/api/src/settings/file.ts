@@ -1,6 +1,6 @@
 // Every setting the app keeps, in the database's `settings` table: the conversation's under
-// `chat`, the connections under `connections`, the agent's under `agent`, and the Discord bot's
-// under `discord`. Each section keeps
+// `chat`, the connections under `connections`, the agent's under `agent`, and the Discord and
+// Slack bots' under `discord` and `slack`. Each section keeps
 // only the fields saved, so fields added later take their default.
 
 import {
@@ -9,6 +9,7 @@ import {
 	CONNECTION_URLS,
 	chatSettingsSchema,
 	discordSettingsSchema,
+	slackSettingsSchema,
 } from "@nextroom/contracts";
 import { z } from "zod";
 
@@ -47,6 +48,7 @@ export const SETTINGS_SECTIONS = {
 	connections: storedConnectionsSchema,
 	agent: storedAgentSchema,
 	discord: discordSettingsSchema.partial(),
+	slack: slackSettingsSchema.partial(),
 };
 type Sections = typeof SETTINGS_SECTIONS;
 type Section<K extends keyof Sections> = z.output<Sections[K]>;

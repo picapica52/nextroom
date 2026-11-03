@@ -1,7 +1,9 @@
+import { Button } from "@nextroom/ui/components/button";
 import { Switch } from "@nextroom/ui/components/switch";
 import { ToggleGroup, ToggleGroupItem } from "@nextroom/ui/components/toggle-group";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { SaveInput } from "@/components/save-field";
+import { Dot } from "@/components/status";
 import { SettingsRow } from "./settings-layout";
 
 /** A setting turned on and off, its switch at the right. */
@@ -108,5 +110,71 @@ export function Segmented<T extends string>({
 				</ToggleGroupItem>
 			))}
 		</ToggleGroup>
+	);
+}
+
+/** A token kept on the server: never shown, only pasted, replaced or removed. */
+export function SecretField({
+	id,
+	label,
+	isSet,
+	placeholder = "貼り付け",
+	onSave,
+	onDelete,
+}: {
+	id: string;
+	label: string;
+	isSet: boolean;
+	placeholder?: string;
+	onSave: (value: string) => Promise<boolean>;
+	onDelete: () => void;
+}) {
+	const [replacing, setReplacing] = useState(false);
+	if (isSet && !replacing)
+		return (
+			<SettingsRow
+				label={label}
+				control={
+					<>
+						<Dot tone="success">保存済み</Dot>
+						<Button variant="outline" size="sm" onClick={() => setReplacing(true)}>
+							変更
+						</Button>
+						<Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onDelete}>
+							削除
+						</Button>
+					</>
+				}
+			/>
+		);
+	return (
+		<SettingsRow
+			label={label}
+			htmlFor={id}
+			control={
+				<div className="flex w-72 max-w-full items-center gap-2">
+					<SaveInput
+						id={id}
+						type="password"
+						autoComplete="off"
+						className="font-mono"
+						autoFocus={replacing}
+						value=""
+						placeholder={placeholder}
+						onSave={async (value) => {
+							if (!value.trim()) return false;
+							const ok = await onSave(value.trim());
+							if (ok) setReplacing(false);
+							return ok;
+						}}
+					/>
+					{replacing && (
+						<Button variant="ghost" size="sm" onClick={() => setReplacing(false)}>
+							やめる
+						</Button>
+					)}
+				</div>
+			}
+		/>
 	);
 }

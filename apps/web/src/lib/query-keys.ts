@@ -20,6 +20,7 @@ export const qk = {
 	composio: () => ["composio"] as const,
 	composioCatalog: () => ["composio", "catalog"] as const,
 	discord: () => ["discord"] as const,
+	slack: () => ["slack"] as const,
 	chatSessions: () => ["chat-sessions"] as const,
 	chat: (id?: string | null) => (id === undefined ? ["chat"] : ["chat", id]),
 	desktop: (characterId: string | null) => ["desktop", characterId] as const,

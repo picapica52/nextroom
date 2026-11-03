@@ -6,7 +6,7 @@
 
 1. [Discord Developer Portal](https://discord.com/developers/applications) で「New Application」を作る。
 2. 「Bot」で「Reset Token」を押し、表示されたトークンをコピーする（特権 Intent はどれも不要）。
-3. アプリの「設定 → Discord」でトークンを貼り付け、「bot を動かす」をオンにし、話すキャラクターを選ぶ。
+3. アプリの「設定 → Discord」でトークンを貼り付け、「Discord に接続する」をオンにし、話すキャラクターを選ぶ。
 4. ログインできたら「サーバーに追加」から bot をサーバーに招待する（権限は「チャンネルを見る・接続・発言」）。
 
 ## 使い方
