@@ -30,7 +30,6 @@ import {
 } from "@nextroom/contracts";
 
 import { BadRequestError } from "../lib/errors";
-import { OPENROUTER_API_URL } from "../lib/openrouter";
 import {
 	anthropicApiKey,
 	openaiCompatibleApiKey,
@@ -38,6 +37,9 @@ import {
 	openrouterApiKey,
 } from "../settings/chat";
 import { credentials, isSignedIn, PI_PROVIDERS } from "./auth";
+
+/** OpenRouter's API root; its OpenAI-compatible endpoints are under /v1. */
+const OPENROUTER_API_URL = "https://openrouter.ai/api";
 
 export interface LlmConnection {
 	provider: LlmProvider;

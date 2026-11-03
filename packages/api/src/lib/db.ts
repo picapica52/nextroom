@@ -2,7 +2,7 @@
 // checked against its zod schema, kept by key in a table of its own:
 //
 //     settings        by section (chat, agent, discord)
-//     characters      by character id: persona, voice, expressions, neutral
+//     characters      by character id: persona, voice, agent
 //     affinity        by character id
 //     chat_sessions   by character id: when the conversation was made and last changed
 //     voice_refs      by character id: the Voice Clone clips (their files stay in the folder)

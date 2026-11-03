@@ -5,7 +5,6 @@
 
 import type { AssistantMessage, Message } from "@earendil-works/pi-ai";
 import type { AgentStep, ChatAffinityMark } from "@nextroom/contracts";
-import { withoutFaceTags } from "../../conversations/face-tags";
 import { splitImageNote } from "../../conversations/images";
 import { memoryDb } from "./db";
 
@@ -135,9 +134,9 @@ export function textOf(message: ChatMessageEntry["message"]): string {
 	return content.flatMap((c) => (c.type === "text" ? [c.text] : [])).join("");
 }
 
-/** What was said, as it is shown and summarized: the words without face tags or image notes. */
+/** What was said, as it is shown and summarized: the words without image notes. */
 export function spokenText(entry: ChatMessageEntry): string {
-	const text = withoutFaceTags(textOf(entry.message)).trim();
+	const text = textOf(entry.message).trim();
 	return entry.message.role === "user" ? splitImageNote(text).text : text;
 }
 

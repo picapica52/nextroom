@@ -11,8 +11,7 @@
 // is complete and held in memory (live-turn) so the browser can start playing before the
 // reply ends; the audio is not saved with the conversation. Only the call screen asks for
 // speech; in the chat, or with speech turned off in the settings, the sentences only update
-// the reply's text. In a call, the Decisions API chooses the face the call screen shows with
-// each sentence (expression.ts).
+// the reply's text.
 
 import type { Message } from "@earendil-works/pi-ai";
 import {
@@ -44,7 +43,6 @@ import { BRIEF_NOTE } from "../characters/instructions";
 import { conversationPrompt } from "../characters/prompt";
 import { getCharacter } from "../characters/store";
 import { hasVoiceFile } from "../characters/voice-files";
-import { canDecide } from "../decisions/client";
 import type { VoiceSettings } from "../engine/voice";
 import { BadRequestError, Cancelled, ConflictError, messageOf } from "../lib/errors";
 import { type Job, queue } from "../lib/jobs";
@@ -52,7 +50,6 @@ import { newId, now } from "../lib/storage";
 import { ThinkFilter } from "../lib/text";
 import { loadAgentSettings } from "../settings/agent";
 import { loadSettings, speaksWith } from "../settings/chat";
-import { faceChooser, faceTagsOf } from "./expression";
 import { lastTalkedAt, recordBrokenTurn, recordTurn } from "./history";
 import { MAX_TURN_IMAGES, saveChatImage, withImageNote } from "./images";
 import {
@@ -114,7 +111,7 @@ export async function submitTurn(
 	if (turnRunning(sessionId)) throw new ConflictError("前の返答を処理中です");
 	const recording = typed || !audio?.length ? null : audio;
 	const imageIds: string[] = [];
-	for (const image of images) imageIds.push(await saveChatImage(sessionId, image, "user"));
+	for (const image of images) imageIds.push(await saveChatImage(sessionId, image));
 	const user: ChatMessage = {
 		id: newId("m_"),
 		role: "user",
@@ -263,7 +260,7 @@ async function runTurn(job: Job, plan: TurnPlan) {
 	const stop = new AbortController();
 	const onCancel = () => stop.abort();
 	job.signal.addEventListener("abort", onCancel);
-	const reply = replyWriter(job, plan, turn.chooseFace, stop);
+	const reply = replyWriter(job, plan, stop);
 	const kept: Message[] = [];
 	try {
 		await streamTurn(plan, turn, userText, reply, stop.signal, kept);
@@ -313,8 +310,6 @@ async function heardText(job: Job, plan: TurnPlan): Promise<string | null> {
 interface PreparedTurn {
 	context: CharacterContext;
 	affinity: AffinityTurn;
-	/** null: the faces do not change. */
-	chooseFace: ReturnType<typeof faceChooser> | null;
 }
 
 /** The agent's context for the reply. */
@@ -339,19 +334,6 @@ async function prepareTurn(
 	prompt.postHistory = [prompt.postHistory, affinity.note, plan.brief ? BRIEF_NOTE : ""]
 		.filter(Boolean)
 		.join("\n\n");
-	const faceTags =
-		plan.speaks && plan.settings.face_changes_enabled && canDecide()
-			? affinity.faces(faceTagsOf(character.expressions))
-			: [];
-	const chooseFace = faceTags.length
-		? faceChooser({
-				expressions: character.expressions,
-				tags: faceTags,
-				charName: character.persona.name,
-				userText: plan.opening ? "" : userText,
-				signal: job.signal,
-			})
-		: null;
 	const reporter = new TurnReporter(
 		sessionId,
 		job.signal,
@@ -369,24 +351,14 @@ async function prepareTurn(
 			settings: agentSettings,
 			disabledTools: character.agent.disabled_tools,
 			reporter,
-			addImages: (ids) =>
-				updateMessage(sessionId, replyId, {
-					images: [...(liveMessage(sessionId, replyId)?.images ?? []), ...ids],
-				}),
 		},
 		affinity,
-		chooseFace,
 	};
 }
 
 /** The reply as it streams in: its text without thinking, and its sentences queued to be
  *  spoken. */
-function replyWriter(
-	job: Job,
-	plan: TurnPlan,
-	chooseFace: PreparedTurn["chooseFace"],
-	stop: AbortController,
-) {
+function replyWriter(job: Job, plan: TurnPlan, stop: AbortController) {
 	const think = new ThinkFilter();
 	// Narration (`*…*`), in older replies or written against the instructions, is shown in the
 	// reply but not read aloud.
@@ -399,7 +371,6 @@ function replyWriter(
 		ttsEnabled: plan.speaks,
 		voice: plan.voice,
 		characterId: plan.sessionId,
-		chooseFace,
 		text: () => full,
 		stop,
 	});
@@ -468,9 +439,8 @@ async function finishTurn(
 	if (speakError) throw speakError;
 	job.checkCancelled();
 	const full = reply.text.trim();
-	// A reply may be only its choices (ask_user), or only the images it drew.
-	const drew = !!liveMessage(sessionId, replyId)?.images?.length;
-	if (!full && !turn.context.reporter.offered && !drew) throw emptyReplyError();
+	// A reply may be only its choices (ask_user).
+	if (!full && !turn.context.reporter.offered) throw emptyReplyError();
 	settleSpeech(sessionId, full.length);
 	updateMessage(sessionId, replyId, { status: "done", text: full });
 	try {

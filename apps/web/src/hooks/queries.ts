@@ -42,7 +42,6 @@ export function useSaveConnections() {
 			qc.setQueryData(qk.connections(), data);
 			for (const queryKey of [
 				qk.llmModels(),
-				qk.openrouterImageModels(),
 				qk.agentSettings(),
 				qk.composio(),
 				qk.elevenlabsVoices(),
@@ -158,17 +157,6 @@ export function usePiProviderActions() {
 			},
 		}),
 	};
-}
-
-/** OpenRouter's models that take an image and give `output`: a drawn image or a Decisions answer. */
-export function useOpenrouterImageModels(output: "image" | "decisions") {
-	return useQuery({
-		queryKey: qk.openrouterImageModels(output),
-		queryFn: ({ signal }) =>
-			read(client.chat["openrouter-image-models"].$get({ query: { output } }, signalled(signal))),
-		retry: false,
-		staleTime: 5 * 60_000,
-	});
 }
 
 /** The Fish Audio account's own voices; only asked for when `enabled` (a key is set). */

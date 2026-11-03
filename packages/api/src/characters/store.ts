@@ -1,11 +1,8 @@
 // Characters: each one is a document of the database's `characters` table ({id, created_at,
-// updated_at, persona, voice, expressions, neutral}), with its files in its folder:
+// updated_at, persona, voice, agent}), with its files in its folder:
 //
-//     characters/<id>/reference.png    optional, the image faces are generated from
+//     characters/<id>/avatar.png       optional, the character's picture
 //     characters/<id>/voice/           the Voice Clone clips and voice file (voice-files.ts)
-//     characters/<id>/expressions/     <expression id>.png, the faces of the call screen
-//                                      (<expression id>.orig.png: the original of a cut-out face);
-//                                      the neutral one is also the character's picture
 //     characters/<id>/images/          the conversation's images (conversations/images.ts)
 //     characters/<id>/workspace/       where its file and command tools work (workspaces/store.ts)
 //
@@ -15,7 +12,8 @@
 // `voice` holds the TTS settings used for the character's replies, the model included; the
 // files they speak with are the character's own.
 
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
 	type Character,
 	type CharacterSummary,
@@ -27,11 +25,12 @@ import {
 	type Persona,
 	personaSchema,
 } from "@nextroom/contracts";
+import { z } from "zod";
 import { defaultCharacterVoice, withVoice } from "../engine/voice";
 import { type DocTable, deleteDoc, listDocs, readDoc, writeDoc } from "../lib/db";
 import { BadRequestError, NotFoundError, parseOrBadRequest } from "../lib/errors";
 import { newId, now } from "../lib/storage";
-import { characterDir, referencePath } from "./paths";
+import { avatarPath, characterDir } from "./paths";
 import { stripCardChunks, toPng } from "./png";
 
 export type { Character };
@@ -60,8 +59,7 @@ export function saveCharacter(character: Character): void {
 
 export const viewOf = (character: Character): CharacterView => ({
 	...character,
-	has_avatar: character.neutral !== null,
-	has_reference: existsSync(referencePath(character.id)),
+	has_avatar: existsSync(avatarPath(character.id)),
 });
 
 function summary(character: Character): CharacterSummary {
@@ -72,7 +70,7 @@ function summary(character: Character): CharacterSummary {
 		nickname: persona.nickname,
 		profile: persona.profile.slice(0, 120),
 		voice: character.voice.provider,
-		has_avatar: character.neutral !== null,
+		has_avatar: existsSync(avatarPath(character.id)),
 		created_at: character.created_at,
 		updated_at: character.updated_at,
 	};
@@ -93,8 +91,6 @@ export function createCharacter(name = ""): CharacterView {
 		updated_at: now(),
 		persona: { ...personaSchema.parse({}), name: name.trim() || NEW_CHARACTER_NAME },
 		voice: defaultCharacterVoice(),
-		expressions: [],
-		neutral: null,
 		agent: { model: null, disabled_tools: [], instructions: "" },
 	};
 	saveCharacter(character);
@@ -130,10 +126,46 @@ export function deleteCharacter(characterId: string): void {
 	rmSync(characterDir(characterId), { recursive: true, force: true });
 }
 
-export async function setReference(characterId: string, data: Uint8Array): Promise<CharacterView> {
-	const png = await toPng(data);
+/** Sets the character's picture. Saving the character changes `updated_at`, which the picture's
+ *  URL carries. */
+export async function setAvatar(characterId: string, data: Uint8Array): Promise<CharacterView> {
+	const png = stripCardChunks(await toPng(data));
 	const character = loadCharacter(characterId);
-	writeFileSync(referencePath(characterId), stripCardChunks(png));
+	writeFileSync(avatarPath(characterId), png);
 	saveCharacter(character);
 	return viewOf(character);
+}
+
+export function removeAvatar(characterId: string): CharacterView {
+	const character = loadCharacter(characterId);
+	rmSync(avatarPath(characterId), { force: true });
+	saveCharacter(character);
+	return viewOf(character);
+}
+
+/** Characters saved with the faces of the call screen (`expressions` and `neutral`, the faces in
+ *  `expressions/`, the image they were drawn from in `reference.png`): the neutral face becomes
+ *  the picture and the rest is removed. */
+const legacyFacesSchema = z.object({
+	expressions: z.unknown().optional(),
+	neutral: z.string().nullish(),
+});
+
+export function migrateLegacyFaces(): void {
+	for (const { key, data } of listDocs("characters", legacyFacesSchema)) {
+		if (data.expressions === undefined && data.neutral === undefined) continue;
+		try {
+			const character = loadCharacter(key);
+			const dir = characterDir(key);
+			const { neutral } = data;
+			const face =
+				neutral && /^ex_[0-9a-f]+$/.test(neutral) && join(dir, "expressions", `${neutral}.png`);
+			if (face && existsSync(face)) copyFileSync(face, avatarPath(key));
+			rmSync(join(dir, "expressions"), { recursive: true, force: true });
+			rmSync(join(dir, "reference.png"), { force: true });
+			writeDoc("characters", key, characterSchema, character);
+		} catch (error) {
+			console.warn(`Could not move the faces of ${key}:`, error);
+		}
+	}
 }

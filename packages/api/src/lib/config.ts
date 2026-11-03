@@ -4,7 +4,6 @@
 //                          subscriptions' credentials (lib/db.ts)
 //     characters/<id>/     a character's images, voice files and workspace (characters/store.ts)
 //     uploads/             audio uploaded before it joins a character's voice (engine/uploads.ts)
-//     transformers/        the models Transformers.js downloads on first use
 //     tls/                 the self-signed certificate of the HTTPS port (apps/server)
 
 import { mkdirSync } from "node:fs";
@@ -31,5 +30,3 @@ export const dataDir = () => config().dataDir;
 export const charactersDir = () => join(dataDir(), "characters");
 /** Audio uploaded from the browser, before it joins a character's voice. */
 export const uploadsDir = () => join(dataDir(), "uploads");
-/** Transformers.js's cache of the models it downloads on first use (cutout). */
-export const modelCacheDir = () => join(dataDir(), "transformers");

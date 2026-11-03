@@ -26,7 +26,7 @@ import {
 	subscriptionLogin,
 	subscriptionStatus,
 } from "../agent/auth";
-import { listLlmModels, listOpenrouterImageModels } from "../agent/models";
+import { listLlmModels } from "../agent/models";
 import { readChatImage } from "../conversations/images";
 import { clipOf } from "../conversations/live-turn";
 import { getSession, listSessions } from "../conversations/sessions";
@@ -84,11 +84,6 @@ export const chatRouter = new Hono()
 	.get("/connections", (c) => c.json<ConnectionsView>(getConnections()))
 	.patch("/connections", json(connectionsPatchSchema), (c) =>
 		c.json<ConnectionsView>(updateConnections(c.req.valid("json"))),
-	)
-	.get(
-		"/openrouter-image-models",
-		query(z.object({ output: z.enum(["image", "decisions"]) })),
-		async (c) => c.json(await listOpenrouterImageModels(c.req.valid("query").output)),
 	)
 	.get("/sessions", async (c) => c.json(await listSessions()))
 	.get("/sessions/:id", async (c) => c.json(await getSession(c.req.param("id"))))

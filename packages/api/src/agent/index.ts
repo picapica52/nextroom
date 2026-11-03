@@ -23,7 +23,6 @@ import { browserTools } from "./tools/browser";
 import { composioTools } from "./tools/composio";
 import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
-import { imageGenTools } from "./tools/image-gen";
 import { memoryTools } from "./tools/memory";
 import { routineTools } from "./tools/routines";
 import { sandboxTools } from "./tools/sandbox";
@@ -48,7 +47,6 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 		["browser", () => browserTools(settings, connection)],
 		["desktop", () => desktopTools(settings, connection)],
 		["workspace", () => sandboxTools(settings)],
-		["send_photo", () => imageGenTools(settings)],
 		["ask_user", () => askUserTools(settings)],
 		["routines", () => routineTools(settings)],
 		["apps", () => composioTools(settings)],

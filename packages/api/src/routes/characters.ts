@@ -2,9 +2,6 @@ import {
 	affinityPatchSchema,
 	type CharacterSummary,
 	characterAgentPatchSchema,
-	expressionBatchSchema,
-	expressionPatchSchema,
-	neutralGenerateSchema,
 	personaGenerateSchema,
 	personaPatchSchema,
 	personaSchema,
@@ -21,25 +18,9 @@ import {
 	updateCharacterAgent,
 } from "../characters/agent";
 import { exportArchive, exportName, importArchive } from "../characters/archive";
-import { generateNeutral, regenerateExpression, tagExpression } from "../characters/expression-ai";
-import {
-	cancelExpressionBatch,
-	expressionBatchOf,
-	startExpressionBatch,
-} from "../characters/expression-batch";
-import {
-	addExpression,
-	clearExpressionTags,
-	cutoutExpression,
-	deleteExpression,
-	neutralOf,
-	restoreExpression,
-	setNeutral,
-	updateExpression,
-} from "../characters/expressions";
 import { extractPersona } from "../characters/extract";
 import { generatePersonaField } from "../characters/generate";
-import { expressionPath, referencePath } from "../characters/paths";
+import { avatarPath } from "../characters/paths";
 import { speakAs } from "../characters/speak";
 import {
 	createCharacter,
@@ -47,7 +28,8 @@ import {
 	getCharacter,
 	listCharacters,
 	loadCharacter,
-	setReference,
+	removeAvatar,
+	setAvatar,
 	updateCharacter,
 } from "../characters/store";
 import { describeVoice } from "../characters/voice-description";
@@ -152,59 +134,17 @@ export const charactersRouter = new Hono()
 		loadCharacter(id);
 		return c.json(resetAffinity(id));
 	})
-	// The character's picture: its neutral face.
+	// The character's picture.
 	.get("/:id/avatar", (c) => {
 		const id = c.req.param("id");
-		return sendFile(expressionPath(id, neutralOf(loadCharacter(id)).id));
+		loadCharacter(id);
+		return sendFile(avatarPath(id));
 	})
 	.put("/:id/avatar", async (c) => {
 		const file = await uploaded(c);
-		return c.json(await addExpression(c.req.param("id"), await bytesOf(file), true));
+		return c.json(await setAvatar(c.req.param("id"), await bytesOf(file)));
 	})
-	.post("/:id/avatar/generate", json(neutralGenerateSchema), async (c) =>
-		c.json(await generateNeutral(c.req.param("id"), c.req.valid("json"), c.req.raw.signal)),
-	)
-	.delete("/:id/avatar", (c) => c.json(setNeutral(c.req.param("id"), null)))
-	.get("/:id/reference", (c) => sendFile(referencePath(c.req.param("id"))))
-	.put("/:id/reference", async (c) => {
-		const file = await uploaded(c);
-		return c.json(await setReference(c.req.param("id"), await bytesOf(file)));
-	})
-	.post("/:id/expressions", async (c) => {
-		const file = await uploaded(c);
-		return c.json(await addExpression(c.req.param("id"), await bytesOf(file)));
-	})
-	// Before "/:id/expressions/:eid", which would take "batch" as a face's id.
-	.get("/:id/expressions/batch", (c) => c.json(expressionBatchOf(c.req.param("id"))))
-	.post("/:id/expressions/batch", json(expressionBatchSchema), (c) =>
-		c.json(startExpressionBatch(c.req.param("id"), c.req.valid("json"))),
-	)
-	.post("/:id/expressions/batch/cancel", (c) => c.json(cancelExpressionBatch(c.req.param("id"))))
-	.delete("/:id/expression-tags", (c) => c.json(clearExpressionTags(c.req.param("id"))))
-	.get("/:id/expressions/:eid", (c) =>
-		sendFile(expressionPath(c.req.param("id"), c.req.param("eid"))),
-	)
-	.patch("/:id/expressions/:eid", json(expressionPatchSchema), (c) =>
-		c.json(updateExpression(c.req.param("id"), c.req.param("eid"), c.req.valid("json"))),
-	)
-	.delete("/:id/expressions/:eid", (c) =>
-		c.json(deleteExpression(c.req.param("id"), c.req.param("eid"))),
-	)
-	.post("/:id/expressions/:eid/cutout", async (c) =>
-		c.json(await cutoutExpression(c.req.param("id"), c.req.param("eid"), c.req.raw.signal)),
-	)
-	.put("/:id/expressions/:eid/neutral", (c) =>
-		c.json(setNeutral(c.req.param("id"), c.req.param("eid"))),
-	)
-	.delete("/:id/expressions/:eid/cutout", (c) =>
-		c.json(restoreExpression(c.req.param("id"), c.req.param("eid"))),
-	)
-	.post("/:id/expressions/:eid/tag", async (c) =>
-		c.json(await tagExpression(c.req.param("id"), c.req.param("eid"), c.req.raw.signal)),
-	)
-	.post("/:id/expressions/:eid/regenerate", async (c) =>
-		c.json(await regenerateExpression(c.req.param("id"), c.req.param("eid"), c.req.raw.signal)),
-	)
+	.delete("/:id/avatar", (c) => c.json(removeAvatar(c.req.param("id"))))
 	// The reference clips of Voice Clone and the voice file made from them.
 	.get("/:id/voice/refs", (c) => c.json(voiceRefs(loadCharacter(c.req.param("id")).id)))
 	.post("/:id/voice/refs", json(z.object({ upload_id: z.string() })), (c) =>

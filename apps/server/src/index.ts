@@ -36,7 +36,6 @@ const serve = {
 		upgradeDesktopSocket(req, server) ? undefined : app.fetch(req, server),
 	// The screen of a character's desktop, relayed to its container.
 	websocket: desktopSocket,
-	// Making a face with image generation can keep one request open for minutes.
 	idleTimeout: 0,
 };
 

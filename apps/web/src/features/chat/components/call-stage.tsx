@@ -1,11 +1,9 @@
-import { type AgentStep, type CharacterView, expressionTagLabel } from "@nextroom/contracts";
+import type { AgentStep, CharacterView } from "@nextroom/contracts";
 import { Spinner } from "@nextroom/ui/components/spinner";
 import { cn } from "@nextroom/ui/lib/utils";
-import { Check } from "lucide-react";
+import { Check, UserRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { KINDS, shortStepLabel } from "@/features/agent/labels";
-import { FaceStage } from "@/features/characters/components/face-stage";
-import { moodColor } from "@/features/characters/face-mood";
 import { avatarUrl } from "@/lib/api";
 import { type MicLevel, useMicLevel } from "../voice/mic-level";
 
@@ -22,24 +20,20 @@ const STATE_LABEL: Record<CallState, string> = {
 
 const RIPPLE_DELAYS = [0, 600, 1200];
 
-/** The voice-call panel of a conversation: the name and the call's state at the top, the face in
- *  a circle on the color of its mood, and the captions under it. The circle sends out rings
+/** The voice-call panel of a conversation: the name and the call's state at the top, the
+ *  character's picture in a circle, and the captions under it. The circle sends out rings
  *  while the character speaks, and swells with the microphone while the user talks. */
 export function CallStage({
-	characterId,
 	character,
 	name,
-	face,
 	state,
 	micLevel,
 	steps,
 	onLog,
 	children,
 }: {
-	characterId: string | null;
 	character: CharacterView | undefined;
 	name: string;
-	face: string | null;
 	state: CallState;
 	micLevel: MicLevel;
 	/** The latest tool calls of the reply, oldest first. */
@@ -48,15 +42,9 @@ export function CallStage({
 	/** The captions, shown under the face. */
 	children?: ReactNode;
 }) {
-	const expressions = character?.expressions ?? [];
 	const portrait = character ? avatarUrl(character) : null;
-	const shown = expressions.find((e) => e.id === face);
-	const faceLabel = shown ? expressionTagLabel(shown.tag) : null;
 	return (
-		<div
-			className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[26px] border-2 bg-pastel-lilac shadow-puff-lg transition-[background-color] duration-500 ease-smooth [container-type:size]"
-			style={{ backgroundColor: moodColor(shown) }}
-		>
+		<div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[26px] border-2 bg-pastel-lilac shadow-puff-lg [container-type:size]">
 			<div className="flex shrink-0 items-start justify-between gap-3 px-4.5 pt-4">
 				<div className="flex min-w-0 flex-col gap-0.5">
 					<span className="truncate text-[19px] font-extrabold tracking-[0.01em]">{name}</span>
@@ -110,24 +98,18 @@ export function CallStage({
 						))}
 					{state === "listening" && <ListeningRing level={micLevel} />}
 					<div className="absolute inset-0 overflow-hidden rounded-full border-4 border-white bg-white shadow-[0_4px_0_0_rgb(43_37_64/0.18)]">
-						<FaceStage
-							characterId={characterId}
-							expressions={expressions}
-							face={face}
-							portrait={portrait}
-							imageClassName="origin-[50%_22%] scale-135 object-[50%_18%]"
-						/>
+						{portrait ? (
+							<img
+								src={portrait}
+								alt=""
+								className="size-full origin-[50%_22%] scale-135 object-cover object-[50%_18%]"
+							/>
+						) : (
+							<div className="grid size-full place-items-center">
+								<UserRound className="size-28 text-foreground/35" aria-hidden="true" />
+							</div>
+						)}
 					</div>
-				</div>
-				<div className="flex h-7 shrink-0 items-center">
-					{faceLabel && (
-						<span
-							key={faceLabel}
-							className="inline-flex h-7 max-w-40 animate-pop items-center truncate rounded-full border-2 border-pastel-yellow-edge bg-selected px-3 text-[12.5px] font-extrabold"
-						>
-							{faceLabel}
-						</span>
-					)}
 				</div>
 			</div>
 

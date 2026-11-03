@@ -7,7 +7,7 @@ import { readNotes } from "../agent/memory";
 import { otherCharactersTalks } from "../conversations/sessions";
 import { confessionAnswer, type PreparedEvent, prepareEvent } from "./draft";
 import { chooseEvent, type EventChoice, type EventContext, parseNotes } from "./events";
-import { allowedFaces, relationshipNote } from "./prompt";
+import { relationshipNote } from "./prompt";
 import { answerConfession, loadAffinity, longingOf, recordEvent, recordExchange } from "./store";
 
 /** A confession not answered within this long is let go (they stay friends). */
@@ -44,8 +44,6 @@ export async function openingEvent(character: CharacterView): Promise<EventChoic
 export interface AffinityTurn {
 	/** Added to the post-history instructions. */
 	note: string;
-	/** The face tags the character may use now. */
-	faces: (tags: string[]) => string[];
 	event: PreparedEvent | null;
 }
 
@@ -85,7 +83,6 @@ export async function prepareAffinityTurn(options: {
 		]
 			.filter(Boolean)
 			.join("\n\n"),
-		faces: (tags) => allowedFaces(tags, context.affinity),
 		event,
 	};
 }

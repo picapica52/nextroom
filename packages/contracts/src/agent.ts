@@ -11,7 +11,6 @@ export const TOOL_GROUPS = [
 	"browser",
 	"desktop",
 	"workspace",
-	"send_photo",
 	"ask_user",
 	"apps",
 	"routines",
@@ -72,11 +71,6 @@ export const agentSettingsSchema = z.object({
 		/** A reply that needs the user to decide something ends with choices (ask_user). */
 		enabled: z.boolean(),
 	}),
-	image_gen: z.object({
-		/** Draw images through OpenRouter's Images API, with the model of the chat settings'
-		 *  `image_gen_model`. */
-		enabled: z.boolean(),
-	}),
 	composio: z.object({
 		/** Apps such as Gmail or Google Calendar through Composio; accounts are connected from the
 		 *  integrations' settings. */
@@ -103,21 +97,15 @@ export const agentSettingsPatchSchema = z.object({
 	web_search: shape.web_search.partial().optional(),
 	topic_search: shape.topic_search.partial().optional(),
 	ask_user: shape.ask_user.partial().optional(),
-	image_gen: shape.image_gen.partial().optional(),
 	composio: shape.composio.partial().optional(),
 	routines: shape.routines.partial().optional(),
 });
 export type AgentSettingsPatch = z.infer<typeof agentSettingsPatchSchema>;
 
-/** The settings as the API answers them, with whether the Exa, OpenRouter and Composio
- *  keys are set and the image model of the chat settings. */
-export type AgentSettingsView = Omit<
-	AgentSettings,
-	"web_search" | "topic_search" | "image_gen" | "composio"
-> & {
+/** The settings as the API answers them, with whether the Exa and Composio keys are set. */
+export type AgentSettingsView = Omit<AgentSettings, "web_search" | "topic_search" | "composio"> & {
 	web_search: AgentSettings["web_search"] & { has_api_key: boolean };
 	topic_search: AgentSettings["topic_search"] & { has_api_key: boolean };
-	image_gen: AgentSettings["image_gen"] & { has_api_key: boolean; model: string };
 	composio: AgentSettings["composio"] & { has_api_key: boolean };
 };
 
@@ -140,14 +128,12 @@ export interface ComposioStatus {
 /** Where Composio's sign-in page sends the user back to once the account is connected. */
 export const composioConnectSchema = z.object({ callback_url: z.url() });
 
-/** The shapes the image tool can ask for. */
-export const IMAGE_ASPECT_RATIOS = ["1:1", "3:4", "4:3", "9:16", "16:9"] as const;
-
 const STEP_KINDS = [
 	"browser",
 	"desktop",
 	"sandbox",
 	"claude",
+	/** Older replies: the photo tool, since removed. */
 	"image",
 	"ask",
 	"memory",

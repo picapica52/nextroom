@@ -22,7 +22,6 @@ const {
 	web_search,
 	topic_search,
 	ask_user,
-	image_gen,
 	composio,
 	routines,
 } = agentSettingsSchema.shape;
@@ -44,7 +43,6 @@ const storedAgentSchema = z.object({
 	web_search: web_search.partial().optional(),
 	topic_search: topic_search.partial().optional(),
 	ask_user: ask_user.partial().optional(),
-	image_gen: image_gen.partial().optional(),
 	composio: composio.partial().optional(),
 	routines: routines.partial().optional(),
 });

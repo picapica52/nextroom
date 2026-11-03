@@ -4,8 +4,6 @@
 import { z } from "zod";
 
 import { TOOL_GROUPS } from "./agent";
-import { currentExpressionTag, EXPRESSION_TAG_VALUES } from "./expression-tags";
-import type { JobStatus } from "./jobs";
 import { modelChoiceSchema } from "./settings";
 import { characterVoiceSchema, type TtsProvider } from "./voice";
 
@@ -98,79 +96,20 @@ export interface PersonaExtract {
 	truncated: { name: string; read: number; total: number }[];
 }
 
-/** How a generated face is drawn: bust (from the chest up) or chibi (super-deformed, full body). */
-const EXPRESSION_STYLES = ["bust", "chibi"] as const;
-export type ExpressionStyle = (typeof EXPRESSION_STYLES)[number];
-
-/** A face shown on the call screen. The image is `expressions/<id>.png` in the character's folder. */
-export const expressionSchema = z.object({
-	id: z.string(),
-	/** A value of EXPRESSION_TAGS, offered to the replies as a face tag; empty: not chosen. Tags merged
-	 *  into another read as that one; others outside the list read as not chosen. */
-	tag: z.string().transform(currentExpressionTag),
-	/** The background was made transparent; the original is kept beside it as `<id>.orig.png`. */
-	cutout: z.boolean().default(false),
-	/** Made by image generation from `source` (REFERENCE_SOURCE or an expression id), to make it again. */
-	generated: z
-		.object({
-			source: z.string(),
-			prompt: z.string(),
-			style: z.enum(EXPRESSION_STYLES).default("bust"),
-		})
-		.nullish(),
-});
-export type Expression = z.infer<typeof expressionSchema>;
-
-export const expressionPatchSchema = z.object({
-	tag: z.enum(EXPRESSION_TAG_VALUES).or(z.literal("")).nullish(),
-});
-
-/** The `source` of a generated face that is the character's reference image. */
-export const REFERENCE_SOURCE = "reference";
-
-/** The neutral face to make by image generation from `source` (REFERENCE_SOURCE or an expression id). */
-export const neutralGenerateSchema = z.object({
-	source: z.string(),
-	style: z.enum(EXPRESSION_STYLES).default("bust"),
-	/** Extra instructions for the image model. */
-	prompt: z.string().trim().max(1000).default(""),
-});
-export type NeutralGenerate = z.infer<typeof neutralGenerateSchema>;
-
-/** A face to make by image generation: `tag` drawn from `source`. */
-export const expressionGenerateSchema = neutralGenerateSchema.extend({
-	tag: z.enum(EXPRESSION_TAG_VALUES),
-});
-export type ExpressionGenerate = z.infer<typeof expressionGenerateSchema>;
-
-/** Faces to make one after another in a job on the server, one per tag. */
-export const expressionBatchSchema = expressionGenerateSchema.omit({ tag: true }).extend({
-	tags: z.array(z.enum(EXPRESSION_TAG_VALUES)).min(1),
-});
-export type ExpressionBatch = z.infer<typeof expressionBatchSchema>;
-
-/** A character's latest batch: `done` of the `tags` drawn and added so far. */
-export interface ExpressionBatchView {
-	id: string;
-	status: JobStatus;
-	tags: string[];
-	done: number;
-	error: string | null;
-}
-
-/** The tag the Decisions API chose for an expression image, with the runner-up. */
-export interface ExpressionTagGuess {
-	tag: string;
-	probability: number;
-	runner_up: { tag: string; probability: number } | null;
-}
-
-/** A character as stored. */
 /** What a character does differently from the others: its own model, the tools it never uses,
  *  and its standing instructions (added after the custom prompt of the settings). */
 export const characterAgentSchema = z.object({
 	model: modelChoiceSchema.nullable().default(null),
-	disabled_tools: z.array(z.enum(TOOL_GROUPS)).default([]),
+	/** Groups no longer in TOOL_GROUPS are dropped. */
+	disabled_tools: z
+		.preprocess(
+			(tools) =>
+				Array.isArray(tools)
+					? tools.filter((t) => (TOOL_GROUPS as readonly unknown[]).includes(t))
+					: tools,
+			z.array(z.enum(TOOL_GROUPS)),
+		)
+		.default([]),
 	instructions: z.string().default(""),
 });
 export type CharacterAgent = z.infer<typeof characterAgentSchema>;
@@ -189,6 +128,7 @@ export interface InstructionRevision {
 	created_at: number;
 }
 
+/** A character as stored. */
 export const characterSchema = z.object({
 	id: z.string(),
 	created_at: z.number(),
@@ -196,19 +136,14 @@ export const characterSchema = z.object({
 	persona: personaSchema,
 	/** The voice its replies are spoken with, and the model that speaks it. */
 	voice: characterVoiceSchema,
-	expressions: z.array(expressionSchema).default([]),
-	/** The expression shown when no feeling is shown, also the character's picture. It has no tag. */
-	neutral: z.string().nullable().default(null),
 	agent: characterAgentSchema.default({ model: null, disabled_tools: [], instructions: "" }),
 });
 export type Character = z.infer<typeof characterSchema>;
 
 /** A character as the API answers it. */
 export type CharacterView = Character & {
-	/** A neutral face is set, so the character has a picture. */
+	/** The character has a picture (`avatar.png` in its folder). */
 	has_avatar: boolean;
-	/** The image faces are generated from, never shown as the character. */
-	has_reference: boolean;
 };
 
 export interface CharacterSummary {

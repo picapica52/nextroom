@@ -63,7 +63,6 @@ export default function ChatPage() {
 		setSearchParams(open ? { view: name } : {}, { replace: true });
 
 	const chat = useCurrentChat({
-		keepPolling: segments.playing,
 		onSent: (turn) => reading.follow(llm.data?.tts_enabled ? turn.assistant.id : null),
 		onSettled: () => setSending(false),
 	});
@@ -174,10 +173,8 @@ export default function ChatPage() {
 					)}
 					{currentId ? (
 						<CallStage
-							characterId={characterId}
 							character={character.data}
 							name={name}
-							face={reading.face}
 							state={callState}
 							micLevel={micLevel}
 							steps={steps}
