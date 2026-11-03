@@ -1,6 +1,7 @@
 import type { DesktopView } from "@nextroom/contracts";
 import { Hono } from "hono";
-import { desktopPage, desktopView, ensureDesktop, stopDesktop } from "../agent/tools/desktop";
+import { ensureComputer, stopComputer } from "../agent/tools/computer";
+import { desktopPage, desktopView } from "../agent/tools/desktop";
 import { getCharacter } from "../characters/store";
 import { BadRequestError } from "../lib/errors";
 import { loadAgentSettings } from "../settings/agent";
@@ -19,13 +20,13 @@ export const desktopsRouter = new Hono()
 		if (!settings.desktop.enabled)
 			throw new BadRequestError("デスクトップは設定でオフになっています");
 		// Making the image the first time takes minutes; the screen polls the state meanwhile.
-		void ensureDesktop(id, settings.desktop).catch(() => {});
+		void ensureComputer(id, settings.container).catch(() => {});
 		return c.json<DesktopView>(await desktopView(id, settings));
 	})
 	.post("/:id/stop", async (c) => {
 		const id = c.req.param("id");
 		getCharacter(id);
-		await stopDesktop(id);
+		await stopComputer(id);
 		return c.json<DesktopView>(await desktopView(id, loadAgentSettings()));
 	})
 	.get("/:id/vnc/*", (c) => {

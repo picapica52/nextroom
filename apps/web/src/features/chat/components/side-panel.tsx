@@ -109,6 +109,8 @@ function TabNote({ children }: { children: ReactNode }) {
 function FilesTab({ characterId, steps }: { characterId: string; steps: AgentStep[] }) {
 	const settings = useAgentSettings();
 	const on = !!settings.data?.sandbox.enabled;
+	// The files are in the character's computer, which is there with either of its tools.
+	const computer = on || !!settings.data?.desktop.enabled;
 	// The workspace changes when a step finishes; list it again then.
 	const finished = steps.filter((s) => s.finished_at).length;
 	return (
@@ -120,7 +122,7 @@ function FilesTab({ characterId, steps }: { characterId: string; steps: AgentSte
 					でオンにできます。
 				</TabNote>
 			)}
-			<FileExplorer key={characterId} characterId={characterId} version={finished} />
+			{computer && <FileExplorer key={characterId} characterId={characterId} version={finished} />}
 		</div>
 	);
 }

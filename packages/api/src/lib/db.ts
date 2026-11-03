@@ -10,8 +10,8 @@
 //     credentials     by pi's provider id: the subscriptions signed in to
 //     routines        by routine id: what a character carries out on its own, and when
 //
-// The characters' memory has tables of its own (agent/memory/db.ts). Images, audio and the
-// workspaces stay files in the characters' folders.
+// The characters' memory has tables of its own (agent/memory/db.ts). Images and audio stay files
+// in the characters' folders; the workspaces are in the characters' computers.
 
 import { Database } from "bun:sqlite";
 import { join } from "node:path";

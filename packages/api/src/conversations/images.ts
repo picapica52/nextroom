@@ -1,15 +1,15 @@
 // A conversation's images, in `images/` of the character's folder: those the user attached to a
 // turn, named by an id (img_…). They are noted at the end of the text the agent is given (and
-// read back from it). Each is also copied to `photos/user/` of the character's workspace, so the
-// user finds it in the 「ファイル」 tab.
+// read back from it). With files and commands on, each is also copied to `photos/user/` of the
+// character's workspace, so the user finds it in the 「ファイル」 tab.
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import sharp from "sharp";
 
 import { BadRequestError, NotFoundError } from "../lib/errors";
 import { newId } from "../lib/storage";
-import { workspaceFile } from "../workspaces/store";
+import { copyToWorkspace } from "../workspaces/store";
 import { imagesDir } from "./sessions";
 
 /** Images one turn may carry. */
@@ -52,9 +52,10 @@ export async function saveChatImage(sessionId: string, image: Uint8Array): Promi
 			? { ext, bytes: image }
 			: { ext: "png", bytes: await sharp(image).png().toBuffer() };
 	writeFileSync(join(dir, `${id}.${kept.ext}`), kept.bytes);
-	const copy = workspaceFile(sessionId, `photos/user/${stamp()}_${id}.${kept.ext}`);
-	mkdirSync(dirname(copy), { recursive: true });
-	writeFileSync(copy, kept.bytes);
+	// Kept in the computer in the background: starting it may take a while.
+	void copyToWorkspace(sessionId, `photos/user/${stamp()}_${id}.${kept.ext}`, kept.bytes).catch(
+		(error) => console.warn(`Could not copy image ${id} to the workspace:`, error),
+	);
 	return id;
 }
 

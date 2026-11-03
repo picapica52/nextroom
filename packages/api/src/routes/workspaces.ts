@@ -1,29 +1,28 @@
-import { existsSync, statSync } from "node:fs";
-
 import { movedWorkspaceEntrySchema, workspacePathSchema } from "@nextroom/contracts";
 import { Hono } from "hono";
 import { z } from "zod";
-import { BadRequestError, NotFoundError } from "../lib/errors";
+import { BadRequestError } from "../lib/errors";
 import {
 	createWorkspaceFolder,
 	deleteWorkspaceEntry,
 	listWorkspaceFiles,
 	moveWorkspaceEntry,
 	saveWorkspaceFiles,
-	workspaceFile,
+	workspaceFileStream,
 } from "../workspaces/store";
-import { json, ok, query, sendFile } from "./inputs";
+import { json, ok, query } from "./inputs";
 
 const pathQuery = query(z.object({ path: z.string().default("") }));
 
 /** The files of each character's workspace, by the character's id. */
 export const workspacesRouter = new Hono()
-	.get("/:id/files", (c) => c.json(listWorkspaceFiles(c.req.param("id"))))
-	.get("/:id/download", pathQuery, (c) => {
-		const path = workspaceFile(c.req.param("id"), c.req.valid("query").path);
-		if (!existsSync(path) || statSync(path).isDirectory())
-			throw new NotFoundError("ファイルがありません");
-		return sendFile(path);
+	.get("/:id/files", async (c) => c.json(await listWorkspaceFiles(c.req.param("id"))))
+	.get("/:id/download", pathQuery, async (c) => {
+		const { path } = c.req.valid("query");
+		const body = await workspaceFileStream(c.req.param("id"), path);
+		return new Response(body, {
+			headers: { "content-type": Bun.file(path).type, "cache-control": "no-cache" },
+		});
 	})
 	// Uploads: `files` with their `paths` (relative, folders kept), saved under `dir`.
 	.post("/:id/files", async (c) => {
@@ -40,16 +39,16 @@ export const workspacesRouter = new Hono()
 		);
 		return c.json(ok);
 	})
-	.post("/:id/folders", json(workspacePathSchema), (c) => {
-		createWorkspaceFolder(c.req.param("id"), c.req.valid("json").path);
+	.post("/:id/folders", json(workspacePathSchema), async (c) => {
+		await createWorkspaceFolder(c.req.param("id"), c.req.valid("json").path);
 		return c.json(ok);
 	})
-	.post("/:id/move", json(movedWorkspaceEntrySchema), (c) => {
+	.post("/:id/move", json(movedWorkspaceEntrySchema), async (c) => {
 		const { from, to } = c.req.valid("json");
-		moveWorkspaceEntry(c.req.param("id"), from, to);
+		await moveWorkspaceEntry(c.req.param("id"), from, to);
 		return c.json(ok);
 	})
-	.delete("/:id/files", pathQuery, (c) => {
-		deleteWorkspaceEntry(c.req.param("id"), c.req.valid("query").path);
+	.delete("/:id/files", pathQuery, async (c) => {
+		await deleteWorkspaceEntry(c.req.param("id"), c.req.valid("query").path);
 		return c.json(ok);
 	});

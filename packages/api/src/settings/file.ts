@@ -15,8 +15,17 @@ import { z } from "zod";
 
 import { readDoc, writeDoc } from "../lib/db";
 
-const { approvals, desktop, sandbox, web_search, topic_search, ask_user, composio, routines } =
-	agentSettingsSchema.shape;
+const {
+	approvals,
+	container,
+	desktop,
+	sandbox,
+	web_search,
+	topic_search,
+	ask_user,
+	composio,
+	routines,
+} = agentSettingsSchema.shape;
 type ChatShape = typeof chatSettingsSchema.shape;
 /** A stored field that no longer fits (a choice since removed) takes its default. */
 const storedChatSchema = z.object(
@@ -29,6 +38,7 @@ const storedChatSchema = z.object(
 );
 const storedAgentSchema = z.object({
 	approvals: approvals.partial().optional(),
+	container: container.partial().optional(),
 	desktop: desktop.partial().optional(),
 	sandbox: sandbox.partial().optional(),
 	web_search: web_search.partial().optional(),
