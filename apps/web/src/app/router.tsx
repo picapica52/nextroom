@@ -24,7 +24,6 @@ export const router = createBrowserRouter([
 				path: "/settings",
 				element: <SettingsDialog />,
 				children: [
-					{ index: true, element: <Navigate to="/settings/general" replace /> },
 					{ path: "general", element: <GeneralSettings /> },
 					{ path: "connections", element: <ConnectionSettings /> },
 					{ path: "models", element: <ModelSettings /> },

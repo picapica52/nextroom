@@ -1,5 +1,4 @@
 import type { ChatSessionSummary } from "@nextroom/contracts";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@nextroom/ui/components/sheet";
 import { PanelLeftOpen, Search, Settings } from "lucide-react";
 import { useRef } from "react";
 import { flushSync } from "react-dom";
@@ -8,14 +7,12 @@ import type { ChatLayout } from "../use-chat-layout";
 import { ConversationList } from "./conversation-list";
 import { CollapsiblePane, PaneRail, RailButton } from "./pane-rail";
 
-/** The characters to talk with, docked at the left on a wide screen and a sheet on a narrow one. */
+/** The characters to talk with, docked at the left of a wide screen. */
 export function ChatListPane({
-	wide,
 	layout,
 	sessions,
 	currentId,
 }: {
-	wide: boolean;
 	layout: ChatLayout;
 	sessions: ChatSessionSummary[];
 	currentId: string | null;
@@ -26,24 +23,12 @@ export function ChatListPane({
 		<ConversationList
 			sessions={sessions}
 			currentId={currentId}
-			onPick={layout.closeListSheet}
 			onClose={() => layout.setListOpen(false)}
 			searchRef={search}
 			className="h-full"
 		/>
 	);
 
-	if (!wide)
-		return (
-			<Sheet open={layout.listOpen} onOpenChange={layout.setListOpen}>
-				<SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
-					<SheetHeader className="sr-only">
-						<SheetTitle>話し相手</SheetTitle>
-					</SheetHeader>
-					{list}
-				</SheetContent>
-			</Sheet>
-		);
 	return (
 		<CollapsiblePane
 			open={layout.listOpen}

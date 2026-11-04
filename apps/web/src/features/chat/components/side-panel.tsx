@@ -23,6 +23,7 @@ export function SidePanel({
 	tab,
 	onTab,
 	onClose,
+	closeIcon = <PanelRightClose />,
 	className,
 }: {
 	sessionId: string | null;
@@ -31,6 +32,7 @@ export function SidePanel({
 	tab?: PanelTab;
 	onTab?: (tab: PanelTab) => void;
 	onClose?: () => void;
+	closeIcon?: ReactNode;
 	className?: string;
 }) {
 	const shown = log ? tab : "files";
@@ -54,7 +56,7 @@ export function SidePanel({
 				)}
 				{onClose && (
 					<RailButton label="閉じる" onClick={onClose}>
-						<PanelRightClose />
+						{closeIcon}
 					</RailButton>
 				)}
 			</div>
@@ -91,7 +93,7 @@ function TabButton({
 			aria-selected={selected}
 			onClick={onClick}
 			className={cn(
-				"h-8 rounded-full border-2 px-3.5 text-[13px] font-bold transition-colors duration-120 ease-smooth outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+				"h-8 rounded-full border-2 px-3.5 pointer-coarse:h-10 pointer-coarse:px-4 text-[13px] font-bold transition-colors duration-120 ease-smooth outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
 				selected
 					? "border-pastel-yellow-edge bg-selected text-foreground"
 					: "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",

@@ -11,6 +11,9 @@ function useMediaQuery(query: string) {
 	);
 }
 
+/** Whether the window is at least Tailwind's `md` wide. */
+export const useMedium = () => useMediaQuery("(min-width: 768px)");
+
 /** Whether the window is at least Tailwind's `lg` wide. */
 export const useWide = () => useMediaQuery("(min-width: 1024px)");
 

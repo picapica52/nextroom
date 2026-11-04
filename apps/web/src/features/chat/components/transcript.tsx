@@ -56,7 +56,7 @@ export const Transcript = memo(function Transcript({
 	return (
 		<div
 			ref={scroller}
-			className="max-h-[70svh] min-h-64 flex-1 overflow-x-hidden overflow-y-auto lg:max-h-none"
+			className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
 			onScroll={(e) => {
 				const el = e.currentTarget;
 				atBottom.current =
