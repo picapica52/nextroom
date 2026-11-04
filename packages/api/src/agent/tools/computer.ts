@@ -9,13 +9,15 @@
 import { track } from "../../lib/children";
 import { BadRequestError, ConflictError, messageOf, NotFoundError } from "../../lib/errors";
 import type { AgentSettings } from "../../settings/agent";
-import { DESKTOP_DIR, DESKTOP_REPOSITORY, desktopImage } from "./desktop-image";
 import { docker, dockerError, dockerNetwork } from "./docker";
 
 type ContainerSettings = Pick<AgentSettings["computer"], "memory_mb" | "cpus">;
 
 /** Where the workspace is in the computer. */
 export const WORKSPACE = "/workspace";
+
+const DESKTOP_REPOSITORY = "ghcr.io/picapica52/nextroom-desktop";
+const DESKTOP_IMAGE = `${DESKTOP_REPOSITORY}:latest`;
 
 const VNC_PORT = 6080;
 const IMAGE_TIMEOUT_MS = 30 * 60_000;
@@ -41,32 +43,41 @@ export const asUser = (characterId: string, cwd = WORKSPACE) => [
 	containerName(characterId),
 ];
 
-let building: Promise<string> | null = null;
+let readyImage: string | null = null;
+let pulling: Promise<string> | null = null;
 
+/** The ID of the computer's image; the latest one published by CI is pulled once per run.
+ *  Offline, the one pulled before is used; it is never built here (far too heavy). */
 function ensureImage(): Promise<string> {
-	building ??= (async () => {
-		const tag = desktopImage();
-		if ((await docker(["image", "inspect", tag])).code === 0) return tag;
-		// Published by CI; built here when it is not there yet (changed files, offline).
-		if ((await docker(["pull", tag], IMAGE_TIMEOUT_MS)).code !== 0) {
-			const built = await docker(["build", "-t", tag, DESKTOP_DIR], IMAGE_TIMEOUT_MS);
-			if (built.code !== 0)
-				throw new Error(`Could not build the computer's image: ${dockerError(built)}`);
-		}
-		// Images of earlier versions; one still used by a container stays until it is made again.
+	if (readyImage) return Promise.resolve(readyImage);
+	pulling ??= (async () => {
+		const before = await imageId();
+		const pulled = await docker(["pull", DESKTOP_IMAGE], IMAGE_TIMEOUT_MS);
+		const id = await imageId();
+		if (!id) throw new Error(`Could not pull the computer's image: ${dockerError(pulled)}`);
+		// Earlier images; one still used by a container stays until it is made again.
+		if (before && before !== id) await docker(["rmi", before], 60_000);
 		const images = await docker([
 			"images",
 			DESKTOP_REPOSITORY,
 			"--format",
 			"{{.Repository}}:{{.Tag}}",
 		]);
-		const old = images.out.split("\n").filter((image) => image && image !== tag);
+		const old = images.out
+			.split("\n")
+			.filter((tag) => tag && tag !== DESKTOP_IMAGE && !tag.endsWith(":<none>"));
 		if (old.length) await docker(["rmi", ...old], 60_000);
-		return tag;
+		readyImage = id;
+		return id;
 	})().finally(() => {
-		building = null;
+		pulling = null;
 	});
-	return building;
+	return pulling;
+}
+
+async function imageId(): Promise<string | null> {
+	const inspected = await docker(["image", "inspect", "--format", "{{.Id}}", DESKTOP_IMAGE]);
+	return inspected.code === 0 && inspected.out ? inspected.out : null;
 }
 
 /** What the container is made with; a container made otherwise is made again. */
