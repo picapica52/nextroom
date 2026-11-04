@@ -38,26 +38,8 @@ jobs:
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
-  desktop-tag:
-    runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.tag.outputs.image }}
-      found: ${{ steps.exists.outputs.found }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - id: tag
-        run: echo "image=$(bun packages/api/src/agent/tools/desktop-image.ts)" >>"$GITHUB_OUTPUT"
-      - id: exists
-        run: |
-          if docker manifest inspect "${{ steps.tag.outputs.image }}" >/dev/null 2>&1; then
-            echo "found=true" >>"$GITHUB_OUTPUT"
-          fi
-
   # Each architecture on its own runner: arm64 under QEMU takes far too long (apt, Chromium).
   desktop:
-    needs: desktop-tag
-    if: needs.desktop-tag.outputs.found != 'true'
     strategy:
       matrix:
         include:
@@ -83,14 +65,14 @@ jobs:
           context: packages/api/desktop
           platforms: ${{ matrix.platform }}
           push: true
-          tags: ${{ needs.desktop-tag.outputs.image }}-${{ steps.arch.outputs.name }}
+          tags: ghcr.io/${{ github.repository }}-desktop:sha-${{ github.sha }}-${{ steps.arch.outputs.name }}
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           provenance: false
           cache-from: type=gha,scope=desktop-${{ steps.arch.outputs.name }}
           cache-to: type=gha,mode=max,scope=desktop-${{ steps.arch.outputs.name }}
 
   desktop-manifest:
-    needs: [desktop-tag, desktop]
+    needs: desktop
     runs-on: ubuntu-latest
     steps:
       - uses: docker/setup-buildx-action@v3
@@ -99,6 +81,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - run: docker buildx imagetools create -t "$IMAGE" "$IMAGE-amd64" "$IMAGE-arm64"
+      - run: docker buildx imagetools create -t "$IMAGE:latest" -t "$IMAGE:sha-$SHA" "$IMAGE:sha-$SHA-amd64" "$IMAGE:sha-$SHA-arm64"
         env:
-          IMAGE: ${{ needs.desktop-tag.outputs.image }}
+          IMAGE: ghcr.io/${{ github.repository }}-desktop
+          SHA: ${{ github.sha }}
