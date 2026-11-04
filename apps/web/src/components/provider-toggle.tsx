@@ -17,7 +17,7 @@ export function ProviderToggle<P extends string>({
 	onChange: (provider: P) => void;
 }) {
 	return (
-		<Field>
+		<Field className="@container">
 			<FieldLabel>{label}</FieldLabel>
 			<ToggleGroup
 				aria-label={label}
@@ -26,16 +26,20 @@ export function ProviderToggle<P extends string>({
 				className={cn(
 					"grid w-full",
 					providers.length > 4
-						? "grid-cols-2 sm:grid-cols-4"
+						? "grid-cols-2 @xl:grid-cols-4"
 						: providers.length > 2
-							? "sm:grid-cols-3"
+							? "grid-cols-1 @md:grid-cols-3"
 							: "grid-cols-2",
 				)}
 				value={[value]}
 				onValueChange={(next) => next[0] && onChange(next[0] as P)}
 			>
 				{providers.map((p) => (
-					<ToggleGroupItem key={p} value={p} className="w-full">
+					<ToggleGroupItem
+						key={p}
+						value={p}
+						className="h-auto min-h-8 w-full min-w-0 py-1 text-center whitespace-normal"
+					>
 						{labels[p]}
 					</ToggleGroupItem>
 				))}

@@ -40,7 +40,9 @@ export function ErrorNote({ error }: { error: unknown }) {
 	return (
 		<Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
 			<CircleAlert />
-			<AlertDescription className="text-destructive">{errorMessage(error)}</AlertDescription>
+			<AlertDescription className="text-destructive wrap-anywhere">
+				{errorMessage(error)}
+			</AlertDescription>
 		</Alert>
 	);
 }

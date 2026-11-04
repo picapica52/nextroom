@@ -48,7 +48,7 @@ export function CharacterProfileForm({
 				description={`${"{{char}}"} はキャラクターの名前、${"{{user}}"} は設定の「あなたの名前」に置き換わります。`}
 				className="gap-5"
 			>
-				<div className="grid gap-4 sm:grid-cols-2">
+				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 					<Field>
 						<FieldLabel htmlFor="ch-name">名前</FieldLabel>
 						<Input
