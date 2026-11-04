@@ -59,6 +59,28 @@ export function useLlmModels(provider: LlmProvider) {
 	});
 }
 
+/** pi's providers that have image models, and whether each can be used now. */
+export function useImageProviders() {
+	return useQuery({
+		queryKey: qk.imageModels(),
+		queryFn: ({ signal }) =>
+			read(client.chat["image-providers"].$get(undefined, signalled(signal))),
+		staleTime: 60_000,
+	});
+}
+
+/** The image models `provider` offers; only asked for when `enabled`. */
+export function useImageModels(provider: LlmProvider, enabled = true) {
+	return useQuery({
+		queryKey: qk.imageModels(provider),
+		queryFn: ({ signal }) =>
+			read(client.chat["image-models"].$get({ query: { provider } }, signalled(signal))),
+		enabled,
+		retry: false,
+		staleTime: 5 * 60_000,
+	});
+}
+
 /** pi's providers, and whether each can be used now. */
 export function useProviders() {
 	return useQuery({
@@ -81,6 +103,7 @@ export function useProviderLogin(id: string | null) {
 			if (login.status === "done") {
 				qc.invalidateQueries({ queryKey: qk.providers() });
 				qc.invalidateQueries({ queryKey: qk.llmModels(login.provider) });
+				qc.invalidateQueries({ queryKey: qk.imageModels() });
 			}
 			return login;
 		},
@@ -116,6 +139,7 @@ export function useProviderActions() {
 			onSuccess: (data, id) => {
 				qc.setQueryData(qk.providers(), data);
 				qc.invalidateQueries({ queryKey: qk.llmModels(id) });
+				qc.invalidateQueries({ queryKey: qk.imageModels() });
 			},
 		}),
 	};

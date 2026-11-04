@@ -26,4 +26,6 @@ export type CharacterContext = {
 	/** The character is the chief, with the tools that make and change the other characters. */
 	chief: boolean;
 	reporter: TurnReporter;
+	/** Shows the photos the reply sent (ids in the conversation's folder) with the reply. */
+	addImages: (ids: string[]) => void;
 };

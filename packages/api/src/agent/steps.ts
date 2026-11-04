@@ -20,6 +20,7 @@ function stepKind(tool: string): StepKind {
 	if (tool === "execute_command") return "sandbox";
 	if (tool.startsWith("computer_")) return "desktop";
 	if (tool === "ask_user") return "ask";
+	if (tool === "send_photo") return "image";
 	if (tool === "update_memory") return "memory";
 	if (tool.endsWith("_character") || tool === "list_characters") return "character";
 	if (/^[A-Z0-9]+_[A-Z0-9_]+$/.test(tool)) return "app";

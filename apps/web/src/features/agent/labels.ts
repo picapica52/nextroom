@@ -21,7 +21,6 @@ export const KINDS: Record<StepKind, { icon: LucideIcon; title: string; tone: st
 	desktop: { icon: Monitor, title: "デスクトップ", tone: "text-info" },
 	sandbox: { icon: SquareTerminal, title: "コマンド", tone: "text-warning" },
 	claude: { icon: Sparkles, title: "Claude Agent SDK", tone: "text-mode-lora" },
-	// Older replies: the photo tool, since removed.
 	image: { icon: ImageIcon, title: "画像生成", tone: "text-mode-lora" },
 	ask: { icon: MessageCircleQuestionMark, title: "質問", tone: "text-mode-si" },
 	memory: { icon: NotebookPen, title: "記憶", tone: "text-mode-si" },

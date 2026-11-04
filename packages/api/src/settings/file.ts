@@ -15,7 +15,7 @@ import { z } from "zod";
 
 import { readDoc, writeDoc } from "../lib/db";
 
-const { approvals, computer, web_search, topic_search, ask_user, composio, routines } =
+const { approvals, computer, web_search, topic_search, ask_user, send_photo, composio, routines } =
 	agentSettingsSchema.shape;
 const storedAgentSchema = z.object({
 	approvals: approvals.partial().optional(),
@@ -23,6 +23,7 @@ const storedAgentSchema = z.object({
 	web_search: web_search.partial().optional(),
 	topic_search: topic_search.partial().optional(),
 	ask_user: ask_user.partial().optional(),
+	send_photo: send_photo.partial().optional(),
 	composio: composio.partial().optional(),
 	routines: routines.partial().optional(),
 });

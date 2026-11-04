@@ -1,9 +1,13 @@
-import type { ModelChoice } from "@nextroom/contracts";
+import type { ImageModelChoice, LlmProvider, ModelChoice } from "@nextroom/contracts";
 import { Button, buttonVariants } from "@nextroom/ui/components/button";
+import { Field, FieldLabel } from "@nextroom/ui/components/field";
 import { cn } from "@nextroom/ui/lib/utils";
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ApiModelPicker } from "@/components/api-model-picker";
+import { SimpleSelect } from "@/components/simple-select";
+import { useImageModels, useImageProviders } from "@/hooks/queries";
 import { settingsPath } from "../pages";
 import { type ChatSettingsForm, ChatSettingsPage } from "./chat-settings";
 import { useHasLlmProvider } from "./connection-fields";
@@ -49,6 +53,7 @@ export default function ModelSettings() {
 						</SettingsBlock>
 					</SettingsGroup>
 					<FallbackGroup f={f} />
+					<ImageModelGroup f={f} />
 					<AdvancedGroup f={f} />
 				</>
 			)}
@@ -150,6 +155,64 @@ function FallbackGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
 					</SettingsBlock>
 				)
 			)}
+		</SettingsGroup>
+	);
+}
+
+/** The image model the photos the characters send are drawn with, from pi's image models. */
+function ImageModelGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
+	const providers = useImageProviders();
+	const value = form.image_model;
+	const usable = (providers.data ?? []).filter((p) => p.configured || p.id === value?.provider);
+	const [draft, setDraft] = useState<LlmProvider>();
+	const provider = draft ?? value?.provider ?? usable[0]?.id ?? null;
+	const models = useImageModels(provider ?? "", !!provider);
+	const choose = (choice: ImageModelChoice) => {
+		setDraft(undefined);
+		set({ image_model: choice });
+	};
+	return (
+		<SettingsGroup
+			id="image-model"
+			title="画像の生成"
+			description="キャラクターが写真を送るときに使うモデル（設定 → 道具 の「写真を送る」）"
+		>
+			<SettingsBlock>
+				{providers.isSuccess && !usable.length ? (
+					<p className="m-0 text-xs text-muted-foreground">
+						画像のモデルがあるプロバイダー（
+						{(providers.data ?? []).map((p) => p.name).join("・") || "なし"}
+						）を
+						<Link to={settingsPath("connections")}>接続</Link>
+						で設定すると選べます。
+					</p>
+				) : (
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-[11rem_minmax(0,1fr)]">
+						<Field>
+							<FieldLabel htmlFor="image-provider" className="text-xs text-muted-foreground">
+								プロバイダー
+							</FieldLabel>
+							<SimpleSelect<LlmProvider>
+								id="image-provider"
+								value={provider}
+								onChange={(next) => next && setDraft(next)}
+								options={usable.map((p) => ({ value: p.id, label: p.name }))}
+							/>
+						</Field>
+						<Field>
+							<FieldLabel htmlFor="image-model" className="text-xs text-muted-foreground">
+								モデル
+							</FieldLabel>
+							<ApiModelPicker
+								id="image-model"
+								models={models}
+								value={value && value.provider === provider ? value.model : ""}
+								onChange={(model) => provider && choose({ provider, model })}
+							/>
+						</Field>
+					</div>
+				)}
+			</SettingsBlock>
 		</SettingsGroup>
 	);
 }

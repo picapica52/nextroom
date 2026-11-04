@@ -25,6 +25,7 @@ import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
 import { memoryTools } from "./tools/memory";
 import { routineTools } from "./tools/routines";
+import { sendPhotoTools } from "./tools/send-photo";
 import { webSearchTools } from "./tools/web-search";
 
 export { generateOnce } from "./llm";
@@ -48,6 +49,7 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 		...commandTools(settings),
 		...desktopTools(settings, connection),
 		...askUserTools(settings),
+		...sendPhotoTools(settings),
 		...routineTools(settings),
 		...(await composioTools(settings)),
 	};

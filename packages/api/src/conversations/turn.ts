@@ -111,7 +111,7 @@ export async function submitTurn(
 	if (turnRunning(sessionId)) throw new ConflictError("前の返答を処理中です");
 	const recording = typed || !audio?.length ? null : audio;
 	const imageIds: string[] = [];
-	for (const image of images) imageIds.push(await saveChatImage(sessionId, image));
+	for (const image of images) imageIds.push(await saveChatImage(sessionId, image, "user"));
 	const user: ChatMessage = {
 		id: newId("m_"),
 		role: "user",
@@ -351,6 +351,10 @@ async function prepareTurn(
 			settings: agentSettings,
 			chief: character.chief,
 			reporter,
+			addImages: (ids) =>
+				updateMessage(sessionId, replyId, {
+					images: [...(liveMessage(sessionId, replyId)?.images ?? []), ...ids],
+				}),
 		},
 		affinity,
 	};
@@ -439,8 +443,9 @@ async function finishTurn(
 	if (speakError) throw speakError;
 	job.checkCancelled();
 	const full = reply.text.trim();
-	// A reply may be only its choices (ask_user).
-	if (!full && !turn.context.reporter.offered) throw emptyReplyError();
+	// A reply may be only its choices (ask_user), or only the photos it sent.
+	const sent = !!liveMessage(sessionId, replyId)?.images?.length;
+	if (!full && !turn.context.reporter.offered && !sent) throw emptyReplyError();
 	settleSpeech(sessionId, full.length);
 	updateMessage(sessionId, replyId, { status: "done", text: full });
 	try {

@@ -15,6 +15,9 @@ export const qk = {
 	agentSettings: () => ["agent-settings"] as const,
 	llmModels: (provider?: string) =>
 		provider === undefined ? ["llm-models"] : ["llm-models", provider],
+	/** pi's providers with image models, and (with a provider) the models of one. */
+	imageModels: (provider?: string) =>
+		provider === undefined ? ["image-models"] : ["image-models", provider],
 	docker: () => ["docker"] as const,
 	composio: () => ["composio"] as const,
 	composioCatalog: () => ["composio", "catalog"] as const,

@@ -1,7 +1,9 @@
 // A conversation's images, in `images/` of the character's folder: those the user attached to a
-// turn, named by an id (img_…). They are noted at the end of the text the agent is given (and
-// read back from it). With files and commands on, each is also copied to `photos/user/` of the
-// character's workspace, so the user finds it in the 「ファイル」 tab.
+// turn and the photos the character sent (send_photo). Both are named by an id (img_…) that the
+// agent sees, so it can hand any of them to send_photo as a reference. The user's attachments are
+// noted at the end of the text the agent is given (and read back from it). With files and
+// commands on, each is also copied to `photos/` of the character's workspace, so the user finds it
+// in the 「ファイル」 tab: `photos/user/` for the attachments, `photos/character/` for the photos.
 
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -31,9 +33,16 @@ function stamp(date = new Date()): string {
 	return `${day}-${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
 }
 
+/** Who an image came from: the user's attachment, or the character's photo. */
+export type ImageSender = "user" | "character";
+
 /** Keeps `image` in the conversation as given when the browser can show it, else as PNG, with
- *  a copy in the workspace's `photos/user/`. */
-export async function saveChatImage(sessionId: string, image: Uint8Array): Promise<string> {
+ *  a copy in the workspace's `photos/<from>/`. */
+export async function saveChatImage(
+	sessionId: string,
+	image: Uint8Array,
+	from: ImageSender,
+): Promise<string> {
 	if (image.length > MAX_IMAGE_BYTES) throw new BadRequestError("画像は 1 枚 20 MB までです");
 	let format: string | undefined;
 	try {
@@ -51,7 +60,7 @@ export async function saveChatImage(sessionId: string, image: Uint8Array): Promi
 			: { ext: "png", bytes: await sharp(image).png().toBuffer() };
 	writeFileSync(join(dir, `${id}.${kept.ext}`), kept.bytes);
 	// Kept in the computer in the background: starting it may take a while.
-	void copyToWorkspace(sessionId, `photos/user/${stamp()}_${id}.${kept.ext}`, kept.bytes).catch(
+	void copyToWorkspace(sessionId, `photos/${from}/${stamp()}_${id}.${kept.ext}`, kept.bytes).catch(
 		(error) => console.warn(`Could not copy image ${id} to the workspace:`, error),
 	);
 	return id;

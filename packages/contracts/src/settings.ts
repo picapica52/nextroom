@@ -32,6 +32,20 @@ export const modelChoiceSchema = z.object({
 });
 export type ModelChoice = z.infer<typeof modelChoiceSchema>;
 
+/** One of the image models pi's providers offer, by pi's provider id and the model's id. */
+export const imageModelChoiceSchema = z.object({
+	provider: llmProviderSchema,
+	model: z.string().trim().min(1),
+});
+export type ImageModelChoice = z.infer<typeof imageModelChoiceSchema>;
+
+/** A provider that has image models, and whether it can be used now. */
+export interface ImageProviderStatus {
+	id: LlmProvider;
+	name: string;
+	configured: boolean;
+}
+
 /** The conversation's settings as stored. */
 export const chatSettingsSchema = z.object({
 	/** What every character replies with unless it has a model of its own. Null: none chosen yet. */
@@ -40,6 +54,8 @@ export const chatSettingsSchema = z.object({
 	fallback_models: z.array(modelChoiceSchema).max(5),
 	/** Checks the characters' actions in the Auto approval mode. Null: Auto asks like Ask. */
 	approval_model: modelChoiceSchema.nullable(),
+	/** Draws the photos the characters send (send_photo). Null: none chosen yet. */
+	image_model: imageModelChoiceSchema.nullable(),
 	/** Added after the fixed system prompt, for every character. */
 	custom_prompt: z.string(),
 	temperature: z.number(),

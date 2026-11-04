@@ -1,5 +1,8 @@
+import { Link } from "react-router-dom";
 import { Dot } from "@/components/status";
 import { useDockerStatus } from "@/features/agent/queries";
+import { useChatSettings } from "@/hooks/queries";
+import { settingsPath } from "../pages";
 import { AgentSettingsPage } from "./agent-settings";
 import { ComposioToolSettings } from "./composio-tool-settings";
 import { MissingKey } from "./connection-fields";
@@ -10,6 +13,7 @@ import { SettingsGroup } from "./settings-layout";
  *  their own (a Docker container each, from which nothing of this PC is reachable). */
 export default function ToolSettings() {
 	const docker = useDockerStatus();
+	const imageModel = useChatSettings().data?.image_model;
 	return (
 		<AgentSettingsPage>
 			{({ form, set }) => {
@@ -111,6 +115,20 @@ export default function ToolSettings() {
 								checked={form.ask_user.enabled}
 								onChange={(enabled) => set("ask_user", { enabled })}
 							/>
+							<SwitchRow
+								id="send-photo-enabled"
+								label="写真を送る"
+								description="自撮りや食べているもの、景色などの写真を画像生成で作って送ります"
+								checked={form.send_photo.enabled}
+								onChange={(enabled) => set("send_photo", { enabled })}
+							>
+								{form.send_photo.enabled && imageModel === null && (
+									<p className="m-0 text-xs text-warning">
+										<Link to={settingsPath("models")}>設定 → モデル</Link>{" "}
+										で「画像の生成」のモデルを選んでください。
+									</p>
+								)}
+							</SwitchRow>
 							<SwitchRow
 								id="routines-enabled"
 								label="ルーティンを作れる"
