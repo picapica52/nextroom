@@ -161,23 +161,11 @@ export const connectionOf = (choice: ModelChoice): LlmConnection => ({
 	thinking: choice.thinking,
 });
 
-/** What a reply is tried with, in order: the character's own model or the main model, then the
- *  fallbacks. A fallback whose provider is gone is left out. */
-export function replyConnections(
-	settings: ChatSettings,
-	own?: ModelChoice | null,
-): LlmConnection[] {
+/** What a reply is made with: the character's own model or the main model. */
+export function replyConnection(settings: ChatSettings, own?: ModelChoice | null): LlmConnection {
 	const main = own ?? settings.main_model;
 	if (!main) throw new BadRequestError("設定 → モデル で メインモデル を選んでください");
-	const out = [connectionOf(main)];
-	for (const choice of settings.fallback_models) {
-		try {
-			out.push(connectionOf(choice));
-		} catch (error) {
-			console.warn(`Left out the fallback model ${choice.provider}/${choice.model}:`, error);
-		}
-	}
-	return out;
+	return connectionOf(main);
 }
 
 /** The request that lists the OpenAI-compatible endpoint's models. */

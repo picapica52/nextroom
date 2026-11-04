@@ -15,7 +15,7 @@ import { assistantError, type CallOptions, llmFailure } from "./llm";
 import { historyForModel, memoryReady, readNotes } from "./memory";
 import { NOTES_TEMPLATE } from "./memory/notes";
 import { toolGuide } from "./prompts";
-import { type LlmConnection, modelOf, streamFnOf, thinkingLevelOf } from "./providers";
+import { modelOf, streamFnOf, thinkingLevelOf } from "./providers";
 import { type ToolSet, toAgentTool } from "./tool";
 import { askUserTools, offeredChoices } from "./tools/ask-user";
 import { characterTools } from "./tools/characters";
@@ -105,17 +105,8 @@ const isPrompt = (m: Message, prompt: UserMessage) =>
 const hasContent = (m: Message) =>
 	m.role !== "assistant" || m.content.some((c) => c.type !== "text" || c.text.trim());
 
-/** A model failed before the reply said or did anything, so the next one can take over. */
-class NothingSaid extends Error {
-	constructor(readonly cause: Error) {
-		super(cause.message);
-	}
-}
-
 /** The character's reply text pieces as they arrive. Its tool calls (and their output) go to the
- *  context's reporter; the messages it adds (the user's, then the reply's) go to `kept`. When a
- *  model fails before the reply says or does anything, the next of the context's connections
- *  takes over. */
+ *  context's reporter; the messages it adds (the user's, then the reply's) go to `kept`. */
 export async function* streamReply(
 	context: CharacterContext,
 	text: string,
@@ -131,21 +122,7 @@ export async function* streamReply(
 		const system = createInitialSystemMessage(systemPrompt(context, summary), tools);
 		const history = [...(system ? [system] : []), ...messages];
 		const prompt: UserMessage = { role: "user", content: text, timestamp: Date.now() };
-		for (const [index, connection] of context.connections.entries()) {
-			const last = index === context.connections.length - 1;
-			options.kept.length = 0;
-			try {
-				yield* replyWith(connection, context, history, tools, prompt, options, last);
-				return;
-			} catch (error) {
-				if (!(error instanceof NothingSaid)) throw error;
-				if (last) throw error.cause;
-				console.warn(
-					`${connection.provider}/${connection.model} failed, trying the next model:`,
-					error.cause,
-				);
-			}
-		}
+		yield* replyWith(context, history, tools, prompt, options);
 	} catch (error) {
 		if (options.signal?.aborted) return;
 		throw llmFailure(error);
@@ -155,17 +132,14 @@ export async function* streamReply(
 }
 
 async function* replyWith(
-	connection: LlmConnection,
 	context: CharacterContext,
 	history: Message[],
 	tools: AgentTool[],
 	prompt: UserMessage,
 	options: CallOptions & { kept: Message[] },
-	last: boolean,
 ): AsyncGenerator<string | typeof TEXT_BREAK> {
-	const { reporter } = context;
+	const { reporter, connection } = context;
 	let steps = 0;
-	let said = false;
 	const stream = agentLoop(
 		[prompt],
 		{ messages: history, tools },
@@ -190,16 +164,8 @@ async function* replyWith(
 		streamFnOf(connection),
 	);
 	for await (const event of stream) {
-		let piece: ReturnType<typeof handle>;
-		try {
-			piece = handle(event, context, options.kept);
-		} catch (error) {
-			if (!said && !last && error instanceof Error) throw new NothingSaid(error);
-			throw error;
-		}
-		if (piece === null) continue;
-		if (piece !== TEXT_BREAK || event.type === "tool_execution_start") said = true;
-		yield piece;
+		const piece = handle(event, context, options.kept);
+		if (piece !== null) yield piece;
 	}
 }
 

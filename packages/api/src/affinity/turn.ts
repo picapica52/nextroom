@@ -2,8 +2,8 @@
 // it starts, before the reply; the exchange counted and the event noted, after it.
 
 import type { CharacterView, ChatAffinityMark, EventDelivery } from "@nextroom/contracts";
-import type { Connections } from "../agent/llm";
 import { readNotes } from "../agent/memory";
+import type { LlmConnection } from "../agent/providers";
 import { otherCharactersTalks } from "../conversations/sessions";
 import { confessionAnswer, type PreparedEvent, prepareEvent } from "./draft";
 import { chooseEvent, type EventChoice, type EventContext, parseNotes } from "./events";
@@ -57,7 +57,7 @@ export async function prepareAffinityTurn(options: {
 	quiet?: boolean;
 	/** The user said it aloud. */
 	spoken: boolean;
-	connection: Connections;
+	connection: LlmConnection;
 	signal: AbortSignal;
 }): Promise<AffinityTurn> {
 	const { character, opening, connection, signal } = options;

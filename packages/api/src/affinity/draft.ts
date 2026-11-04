@@ -6,7 +6,7 @@
 
 import type { AffinityEventKind, CharacterView } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import type { Connections } from "../agent/llm";
+import type { LlmConnection } from "../agent/providers";
 import { resourceTalk } from "../conversations/history";
 import { jsonObjectOf } from "../lib/text";
 import { type EventChoice, type EventContext, guideOf, needsHistory } from "./events";
@@ -47,7 +47,7 @@ async function draftOf(
 	c: EventContext,
 	notes: string,
 	characterId: string,
-	connection: Connections,
+	connection: LlmConnection,
 	signal: AbortSignal,
 ): Promise<Draft | null> {
 	const talk = resourceTalk(characterId, FIRST_MESSAGES, LAST_MESSAGES);
@@ -94,7 +94,7 @@ export async function prepareEvent(
 	c: EventContext,
 	character: CharacterView,
 	notes: string,
-	connection: Connections,
+	connection: LlmConnection,
 	signal: AbortSignal,
 ): Promise<PreparedEvent | null> {
 	let topic: string = choice.label;
@@ -120,7 +120,7 @@ export async function prepareEvent(
 /** Whether the user's words accept a confession: true, false, or null when they do not say. */
 export async function confessionAnswer(
 	userText: string,
-	connection: Connections,
+	connection: LlmConnection,
 	signal: AbortSignal,
 ): Promise<boolean | null> {
 	const answer = await generateOnce(

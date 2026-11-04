@@ -1,8 +1,7 @@
-import type { ImageModelChoice, LlmProvider, ModelChoice } from "@nextroom/contracts";
-import { Button, buttonVariants } from "@nextroom/ui/components/button";
+import type { ImageModelChoice, LlmProvider } from "@nextroom/contracts";
+import { buttonVariants } from "@nextroom/ui/components/button";
 import { Field, FieldLabel } from "@nextroom/ui/components/field";
 import { cn } from "@nextroom/ui/lib/utils";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiModelPicker } from "@/components/api-model-picker";
@@ -15,11 +14,7 @@ import { ModelChoiceFields } from "./model-choice";
 import { NumberField } from "./settings-fields";
 import { SettingsBlock, SettingsGroup } from "./settings-layout";
 
-const MAX_FALLBACKS = 5;
-
-const keyOf = (c: ModelChoice) => `${c.provider}/${c.model}`;
-
-/** The model the characters talk with, the ones tried when it fails, and how they are run. */
+/** The model the characters talk with, and how they are run. */
 export default function ModelSettings() {
 	const ready = useHasLlmProvider();
 	return (
@@ -52,110 +47,11 @@ export default function ModelSettings() {
 							/>
 						</SettingsBlock>
 					</SettingsGroup>
-					<FallbackGroup f={f} />
 					<ImageModelGroup f={f} />
 					<AdvancedGroup f={f} />
 				</>
 			)}
 		</ChatSettingsPage>
-	);
-}
-
-/** The models tried in turn when the main one fails before saying anything. */
-function FallbackGroup({ f: { form, set } }: { f: ChatSettingsForm }) {
-	const [adding, setAdding] = useState(false);
-	const list = form.fallback_models;
-	const save = (next: ModelChoice[]) =>
-		set({
-			fallback_models: next.filter((c, i) => next.findIndex((d) => keyOf(d) === keyOf(c)) === i),
-		});
-	const move = (from: number, to: number) => {
-		const next = [...list];
-		const [item] = next.splice(from, 1);
-		if (item) next.splice(to, 0, item);
-		save(next);
-	};
-
-	return (
-		<SettingsGroup
-			id="fallbacks"
-			title="フォールバック"
-			description="メインモデルが返答を始める前に失敗したとき、上から順に試します"
-		>
-			{list.map((choice, i) => (
-				<SettingsBlock key={keyOf(choice)}>
-					<div className="flex items-center gap-1">
-						<span className="mr-auto text-xs text-muted-foreground">フォールバック {i + 1}</span>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="上へ移動"
-							disabled={i === 0}
-							onClick={() => move(i, i - 1)}
-						>
-							<ArrowUp />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="下へ移動"
-							disabled={i === list.length - 1}
-							onClick={() => move(i, i + 1)}
-						>
-							<ArrowDown />
-						</Button>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label="削除"
-							className="text-destructive hover:text-destructive"
-							onClick={() => save(list.filter((_, j) => j !== i))}
-						>
-							<Trash2 />
-						</Button>
-					</div>
-					<ModelChoiceFields
-						id={`fallback-${i}`}
-						value={choice}
-						onChange={(next) => save(list.map((c, j) => (j === i ? next : c)))}
-					/>
-				</SettingsBlock>
-			))}
-			{adding ? (
-				<SettingsBlock>
-					<div className="flex items-center">
-						<span className="mr-auto text-xs text-muted-foreground">
-							モデルを選ぶと追加されます
-						</span>
-						<Button variant="ghost" size="sm" onClick={() => setAdding(false)}>
-							やめる
-						</Button>
-					</div>
-					<ModelChoiceFields
-						id="fallback-new"
-						value={null}
-						onChange={(choice) => {
-							setAdding(false);
-							save([...list, choice]);
-						}}
-					/>
-				</SettingsBlock>
-			) : (
-				list.length < MAX_FALLBACKS && (
-					<SettingsBlock className="py-2">
-						<Button
-							variant="ghost"
-							size="sm"
-							className="self-start"
-							onClick={() => setAdding(true)}
-						>
-							<Plus />
-							フォールバックを追加
-						</Button>
-					</SettingsBlock>
-				)
-			)}
-		</SettingsGroup>
 	);
 }
 
