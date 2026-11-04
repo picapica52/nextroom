@@ -45,6 +45,10 @@ export function useCurrentChat({
 	const known = (id: string | null) => !!id && !!sessions.data?.some((s) => s.id === id);
 	const fallback = known(lastSession) ? lastSession : (sessions.data?.[0]?.id ?? null);
 	const currentId = known(wanted) ? wanted : onChat ? null : fallback;
+	// Under a dialog (the settings, a character), the page keeps showing the list or the
+	// conversation it showed before, so that nothing else flashes through as the dialog opens.
+	const listShown = useRef(false);
+	if (onChat) listShown.current = !wanted;
 
 	// /chat opens the last conversation (or the latest); an unknown one falls back the same way.
 	useEffect(() => {
@@ -112,8 +116,9 @@ export function useCurrentChat({
 
 	return {
 		sessions: sessions.data,
-		/** The address names no conversation: on a narrow screen, the list is shown. */
-		atList: onChat && !wanted,
+		/** On a narrow screen, the list is shown: the address names no conversation, or a dialog
+		 *  was opened over the list. */
+		atList: listShown.current,
 		/** The list has loaded and there is no character to talk with. */
 		noCharacters: !!sessions.data && sessions.data.length === 0,
 		currentId,
