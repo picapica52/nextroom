@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 export const SELECTED_ITEM =
 	"border-pastel-yellow-edge bg-selected font-bold text-selected-foreground hover:bg-selected hover:text-selected-foreground";
 
-/** An item of a side pane's list: its name over a line about it (the line only on a wide screen). */
+/** An item of a side pane's list: its name over a line about it. */
 export function SideNavItem({
 	to,
 	active,
@@ -24,14 +24,14 @@ export function SideNavItem({
 			to={to}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"flex shrink-0 flex-col gap-0.5 rounded-lg border-2 border-transparent px-2 py-1.5 text-sm whitespace-nowrap text-foreground no-underline transition-colors duration-120 ease-smooth hover:bg-hover hover:text-foreground active:bg-pressed md:py-2",
+				"flex shrink-0 flex-col gap-0.5 rounded-lg border-2 border-transparent px-2 py-1.5 text-sm whitespace-nowrap text-foreground no-underline transition-colors duration-120 ease-smooth hover:bg-hover hover:text-foreground active:bg-pressed max-md:py-2.5",
 				active && SELECTED_ITEM,
 			)}
 		>
 			<span className="truncate">{label}</span>
 			<span
 				className={cn(
-					"hidden truncate text-xs font-normal md:block",
+					"truncate text-xs font-normal",
 					active ? "text-selected-foreground/80" : "text-muted-foreground",
 				)}
 			>
@@ -46,16 +46,20 @@ export function PaneHeader({
 	icon: Icon,
 	title,
 	description,
+	back,
 	children,
 }: {
 	icon: LucideIcon;
 	title: ReactNode;
 	description: ReactNode;
+	/** Shown at the left, such as a button back to the list. */
+	back?: ReactNode;
 	/** Shown at the right, such as a close button. */
 	children?: ReactNode;
 }) {
 	return (
 		<header className="flex min-h-14 shrink-0 items-center gap-3 border-b-2 px-3 py-2 sm:px-4">
+			{back}
 			<div className="flex size-9 shrink-0 items-center justify-center rounded-lg border-2 bg-pastel-lilac shadow-puff">
 				<Icon className="size-4.5" aria-hidden="true" />
 			</div>

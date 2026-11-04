@@ -2,8 +2,7 @@ import type { CharacterView } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
 import { Download, Trash2 } from "lucide-react";
 import { useConfirm } from "@/components/confirm";
-import { MoreMenu } from "@/components/more-menu";
-import { RouteDialogNav } from "@/components/route-dialog";
+import { RouteDialogClose, RouteDialogNav } from "@/components/route-dialog";
 import { ErrorNote } from "@/components/status";
 import { SideNavItem } from "@/components/two-pane";
 import { formatDate } from "@/lib/api";
@@ -18,15 +17,19 @@ export function CharacterSidebar({
 	tab,
 	messageCount,
 	onChange,
+	onClose,
 	onExport,
 	onRemove,
 	removeError,
 }: {
 	characterId: string;
 	character: CharacterView;
-	tab: Tab;
+	/** The open tab; null when none is open (the list alone on a narrow screen). */
+	tab: Tab | null;
 	messageCount: number;
 	onChange: (c: CharacterView) => void;
+	/** Closes the dialog; shown only on a narrow screen, where the list fills it. */
+	onClose: () => void;
 	onExport: () => void;
 	/** Deletes the character once the user has confirmed it. */
 	onRemove: () => void;
@@ -45,7 +48,7 @@ export function CharacterSidebar({
 	};
 	return (
 		<RouteDialogNav label={character.persona.name}>
-			<div className="flex shrink-0 items-center gap-3 px-3 pt-3 md:px-4 md:pt-5 md:pb-2">
+			<div className="flex shrink-0 items-center gap-3 px-3 pt-3 pb-2 md:px-4 md:pt-5">
 				<AvatarMenu character={character} onChange={onChange} />
 				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<div className="truncate text-base font-extrabold">{character.persona.name}</div>
@@ -53,24 +56,14 @@ export function CharacterSidebar({
 						やりとり {messageCount} 件 ・ 更新 {formatDate(character.updated_at)}
 					</div>
 				</div>
-				<div className="md:hidden">
-					<MoreMenu
-						items={[
-							{ label: "エクスポート", onClick: onExport },
-							...(character.chief
-								? []
-								: [{ label: "キャラクターを削除", danger: true, onClick: () => void remove() }]),
-						]}
-					/>
+				<div className="self-start md:hidden">
+					<RouteDialogClose onClose={onClose} />
 				</div>
-			</div>
-			<div className="px-3 md:hidden">
-				<ErrorNote error={removeError} />
 			</div>
 
 			<nav
 				aria-label="キャラクターの項目"
-				className="flex gap-1 overflow-x-auto p-1.5 md:min-h-0 md:flex-1 md:flex-col md:overflow-x-visible md:overflow-y-auto md:p-2"
+				className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
 			>
 				{TABS.map((t) => (
 					<SideNavItem
@@ -83,7 +76,7 @@ export function CharacterSidebar({
 				))}
 			</nav>
 
-			<div className="hidden shrink-0 flex-col gap-0.5 p-2 md:flex">
+			<div className="flex shrink-0 flex-col gap-0.5 border-t-2 p-2 md:border-t-0">
 				<ErrorNote error={removeError} />
 				<Button variant="ghost" className="justify-start" onClick={onExport}>
 					<Download />

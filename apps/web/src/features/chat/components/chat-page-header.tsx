@@ -1,7 +1,7 @@
 import type { CharacterView } from "@nextroom/contracts";
 import { Button } from "@nextroom/ui/components/button";
-import { Monitor, PanelLeft, PanelRight, Pencil } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ChevronLeft, Monitor, PanelRight, Pencil } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { AffinityBadge } from "@/features/characters/components/affinity";
 import { CharacterAvatar } from "@/features/characters/components/character-avatar";
 import { PaneToggle } from "./pane-rail";
@@ -14,8 +14,6 @@ export function ChatPageHeader({
 	character,
 	name,
 	subtitle,
-	listOpen,
-	onListOpen,
 	panelOpen,
 	onPanelOpen,
 	onDesktop,
@@ -25,8 +23,6 @@ export function ChatPageHeader({
 	character: CharacterView | undefined;
 	name: string;
 	subtitle: string;
-	listOpen: boolean;
-	onListOpen: (open: boolean) => void;
 	panelOpen: boolean;
 	onPanelOpen: (open: boolean) => void;
 	onDesktop: () => void;
@@ -35,9 +31,17 @@ export function ChatPageHeader({
 	return (
 		<header className="flex min-h-14 items-center gap-2 border-b-2 px-3 py-2 sm:px-4">
 			{!wide && (
-				<PaneToggle label="話し相手" pressed={listOpen} onPressedChange={onListOpen}>
-					<PanelLeft />
-				</PaneToggle>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					className="-ml-1.5"
+					aria-label="話し相手の一覧へ戻る"
+					title="話し相手の一覧へ戻る"
+					nativeButton={false}
+					render={<Link to="/chat" />}
+				>
+					<ChevronLeft />
+				</Button>
 			)}
 			<CharacterAvatar character={character} className="size-9" />
 			<div className="@container min-w-0 flex-1">

@@ -14,7 +14,6 @@ export const STORAGE_KEYS = {
 	chatListOpen: "irodori.chatListOpen",
 	chatPanelOpen: "irodori.chatPanelOpen",
 	chatPanelTab: "irodori.chatPanelTab",
-	chatLogOpen: "irodori.chatLogOpen",
 	chatCaptions: "irodori.chatCaptions",
 } as const;
 

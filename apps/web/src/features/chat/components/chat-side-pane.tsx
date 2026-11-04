@@ -1,14 +1,14 @@
 import type { ChatMessage } from "@nextroom/contracts";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@nextroom/ui/components/sheet";
-import { PanelRightOpen } from "lucide-react";
+import { Drawer, DrawerContent, DrawerTitle } from "@nextroom/ui/components/drawer";
+import { PanelRightOpen, XIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useExtraWide } from "@/hooks/use-media-query";
 import type { ChatLayout } from "../use-chat-layout";
 import { CollapsiblePane, PaneRail, RailUpload } from "./pane-rail";
 import { SidePanel } from "./side-panel";
 
-/** The log and the files beside the conversation on a wide screen; on a narrow one, the files as a
- *  sheet (the log opens under the face instead). */
+/** The log and the files beside the conversation on a wide screen; on a narrow one, a drawer from
+ *  the bottom. */
 export function ChatSidePane({
 	wide,
 	layout,
@@ -25,21 +25,21 @@ export function ChatSidePane({
 	const extraWide = useExtraWide();
 	if (!wide)
 		return (
-			layout.filesOpen && (
-				<Sheet open={layout.filesOpen} onOpenChange={layout.setFilesOpen}>
-					<SheetContent side="right" className="w-[92vw] p-0 sm:max-w-md" showCloseButton={false}>
-						<SheetHeader className="sr-only">
-							<SheetTitle>ファイル</SheetTitle>
-						</SheetHeader>
-						<SidePanel
-							className="h-full"
-							sessionId={sessionId}
-							messages={messages}
-							onClose={() => layout.setFilesOpen(false)}
-						/>
-					</SheetContent>
-				</Sheet>
-			)
+			<Drawer open={layout.panelOpen} onOpenChange={layout.setPanelOpen}>
+				<DrawerContent className="h-[85dvh]">
+					<DrawerTitle className="sr-only">会話ログとファイル</DrawerTitle>
+					<SidePanel
+						className="min-h-0 flex-1"
+						sessionId={sessionId}
+						messages={messages}
+						log={log}
+						tab={layout.panelTab}
+						onTab={layout.setPanelTab}
+						onClose={() => layout.setPanelOpen(false)}
+						closeIcon={<XIcon />}
+					/>
+				</DrawerContent>
+			</Drawer>
 		);
 	return (
 		<CollapsiblePane

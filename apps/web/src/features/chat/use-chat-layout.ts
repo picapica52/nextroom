@@ -4,41 +4,34 @@ import { STORAGE_KEYS } from "@/lib/constants";
 import { type PanelTab, panelTabSchema } from "./components/side-panel";
 
 /** Which panes of the chat page are open. On a wide screen the list and the side panel are docked
- *  and remembered; on a narrow one the list and the files are sheets, opened only when asked for,
- *  and the log opens between the face and the bar. */
+ *  and remembered; on a narrow one the list is a page of its own and the side panel a drawer,
+ *  opened only when asked for. */
 export function useChatLayout(wide: boolean) {
 	const [listPinned, setListPinned] = useLocalState(STORAGE_KEYS.chatListOpen, true);
-	const [listSheetOpen, setListSheetOpen] = useState(false);
-	const [panelOpen, setPanelOpen] = useLocalState(STORAGE_KEYS.chatPanelOpen, true);
+	const [panelPinned, setPanelPinned] = useLocalState(STORAGE_KEYS.chatPanelOpen, true);
+	const [panelSheetOpen, setPanelSheetOpen] = useState(false);
 	const [panelTab, setPanelTab] = useLocalState<PanelTab>(
 		STORAGE_KEYS.chatPanelTab,
 		"log",
 		panelTabSchema,
 	);
-	const [filesOpen, setFilesOpen] = useState(false);
-	const [logOpen, setLogOpen] = useLocalState(STORAGE_KEYS.chatLogOpen, false);
 	const [captions, setCaptions] = useLocalState(STORAGE_KEYS.chatCaptions, true);
+	const setPanelOpen = wide ? setPanelPinned : setPanelSheetOpen;
 
 	return {
-		listOpen: wide ? listPinned : listSheetOpen,
-		setListOpen: (open: boolean) => (wide ? setListPinned(open) : setListSheetOpen(open)),
-		closeListSheet: () => setListSheetOpen(false),
-		panelOpen,
+		listOpen: listPinned,
+		setListOpen: setListPinned,
+		panelOpen: wide ? panelPinned : panelSheetOpen,
 		setPanelOpen,
 		panelTab,
 		setPanelTab,
-		filesOpen,
-		setFilesOpen,
-		logOpen,
-		setLogOpen,
+		/** Opens the side panel at a tab. */
+		openPanel: (tab: PanelTab) => {
+			setPanelTab(tab);
+			setPanelOpen(true);
+		},
 		captions,
 		setCaptions,
-		/** Shows the conversation log: the side panel's tab, or the log under the face. */
-		showLog: () => {
-			if (!wide) return setLogOpen(true);
-			setPanelOpen(true);
-			setPanelTab("log");
-		},
 	};
 }
 

@@ -28,7 +28,8 @@ export function ConversationList({
 	sessions: ChatSessionSummary[];
 	currentId: string | null;
 	onPick?: () => void;
-	onClose: () => void;
+	/** Closes the list; without it, the list cannot be closed (a narrow screen's home). */
+	onClose?: () => void;
 	searchRef?: Ref<HTMLInputElement>;
 	className?: string;
 }) {
@@ -51,9 +52,11 @@ export function ConversationList({
 				<div className="min-w-0 flex-1">
 					<Logo />
 				</div>
-				<RailButton label="一覧を閉じる" onClick={onClose}>
-					<PanelLeftClose />
-				</RailButton>
+				{onClose && (
+					<RailButton label="一覧を閉じる" onClick={onClose}>
+						<PanelLeftClose />
+					</RailButton>
+				)}
 			</div>
 			<div className="px-3 pt-3 pb-1">
 				<div className="relative">

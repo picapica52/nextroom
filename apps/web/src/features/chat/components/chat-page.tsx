@@ -24,6 +24,7 @@ import { ChatEmptyState } from "./chat-empty-state";
 import { ChatListPane } from "./chat-list-pane";
 import { ChatPageHeader } from "./chat-page-header";
 import { ChatSidePane } from "./chat-side-pane";
+import { ConversationList } from "./conversation-list";
 import { DesktopDialog } from "./desktop-dialog";
 import { Transcript } from "./transcript";
 
@@ -62,6 +63,7 @@ export default function ChatPage() {
 		setSearchParams(open ? { view: name } : {}, { replace: true });
 
 	const chat = useCurrentChat({
+		listHome: !wide,
 		onSent: (turn) => reading.follow(llm.data?.tts_enabled ? turn.assistant.id : null),
 		onSettled: () => setSending(false),
 	});
@@ -132,18 +134,18 @@ export default function ChatPage() {
 		/>
 	);
 
+	if (!wide && chat.atList)
+		return <ConversationList sessions={chat.sessions ?? []} currentId={null} className="h-full" />;
+
 	return (
-		<div className="flex h-full min-h-0 gap-3 p-3">
-			<ChatListPane
-				wide={wide}
-				layout={layout}
-				sessions={chat.sessions ?? []}
-				currentId={currentId}
-			/>
+		<div className="flex h-full min-h-0 gap-3 sm:p-3">
+			{wide && (
+				<ChatListPane layout={layout} sessions={chat.sessions ?? []} currentId={currentId} />
+			)}
 
 			<section
 				aria-label="会話"
-				className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border-2 bg-card shadow-puff"
+				className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card sm:rounded-xl sm:border-2 sm:shadow-puff"
 			>
 				<ChatPageHeader
 					wide={wide}
@@ -151,10 +153,8 @@ export default function ChatPage() {
 					character={character.data}
 					name={name}
 					subtitle={subtitle}
-					listOpen={layout.listOpen}
-					onListOpen={layout.setListOpen}
-					panelOpen={layout.filesOpen}
-					onPanelOpen={layout.setFilesOpen}
+					panelOpen={layout.panelOpen && layout.panelTab === "files"}
+					onPanelOpen={(open) => (open ? layout.openPanel("files") : layout.setPanelOpen(false))}
 					onDesktop={() => setView("desktop", true)}
 				/>
 
@@ -176,14 +176,14 @@ export default function ChatPage() {
 							state={callState}
 							micLevel={micLevel}
 							steps={steps}
-							onLog={layout.showLog}
+							onLog={() => layout.openPanel("log")}
 						>
 							{reply && (
 								<CallCaptions
 									reply={reply}
 									store={reveal}
 									playing={playing}
-									hidden={!layout.captions || (!wide && layout.logOpen)}
+									hidden={!layout.captions}
 								/>
 							)}
 						</CallStage>
@@ -195,20 +195,15 @@ export default function ChatPage() {
 				</div>
 
 				{!wide && currentId && (
-					<>
-						<button
-							type="button"
-							aria-expanded={layout.logOpen}
-							onClick={() => layout.setLogOpen(!layout.logOpen)}
-							className="mx-auto flex h-8 shrink-0 items-center gap-2 px-3 text-[11.5px] font-bold text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-						>
-							<span className="h-1.25 w-9 rounded-full bg-border-strong" aria-hidden="true" />
-							{layout.logOpen ? "ログをしまう" : "会話ログ"}
-						</button>
-						{layout.logOpen && (
-							<div className="flex h-[40svh] shrink-0 flex-col border-y-2">{log}</div>
-						)}
-					</>
+					<button
+						type="button"
+						aria-expanded={layout.panelOpen && layout.panelTab === "log"}
+						onClick={() => layout.openPanel("log")}
+						className="mx-auto flex h-10 shrink-0 items-center gap-2 px-4 text-[11.5px] font-bold text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+					>
+						<span className="h-1.25 w-9 rounded-full bg-border-strong" aria-hidden="true" />
+						会話ログ
+					</button>
 				)}
 
 				<ChatBottomBar

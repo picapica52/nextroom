@@ -4,13 +4,14 @@ import { useMutation } from "@tanstack/react-query";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { RouteDialog, RouteDialogClose } from "@/components/route-dialog";
+import { RouteDialog, RouteDialogBack, RouteDialogClose } from "@/components/route-dialog";
 import { SettingsBody, SettingsSaveFooter, SettingsSection } from "@/components/settings-section";
 import { ErrorNote } from "@/components/status";
 import { PaneHeader } from "@/components/two-pane";
 import { VoicePreview } from "@/components/voice-preview";
 import { MemoryView } from "@/features/agent/components/memory-view";
 import { useChatSessions } from "@/features/chat/queries";
+import { useMedium } from "@/hooks/use-media-query";
 import { client, read } from "@/lib/api";
 import { useCharacter, useCharacterSaved, useInvalidateCharacters, useSaveVoice } from "../queries";
 import { EDIT_TABS, TAB_INFO, TABS, type Tab } from "../tabs";
@@ -22,15 +23,25 @@ import { CharacterRoutines } from "./character-routines";
 import { CharacterSidebar } from "./character-sidebar";
 import { CharacterVoiceForm } from "./character-voice-form";
 
-/** A character's settings, over its conversation. */
+/** A character's settings, over its conversation. Without a tab in the address, a narrow screen
+ *  shows the list of tabs. */
 export default function CharacterDialog() {
-	const { id = "", tab = "profile" } = useParams();
+	const { id = "", tab } = useParams();
 	const current = TABS.find((t) => t.id === tab)?.id ?? "profile";
-	return <CharacterDetail key={id} characterId={id} tab={current} />;
+	return <CharacterDetail key={id} characterId={id} tab={current} picked={!!tab} />;
 }
 
-function CharacterDetail({ characterId, tab }: { characterId: string; tab: Tab }) {
+function CharacterDetail({
+	characterId,
+	tab,
+	picked,
+}: {
+	characterId: string;
+	tab: Tab;
+	picked: boolean;
+}) {
 	const navigate = useNavigate();
+	const medium = useMedium();
 	const invalidateCharacters = useInvalidateCharacters();
 	const { data: character, error } = useCharacter(characterId);
 	const sessions = useChatSessions();
@@ -90,20 +101,27 @@ function CharacterDetail({ characterId, tab }: { characterId: string; tab: Tab }
 		<RouteDialog
 			title={`${character.persona.name}の設定`}
 			onClose={close}
+			show={picked ? "page" : "nav"}
 			nav={
 				<CharacterSidebar
 					characterId={characterId}
 					character={character}
-					tab={tab}
+					tab={picked || medium ? tab : null}
 					messageCount={chat?.message_count ?? 0}
 					onChange={saved}
+					onClose={close}
 					onExport={() => void download()}
 					onRemove={() => remove.mutate()}
 					removeError={remove.error}
 				/>
 			}
 		>
-			<PaneHeader icon={tabInfo.icon} title={tabLabel} description={tabInfo.description}>
+			<PaneHeader
+				icon={tabInfo.icon}
+				title={tabLabel}
+				description={tabInfo.description}
+				back={<RouteDialogBack to={`/characters/${characterId}`} label="項目の一覧へ戻る" />}
+			>
 				<RouteDialogClose onClose={close} />
 			</PaneHeader>
 

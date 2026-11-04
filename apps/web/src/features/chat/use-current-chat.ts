@@ -13,11 +13,14 @@ import { appendTurn, type TurnInput, turnForm, useChatSession, useChatSessions }
 const NO_MESSAGES: ChatMessage[] = [];
 
 /** The conversation the chat page shows: the character in the address, else the one talked
- *  with last. Each character has one conversation, whose id is the character's. */
+ *  with last. Each character has one conversation, whose id is the character's. With `listHome`
+ *  (a narrow screen), /chat is the list of characters and opens no conversation. */
 export function useCurrentChat({
+	listHome,
 	onSent,
 	onSettled,
 }: {
+	listHome: boolean;
 	/** A turn was accepted, before it is added to the conversation. */
 	onSent: (turn: ChatTurn) => void;
 	onSettled: () => void;
@@ -46,6 +49,10 @@ export function useCurrentChat({
 	// /chat opens the last conversation (or the latest); an unknown one falls back the same way.
 	useEffect(() => {
 		if (!onChat || !sessions.data || (wanted && known(wanted))) return;
+		if (listHome) {
+			if (wanted) navigate(`/chat${location.search}`, { replace: true });
+			return;
+		}
 		if (fallback && fallback !== wanted)
 			navigate(`/chat/${fallback}${location.search}`, { replace: true });
 		else if (wanted && !fallback) navigate(`/chat${location.search}`, { replace: true });
@@ -105,6 +112,8 @@ export function useCurrentChat({
 
 	return {
 		sessions: sessions.data,
+		/** The address names no conversation: on a narrow screen, the list is shown. */
+		atList: onChat && !wanted,
 		/** The list has loaded and there is no character to talk with. */
 		noCharacters: !!sessions.data && sessions.data.length === 0,
 		currentId,
