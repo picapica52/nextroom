@@ -44,6 +44,11 @@ export const agentSettingsSchema = z.object({
 		/** A reply that needs the user to decide something ends with choices (ask_user). */
 		enabled: z.boolean(),
 	}),
+	send_photo: z.object({
+		/** The character takes photos in its own world and sends them (send_photo), drawn by the
+		 *  image model of the chat settings. */
+		enabled: z.boolean(),
+	}),
 	composio: z.object({
 		/** Apps such as Gmail or Google Calendar through Composio; accounts are connected from the
 		 *  integrations' settings. */
@@ -68,6 +73,7 @@ export const agentSettingsPatchSchema = z.object({
 	web_search: shape.web_search.partial().optional(),
 	topic_search: shape.topic_search.partial().optional(),
 	ask_user: shape.ask_user.partial().optional(),
+	send_photo: shape.send_photo.partial().optional(),
 	composio: shape.composio.partial().optional(),
 	routines: shape.routines.partial().optional(),
 });
@@ -120,7 +126,7 @@ const STEP_KINDS = [
 	"desktop",
 	"sandbox",
 	"claude",
-	/** Older replies: the photo tool, since removed. */
+	/** The photos the character sends (send_photo). */
 	"image",
 	"ask",
 	"memory",

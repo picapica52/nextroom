@@ -26,6 +26,7 @@ const CHAT_DEFAULTS: ChatSettings = {
 	main_model: null,
 	fallback_models: [],
 	approval_model: null,
+	image_model: null,
 	custom_prompt: "",
 	temperature: 0.7,
 	max_tokens: null,

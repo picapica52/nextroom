@@ -46,8 +46,7 @@ const chatMessageSchema = z.object({
 	status: z.enum(CHAT_STATUSES),
 	/** The user spoke this message (it was transcribed from the microphone). */
 	spoken: z.boolean().optional(),
-	/** Images in the conversation's folder: those the user attached, or (older replies) those the
-	 *  reply drew. */
+	/** Images in the conversation's folder: those the user attached, or the photos the reply sent. */
 	images: z.array(z.string()).optional(),
 	/** The agent's tool calls during the reply, in order. */
 	steps: z.array(agentStepSchema).optional(),

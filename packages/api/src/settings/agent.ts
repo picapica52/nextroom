@@ -23,6 +23,7 @@ const AGENT_DEFAULTS: AgentSettings = {
 	web_search: { enabled: false },
 	topic_search: { enabled: false },
 	ask_user: { enabled: false },
+	send_photo: { enabled: false },
 	composio: {
 		enabled: false,
 		toolkits: ["gmail", "googlecalendar"],

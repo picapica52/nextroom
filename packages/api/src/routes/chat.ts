@@ -20,6 +20,7 @@ import {
 	providerStatus,
 	startProviderLogin,
 } from "../agent/auth";
+import { imageProviders, listImageModels } from "../agent/images";
 import { listLlmModels } from "../agent/models";
 import { readChatImage } from "../conversations/images";
 import { clipOf } from "../conversations/live-turn";
@@ -57,6 +58,10 @@ export const chatRouter = new Hono()
 	.route("/providers", providersRouter)
 	.get("/llm-models", query(z.object({ provider: llmProviderSchema })), async (c) =>
 		c.json(await listLlmModels(c.req.valid("query").provider)),
+	)
+	.get("/image-providers", async (c) => c.json(await imageProviders()))
+	.get("/image-models", query(z.object({ provider: llmProviderSchema })), async (c) =>
+		c.json(await listImageModels(c.req.valid("query").provider)),
 	)
 	.get("/connections", (c) => c.json<ConnectionsView>(getConnections()))
 	.patch("/connections", json(connectionsPatchSchema), (c) =>

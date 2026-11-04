@@ -19,6 +19,9 @@ export const NO_EXA_KEY =
 export const APP_FAILED =
 	"The app on your device had trouble and this did not go through. Tell the user it did not work.";
 
+export const PHOTO_FAILED =
+	"The photo could not be sent; your device had trouble. Tell the user it did not go through.";
+
 export const NO_RESULTS = "No results.";
 
 export const searchFailed = (status: number, detail: string) =>
@@ -92,6 +95,16 @@ export function toolGuide(
 	if (settings.routines.enabled) {
 		tools.push(
 			"- Routines (schedule_routine, list_routines, cancel_routine): when the user asks you to do something at a set time or regularly (wake them, remind them, check something every morning), set it up. When the time comes you will be asked to do it, and what you say waits in the conversation for them.",
+		);
+	}
+	if (settings.send_photo.enabled) {
+		tools.push(
+			[
+				"- send_photo: take a photo with your device, where you are in your own life, and send it to the user, as people do in a chat: a selfie, your meal, the view, your outfit. Send one when the user asks for a photo, or now and then when the moment calls for it.",
+				"  - Describe the scene in English, in detail, as it really is around you right now; set self when you are in it.",
+				"  - Images the user sends you are noted at the end of their message as [Attached images: …]. When a photo should show the same things, clothes or places, pass their ids (or those of photos you sent before) as reference_images. Go by what the user says about them.",
+				"  - Talk about the photo as the one who took it. Do not repeat its ids to the user.",
+			].join("\n"),
 		);
 	}
 	if (settings.ask_user.enabled) {
