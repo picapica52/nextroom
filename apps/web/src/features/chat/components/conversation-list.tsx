@@ -98,14 +98,14 @@ export function ConversationList({
 									<span className="flex items-baseline gap-2">
 										<span className="min-w-0 flex-1 truncate font-medium">
 											{s.character_name}
-											{character?.chief && (
+											{character?.game_master && (
 												<span
 													className={cn(
 														"ml-1.5 text-[11px] font-bold",
 														selected ? "text-selected-foreground/80" : "text-muted-foreground",
 													)}
 												>
-													チーフ
+													GM
 												</span>
 											)}
 										</span>

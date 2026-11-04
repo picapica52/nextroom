@@ -1,5 +1,5 @@
-// The chief's tools: it makes new characters for the user and looks after the others' settings.
-// Only the chief has them, whatever the settings turn on.
+// The game master's tools: it makes new characters for the user and looks after the others' settings.
+// Only the game master has them, whatever the settings turn on.
 
 import { PERSONA_FIELDS, PERSONA_GENERATED_FIELDS, type Persona } from "@nextroom/contracts";
 import { z } from "zod";
@@ -40,12 +40,12 @@ const instructions = z
 		"Standing instructions for the character's work, in English: what it should do or take care of. Leave it out unless the user asked for something like this.",
 	);
 
-const characterId = z.string().describe("The character's id, from list_characters.");
+export const characterId = z.string().describe("The character's id, from list_characters.");
 
-/** A character the chief may change: any but itself. */
-function other(id: string) {
+/** A character the game master may change: any but itself. */
+export function other(id: string) {
 	const character = loadCharacter(id);
-	if (character.chief) throw new Error("You cannot change your own settings with this tool.");
+	if (character.game_master) throw new Error("You cannot change your own settings with this tool.");
 	return character;
 }
 
@@ -64,7 +64,7 @@ const listCharactersTool = defineTool({
 			name: c.name,
 			nickname: c.nickname,
 			profile: c.profile,
-			...(c.chief ? { you: true } : {}),
+			...(c.game_master ? { you: true } : {}),
 		})),
 });
 
@@ -98,7 +98,7 @@ const createCharacterTool = defineTool({
 	sequential: true,
 	execute: async ({ name, persona, instructions: text }) => {
 		const character = createCharacter(name, persona, { instructions: text ?? "" });
-		return `Made "${character.persona.name}" (id ${character.id}). The user can now pick them in the app to talk; their picture and voice can be set in their settings.`;
+		return `Made "${character.persona.name}" (id ${character.id}). The user can now pick them in the app to talk.`;
 	},
 });
 
@@ -119,7 +119,7 @@ const updateCharacterTool = defineTool({
 	},
 });
 
-/** The chief's tools. */
+/** The game master's tools. */
 export const characterTools = (): ToolSet =>
 	Object.fromEntries(
 		[listCharactersTool, readCharacter, createCharacterTool, updateCharacterTool].map((t) => [

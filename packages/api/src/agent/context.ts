@@ -23,8 +23,8 @@ export type CharacterContext = {
 	/** Also whose workspace the file tools work in. */
 	characterId: string;
 	settings: AgentSettings;
-	/** The character is the chief, with the tools that make and change the other characters. */
-	chief: boolean;
+	/** The character is the game master, with the tools that make and change the other characters. */
+	game_master: boolean;
 	reporter: TurnReporter;
 	/** Shows the photos the reply sent (ids in the conversation's folder) with the reply. */
 	addImages: (ids: string[]) => void;

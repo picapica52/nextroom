@@ -4,7 +4,8 @@
 
 import type { WorkspaceFile } from "@nextroom/contracts";
 
-import { fileRequest, readFileStream } from "../agent/tools/computer";
+import { asUser, fileRequest, readFileStream } from "../agent/tools/computer";
+import { track } from "../lib/children";
 import { hasDoc } from "../lib/db";
 import { BadRequestError, NotFoundError } from "../lib/errors";
 import { loadAgentSettings } from "../settings/agent";
@@ -61,4 +62,33 @@ export async function copyToWorkspace(characterId: string, path: string, bytes: 
 		{ op: "save", dir: path.slice(0, Math.max(slash, 0)), path: path.slice(slash + 1) },
 		new Blob([new Uint8Array(bytes)]),
 	);
+}
+
+/** A file's bytes. */
+export const workspaceFileBytes = async (characterId: string, path: string) =>
+	new Uint8Array(await new Response(await workspaceFileStream(characterId, path)).arrayBuffer());
+
+/** An audio file of the workspace as a mono 16-bit WAV, made by the computer's ffmpeg. */
+export async function workspaceAudioWav(characterId: string, path: string): Promise<Uint8Array> {
+	const settings = computerOf(characterId);
+	const full = await fileRequest<string>(characterId, settings, { op: "file", path });
+	const script =
+		'f=$(mktemp --suffix=.wav) && ffmpeg -nostdin -loglevel error -y -i "$1" -ac 1 -c:a pcm_s16le "$f" && cat "$f"; s=$?; rm -f "$f"; exit $s';
+	const proc = track(
+		Bun.spawn(["docker", ...asUser(characterId), "sh", "-c", script, "sh", full], {
+			stdout: "pipe",
+			stderr: "pipe",
+			windowsHide: true,
+		}),
+	);
+	const [out, err, code] = await Promise.all([
+		new Response(proc.stdout).arrayBuffer(),
+		new Response(proc.stderr).text(),
+		proc.exited,
+	]);
+	if (code !== 0)
+		throw new BadRequestError(
+			`音声を読み込めません: ${path} (${err.trim().split("\n").at(-1) ?? code})`,
+		);
+	return new Uint8Array(out);
 }

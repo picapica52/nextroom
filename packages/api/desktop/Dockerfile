@@ -13,7 +13,7 @@ RUN apt-get update \
 		novnc websockify python3 python3-pil \
 		chromium dbus-x11 xdg-utils \
 		fonts-noto-cjk fonts-noto-color-emoji fonts-dejavu-core \
-		ca-certificates curl git procps tzdata unzip sudo python3-pip python3-venv \
+		ca-certificates curl git procps tzdata unzip sudo python3-pip python3-venv ffmpeg \
 	&& rm -rf /var/lib/apt/lists/*
 
 # The character works as `user`, and may use sudo in its own computer (to install packages).

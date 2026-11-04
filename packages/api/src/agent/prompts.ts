@@ -3,6 +3,10 @@
 
 import type { AgentSettings } from "../settings/agent";
 
+/** The game master's workspace folders the user uploads a character's face and voice to. */
+export const FACE_FOLDER = "顔";
+export const VOICE_FOLDER = "声";
+
 /** What a tool answers when it does not run. */
 export const DECLINED = {
 	/** The user said no on the screen. */
@@ -42,18 +46,29 @@ export const TOPICS_NOTE = [
 export function toolGuide(
 	settings: AgentSettings,
 	computer: { shell: boolean; screen: boolean },
-	chief: boolean,
+	gameMaster: boolean,
 ): string {
 	const tools: string[] = [
 		"- update_memory: rewrite your notes when something worth remembering comes up. Do it quietly, without mentioning it.",
 	];
-	if (chief) {
+	if (gameMaster) {
 		tools.push(
 			[
-				"- Characters (list_characters, read_character, create_character, update_character): you are the chief. The user can talk with other characters through this app, and you make them and look after their settings.",
-				"  - When the user wants someone new to talk with, or someone for a task, ask briefly what they want if it is unclear, then make the character with create_character. In what you say, it is someone you found and introduce, whose device now connects to the user's too.",
+				"- Characters (list_characters, read_character, create_character, update_character): you are the game master. The user can talk with other characters through this app, and you make them with the user, from their name and story to their face and voice, and look after their settings.",
+				"  - Build a new character together with the user, one step at a time, asking with ask_user at each step: what kind of character they want, the name, then the details (world, profile, looks, personality, way of talking and the rest), then the face, then the voice.",
+				"  - At each step, offer a few concrete ideas of your own as the options, so the user can just pick one or answer in their own words. Ask one thing at a time, and sum up what is decided before the next step.",
+				"  - Once the name and details are settled, read the character sheet back briefly, make the character with create_character, then go on to the face and voice. In what you say, it is someone you bring to life, whose device now connects to the user's too.",
 				"  - Each character lives in a world of their own, which need not be yours. Give them a world, personality and way of talking that suit what the user asked for.",
 				"  - Change another character only when the user asks, and read it first.",
+				...(computer.shell
+					? [
+							`  - Face and voice (list_materials, view_faces, transcribe_voices, set_character_face, set_character_voice): the user uploads images to the ${FACE_FOLDER} folder and audio to the ${VOICE_FOLDER} folder of your workspace, in the 「ファイル」 tab of this conversation. Run list_materials to make the folders and see what is there; if nothing is, ask the user to upload files and tell you when they are done.`,
+							"  - Face: look at the images with view_faces, pick the one that suits the character best (or a few), and ask the user with ask_user before you set it with set_character_face.",
+							"  - Voice: first ask with ask_user which service speaks it (irodori: this app's Voice Clone; elevenlabs: ElevenLabs; fish_audio: Fish Audio). Transcribe the files with transcribe_voices, choose the clips that suit best (clear speech of one person, no music or noise, fitting the character), tell the user which ones and why, confirm with ask_user, then make the voice with set_character_voice.",
+						]
+					: [
+							"  - You cannot set a face or voice yourself now: that needs your computer, which the user can turn on in 設定 → 道具 → コンピューター. Until then, tell the user they can set them on the character's settings screen.",
+						]),
 			].join("\n"),
 		);
 	}
@@ -107,7 +122,7 @@ export function toolGuide(
 			].join("\n"),
 		);
 	}
-	if (settings.ask_user.enabled) {
+	if (settings.ask_user.enabled || gameMaster) {
 		tools.push(
 			[
 				"- ask_user: only when you need the user to choose or confirm something before you can go on, end the reply by calling it once. Say your reply first, then call it; say nothing after it. Do not use it in ordinary conversation.",

@@ -23,6 +23,7 @@ import { commandTools } from "./tools/command";
 import { composioTools } from "./tools/composio";
 import { desktopTools, hasDesktop } from "./tools/desktop";
 import { findTopicTools } from "./tools/find-topic";
+import { materialTools } from "./tools/materials";
 import { memoryTools } from "./tools/memory";
 import { routineTools } from "./tools/routines";
 import { sendPhotoTools } from "./tools/send-photo";
@@ -38,17 +39,18 @@ const MAX_STEPS = 12;
  *  said so far is complete and should be spoken now, not when the next text arrives. */
 export const TEXT_BREAK = Symbol("text-break");
 
-/** Every tool the settings turn on, and the chief's own. */
+/** Every tool the settings turn on, and the game master's own. */
 async function toolsOf(context: CharacterContext): Promise<ToolSet> {
-	const { settings, connection, chief } = context;
+	const { settings, connection, game_master } = context;
 	return {
 		...memoryTools(),
-		...(chief ? characterTools() : {}),
+		...(game_master ? characterTools() : {}),
+		...(game_master && settings.computer.enabled ? materialTools() : {}),
 		...webSearchTools(settings),
 		...findTopicTools(settings),
 		...commandTools(settings),
 		...desktopTools(settings, connection),
-		...askUserTools(settings),
+		...askUserTools(settings, game_master),
 		...sendPhotoTools(settings),
 		...routineTools(settings),
 		...(await composioTools(settings)),
@@ -69,7 +71,7 @@ function systemPrompt(context: CharacterContext, summary: string): string {
 	const notes = readNotes(context.characterId);
 	return [
 		context.system,
-		toolGuide(context.settings, computerOf(context), context.chief),
+		toolGuide(context.settings, computerOf(context), context.game_master),
 		...context.beforeHistory,
 		section(
 			"Your notes (MEMORY.md)",

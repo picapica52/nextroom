@@ -10,7 +10,7 @@ import { TAB_INFO, TABS, type Tab } from "../tabs";
 import { AvatarMenu } from "./character-avatar-menu";
 
 /** The character's picture and name, the list of its tabs, and exporting or deleting it (the
- *  chief cannot be deleted). */
+ *  game master cannot be deleted). */
 export function CharacterSidebar({
 	characterId,
 	character,
@@ -82,7 +82,7 @@ export function CharacterSidebar({
 					<Download />
 					エクスポート
 				</Button>
-				{!character.chief && (
+				{!character.game_master && (
 					<Button
 						variant="ghost"
 						className="justify-start text-destructive hover:text-destructive"

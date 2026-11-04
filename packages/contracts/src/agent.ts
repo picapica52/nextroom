@@ -131,7 +131,7 @@ const STEP_KINDS = [
 	"ask",
 	"memory",
 	"app",
-	/** The chief's tools for the other characters. */
+	/** The game master's tools for the other characters. */
 	"character",
 	"other",
 ] as const;
