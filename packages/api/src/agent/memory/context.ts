@@ -1,34 +1,25 @@
 // What the model is given of the conversation: the latest summary, then the messages after it as
-// they were said. Once those grow past COMPACT_TOKENS, the older ones are summarized (keeping the
-// last KEEP_TOKENS word for word), and the notes are brought up to date with them. The summary
+// they were said. Once WINDOW_MESSAGES + BATCH_MESSAGES of them have piled up, the oldest
+// BATCH_MESSAGES are summarized, and the notes are brought up to date with them. The summary
 // keeps what happened as a dated log.
 
 import type { Message } from "@earendil-works/pi-ai";
+import { estimateContextTokens } from "@earendil-works/pi-ai/utils/estimate";
 import { localDate, pad2 } from "../../lib/dates";
 import { newId, now } from "../../lib/storage";
 import { type Connections, complete, generateOnce, replyText } from "../llm";
 import { addSummary, type ChatMessageEntry, latestSummary, spokenText, unsummarized } from "./log";
 import { NOTES_MAX_CHARS, NOTES_RULES, NOTES_TEMPLATE, readNotes, writeNotes } from "./notes";
 
-/** Messages past this many tokens are summarized; the last KEEP_TOKENS of them stay as they are. */
-const COMPACT_TOKENS = 30_000;
-const KEEP_TOKENS = 10_000;
-const SUMMARY_MAX_CHARS = 12_000;
-/** A tool's result in an earlier turn is cut to this; the call itself stays. */
-const OLD_RESULT_CHARS = 1500;
+/** Messages counted are the user's and the character's spoken ones (not tool calls or results).
+ *  At least WINDOW_MESSAGES stay as they are; the oldest BATCH_MESSAGES are summarized at a time. */
+const WINDOW_MESSAGES = 50;
+const BATCH_MESSAGES = 50;
 /** A pause this long or longer is marked with the time on the next user message. */
 const GAP_SECONDS = 10 * 60;
 
-const CJK = /[　-鿿가-힯＀-￯]/g;
-
-/** A rough count that holds for Japanese as well as English. */
-function estimateTokens(text: string): number {
-	const cjk = text.match(CJK)?.length ?? 0;
-	return cjk + Math.ceil((text.length - cjk) / 4);
-}
-
-const entryTokens = (entry: ChatMessageEntry) =>
-	estimateTokens(JSON.stringify(entry.message.content));
+const counted = (entry: ChatMessageEntry) =>
+	entry.message.role === "user" || (entry.message.role === "assistant" && !!spokenText(entry));
 
 /** `2026-11-03 14:05`, in local time. */
 export function stamp(at: number): string {
@@ -45,30 +36,19 @@ function withTime(message: Message & { role: "user" }, at: number): Message {
 	return { ...message, content };
 }
 
-function clipped(message: Message & { role: "toolResult" }): Message {
-	const content = message.content.map((c) =>
-		c.type === "text" && c.text.length > OLD_RESULT_CHARS
-			? { ...c, text: `${c.text.slice(0, OLD_RESULT_CHARS)}…` }
-			: c,
-	);
-	return { ...message, content } as Message;
-}
-
 /** The summary of what came before, and the messages since as the model is given them: with
- *  the time on a user message after a pause, and the earlier tools' results cut short. */
+ *  the time on a user message after a pause. */
 export function historyForModel(characterId: string): { summary: string; messages: Message[] } {
 	const { summary, messages } = unsummarized(characterId);
 	let previous = summary?.at ?? 0;
 	const out: Message[] = [];
 	for (const entry of messages) {
 		const { message } = entry;
-		if (message.role === "user") {
-			out.push(entry.at - previous >= GAP_SECONDS ? withTime(message, entry.at) : message);
-		} else if (message.role === "toolResult") {
-			out.push(clipped(message));
-		} else {
-			out.push(message);
-		}
+		out.push(
+			message.role === "user" && entry.at - previous >= GAP_SECONDS
+				? withTime(message, entry.at)
+				: message,
+		);
 		previous = entry.at;
 	}
 	return { summary: summary?.text ?? "", messages: out };
@@ -105,7 +85,6 @@ const summaryInstructions = (charName: string, userName: string) =>
 		`Keep what ${userName} said about themselves, what the two talked about, did, decided and promised, how they felt, and the details that matter later (names, numbers, places, dates).`,
 		"Note what the tools were used for and how it turned out, but not what they returned.",
 		"Record only what was actually said or done. Do not make anything up.",
-		`Keep the whole summary under ${SUMMARY_MAX_CHARS} characters: when it would be longer, condense the oldest entries first.`,
 		"Answer with the summary only.",
 	].join("\n");
 
@@ -128,15 +107,14 @@ export async function memoryReady(characterId: string): Promise<void> {
 	await running.get(characterId);
 }
 
-/** Where to cut: the older messages, ending before a turn starts, so that at least KEEP_TOKENS of
- *  the latest stay as they are. */
+/** The oldest BATCH_MESSAGES, cut before the next turn starts, once there are enough messages. */
 function olderPart(messages: ChatMessageEntry[]): ChatMessageEntry[] {
-	const total = messages.reduce((n, m) => n + entryTokens(m), 0);
-	if (total < COMPACT_TOKENS) return [];
-	let kept = 0;
-	for (let i = messages.length - 1; i > 0; i--) {
-		kept += entryTokens(messages[i] as ChatMessageEntry);
-		if (kept >= KEEP_TOKENS && messages[i]?.message.role === "user") return messages.slice(0, i);
+	if (messages.filter(counted).length < WINDOW_MESSAGES + BATCH_MESSAGES) return [];
+	let seen = 0;
+	for (let i = 0; i < messages.length; i++) {
+		const entry = messages[i] as ChatMessageEntry;
+		if (seen >= BATCH_MESSAGES && entry.message.role === "user") return messages.slice(0, i);
+		if (counted(entry)) seen++;
 	}
 	return [];
 }
@@ -193,6 +171,18 @@ export function compactSoon(characterId: string, options: CompactOptions): void 
 		.catch((error) => console.warn(`Could not summarize the memory of ${characterId}:`, error))
 		.finally(() => running.delete(characterId));
 	running.set(characterId, run);
+}
+
+/** About how many tokens the next reply starts from: what the provider reported for the latest
+ *  reply, and an estimate of what came after it (or of everything, until a reply after the
+ *  latest summary). The system prompt and tools count only through the reported part. */
+export function contextTokens(characterId: string): number {
+	const summary = latestSummary(characterId);
+	const { messages } = historyForModel(characterId);
+	const prefix: Message[] = summary
+		? [{ role: "user", content: summary.text, timestamp: summary.at * 1000 }]
+		: [];
+	return estimateContextTokens([...prefix, ...messages]).tokens;
 }
 
 /** The latest summary, for the memory screen. */

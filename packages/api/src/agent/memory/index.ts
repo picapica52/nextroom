@@ -4,7 +4,7 @@
 // - the character's notes on the user and the two of them, its MEMORY.md (notes.ts).
 
 import type { MemoryOverview } from "@nextroom/contracts";
-import { summaryText } from "./context";
+import { contextTokens, summaryText } from "./context";
 import { deleteCharacterMemory } from "./db";
 import { readNotes } from "./notes";
 
@@ -22,6 +22,7 @@ export const memoryOverview = (characterId: string): MemoryOverview => ({
 	resource_id: characterId,
 	working_memory: readNotes(characterId),
 	summary: summaryText(characterId),
+	context_tokens: contextTokens(characterId),
 });
 
 /** Forget everything the character holds: its conversation, summaries and notes. */
