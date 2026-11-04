@@ -22,6 +22,7 @@ import { characterTools } from "./tools/characters";
 import { commandTools } from "./tools/command";
 import { composioTools } from "./tools/composio";
 import { desktopTools, hasDesktop } from "./tools/desktop";
+import { faceTools } from "./tools/faces";
 import { findTopicTools } from "./tools/find-topic";
 import { materialTools } from "./tools/materials";
 import { memoryTools } from "./tools/memory";
@@ -44,7 +45,7 @@ async function toolsOf(context: CharacterContext): Promise<ToolSet> {
 	const { settings, connection, game_master } = context;
 	return {
 		...memoryTools(),
-		...(game_master ? characterTools() : {}),
+		...(game_master ? { ...characterTools(), ...faceTools() } : {}),
 		...(game_master && settings.computer.enabled ? materialTools() : {}),
 		...webSearchTools(settings),
 		...findTopicTools(settings),

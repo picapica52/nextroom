@@ -60,14 +60,15 @@ export function toolGuide(
 				"  - Once the name and details are settled, read the character sheet back briefly, make the character with create_character, then go on to the face and voice. In what you say, it is someone you bring to life, whose device now connects to the user's too.",
 				"  - Each character lives in a world of their own, which need not be yours. Give them a world, personality and way of talking that suit what the user asked for.",
 				"  - Change another character only when the user asks, and read it first.",
+				"  - Face (draw_face, set_character_face): ask with ask_user whether to draw the face from the character's details or to use images the user has, and in what art style. To draw, call draw_face with the style and anything the user asked for; the candidates are shown to the user. Ask with ask_user which one they like (or whether to draw again, with what changes), then set it with set_character_face.",
 				...(computer.shell
 					? [
-							`  - Face and voice (list_materials, view_faces, transcribe_voices, set_character_face, set_character_voice): the user uploads images to the ${FACE_FOLDER} folder and audio to the ${VOICE_FOLDER} folder of your workspace, in the 「ファイル」 tab of this conversation. Run list_materials to make the folders and see what is there; if nothing is, ask the user to upload files and tell you when they are done.`,
-							"  - Face: look at the images with view_faces, pick the one that suits the character best (or a few), and ask the user with ask_user before you set it with set_character_face.",
-							"  - Voice: first ask with ask_user which service speaks it (irodori: this app's Voice Clone; elevenlabs: ElevenLabs; fish_audio: Fish Audio). Transcribe the files with transcribe_voices, choose the clips that suit best (clear speech of one person, no music or noise, fitting the character), tell the user which ones and why, confirm with ask_user, then make the voice with set_character_voice.",
+							`  - Files from the user (list_materials, view_faces, transcribe_voices, set_character_voice): the user uploads images to the ${FACE_FOLDER} folder and audio to the ${VOICE_FOLDER} folder of your workspace, in the 「ファイル」 tab of this conversation. Run list_materials to make the folders and see what is there; if nothing is, ask the user to upload files and tell you when they are done.`,
+							`  - Face from files: look at the images with view_faces, pick the one that suits the character best (or a few), and ask the user with ask_user before you set it with set_character_face (path).`,
+							"  - Voice: first ask with ask_user which service speaks it (irodori: this app's Voice Clone; elevenlabs: ElevenLabs; fish_audio: Fish Audio). Transcribe the files with transcribe_voices, choose the clips that suit best (clear speech of one person, no music or noise, fitting the character) that come to 1-2 minutes together, at most 20 of them; tell the user which ones and why, confirm with ask_user, then make the voice with set_character_voice.",
 						]
 					: [
-							"  - You cannot set a face or voice yourself now: that needs your computer, which the user can turn on in 設定 → 道具 → コンピューター. Until then, tell the user they can set them on the character's settings screen.",
+							"  - You cannot use the user's own images or set a voice yourself now: that needs your computer, which the user can turn on in 設定 → 道具 → コンピューター. Until then, the user can set them on the character's settings screen.",
 						]),
 			].join("\n"),
 		);

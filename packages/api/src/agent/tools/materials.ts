@@ -1,5 +1,6 @@
-// The game master's tools for a character's face and voice, from the files the user puts in the
-// 顔 and 声 folders of the game master's workspace (its 「ファイル」 tab). Only with a computer.
+// The game master's tools for the files the user puts in the 顔 and 声 folders of its workspace
+// (its 「ファイル」 tab), for a character's picture (set with faces.ts) and voice. Only with a
+// computer.
 
 import {
 	type CharacterVoice,
@@ -11,7 +12,7 @@ import {
 } from "@nextroom/contracts";
 import sharp from "sharp";
 import { z } from "zod";
-import { setAvatar, updateCharacter } from "../../characters/store";
+import { updateCharacter } from "../../characters/store";
 import { enqueueVoiceFile, refClipFiles, replaceRefs } from "../../characters/voice-files";
 import { gpuQueue } from "../../engine/queue";
 import { speechModels } from "../../engine/speech-models";
@@ -31,7 +32,7 @@ import { defineTool, ImageResult, type ToolSet } from "../tool";
 import { irodoriVoice } from "../voice";
 import { characterId, other } from "./characters";
 
-const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"];
+export const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"];
 const AUDIO_EXTS = [".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".webm"];
 const MAX_VIEWED = 6;
 const VIEW_SIZE = 512;
@@ -39,7 +40,7 @@ const VIEW_SIZE = 512;
 const hasExt = (path: string, exts: string[]) => exts.some((e) => path.toLowerCase().endsWith(e));
 
 /** A path the user gave inside `folder`, as the workspace knows it. */
-const inFolder = (folder: string, exts: string[]) =>
+export const inFolder = (folder: string, exts: string[]) =>
 	z
 		.string()
 		.refine(
@@ -133,19 +134,6 @@ const transcribeVoices = defineTool({
 	},
 });
 
-const setFace = defineTool({
-	name: "set_character_face",
-	description: `Make an image of ${FACE_FOLDER}/ another character's picture.`,
-	schema: z.object({ id: characterId, path: inFolder(FACE_FOLDER, IMAGE_EXTS) }),
-	changes: true,
-	sequential: true,
-	execute: async ({ id, path }, call) => {
-		const character = other(id);
-		await setAvatar(id, await workspaceFileBytes(call.context.characterId, path));
-		return `"${character.persona.name}" now has ${path} as their picture.`;
-	},
-});
-
 /** The Irodori-TTS model a voice speaks with: the given one, the one it has, or one the speech
  *  server has fetched (its recommended one first). */
 async function irodoriModel(given: string | undefined, current: string): Promise<string> {
@@ -169,7 +157,7 @@ const setVoice = defineTool({
 		`Give another character a voice cloned from audio files of ${VOICE_FOLDER}/: they become the character's reference clips, and the voice is made with the provider the user chose.`,
 		`- irodori: Voice Clone on this app's speech server; the clips are at most ${VOICE_FILE_MAX_SECONDS} seconds together.`,
 		`- elevenlabs: an ElevenLabs Instant Voice Clone. - fish_audio: a Fish Audio voice, from at most ${FISH_AUDIO_MAX_CLONE_FILES} clips.`,
-		"A few clear clips of 5-20 seconds each usually work best.",
+		"Choose clips that come to 1-2 minutes together, and at most 20 of them.",
 	].join("\n"),
 	schema: z.object({
 		id: characterId,
@@ -246,5 +234,5 @@ const setVoice = defineTool({
 /** The tools for faces and voices. */
 export const materialTools = (): ToolSet =>
 	Object.fromEntries(
-		[listMaterials, viewFaces, transcribeVoices, setFace, setVoice].map((t) => [t.name, t]),
+		[listMaterials, viewFaces, transcribeVoices, setVoice].map((t) => [t.name, t]),
 	);
