@@ -20,6 +20,7 @@ const CHARACTER_TOOLS = new Set([
 	"list_materials",
 	"view_faces",
 	"transcribe_voices",
+	"draw_face",
 ]);
 
 function stepKind(tool: string): StepKind {

@@ -72,6 +72,7 @@ const LABELS: Record<string, string> = {
 	list_materials: "顔と声のファイルを見る",
 	view_faces: "顔の画像を見る",
 	transcribe_voices: "声を文字起こし",
+	draw_face: "顔を描く",
 	set_character_face: "顔を設定する",
 	set_character_voice: "声を設定する",
 	COMPOSIO_SEARCH_TOOLS: "アプリの機能を探す",
