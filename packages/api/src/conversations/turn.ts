@@ -349,7 +349,7 @@ async function prepareTurn(
 			sessionId,
 			characterId: sessionId,
 			settings: agentSettings,
-			chief: character.chief,
+			game_master: character.game_master,
 			reporter,
 			addImages: (ids) =>
 				updateMessage(sessionId, replyId, {

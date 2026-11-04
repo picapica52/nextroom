@@ -124,9 +124,9 @@ export const characterSchema = z.object({
 	/** The voice its replies are spoken with, and the model that speaks it. */
 	voice: characterVoiceSchema,
 	agent: characterAgentSchema.default({ model: null, instructions: "" }),
-	/** The chief, who is there from the start and makes and looks after the other characters.
+	/** The game master, who is there from the start and makes and looks after the other characters.
 	 *  There is one, and it cannot be deleted. */
-	chief: z.boolean().default(false),
+	game_master: z.boolean().default(false),
 });
 export type Character = z.infer<typeof characterSchema>;
 
@@ -145,7 +145,7 @@ export interface CharacterSummary {
 	/** What speaks it. */
 	voice: TtsProvider;
 	has_avatar: boolean;
-	chief: boolean;
+	game_master: boolean;
 	created_at: number;
 	updated_at: number;
 }

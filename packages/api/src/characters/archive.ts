@@ -102,7 +102,7 @@ export function importArchive(data: Uint8Array): CharacterView {
 	const character = parsed.data;
 	character.id = newId("ch_");
 	character.updated_at = now();
-	character.chief = false;
+	character.game_master = false;
 	const avatar = files[AVATAR_FILE];
 	if (avatar && isPng(avatar)) files[AVATAR_FILE] = avatar;
 	else delete files[AVATAR_FILE];

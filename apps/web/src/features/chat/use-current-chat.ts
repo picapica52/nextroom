@@ -77,7 +77,7 @@ export function useCurrentChat({
 		if (replying) return;
 		void qc.invalidateQueries({ queryKey: qk.chatSessions() });
 		void qc.invalidateQueries({ queryKey: qk.affinity() });
-		// The chief may have made or changed other characters.
+		// The game master may have made or changed other characters.
 		void qc.invalidateQueries({ queryKey: qk.characters() });
 		void qc.invalidateQueries({ queryKey: qk.character() });
 	}, [replying, qc]);

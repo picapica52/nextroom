@@ -69,7 +69,7 @@ function summary(character: Character): CharacterSummary {
 		profile: persona.profile.slice(0, 120),
 		voice: character.voice.provider,
 		has_avatar: existsSync(avatarPath(character.id)),
-		chief: character.chief,
+		game_master: character.game_master,
 		created_at: character.created_at,
 		updated_at: character.updated_at,
 	};
@@ -86,7 +86,7 @@ export const getCharacter = (characterId: string) => viewOf(loadCharacter(charac
 export function createCharacter(
 	name = "",
 	persona: Partial<Persona> = {},
-	options: { instructions?: string; chief?: boolean } = {},
+	options: { instructions?: string; game_master?: boolean } = {},
 ): CharacterView {
 	const character: Character = {
 		id: newId("ch_"),
@@ -98,7 +98,7 @@ export function createCharacter(
 		},
 		voice: defaultCharacterVoice(),
 		agent: { model: null, instructions: options.instructions ?? "" },
-		chief: options.chief ?? false,
+		game_master: options.game_master ?? false,
 	};
 	saveCharacter(character);
 	return viewOf(character);
@@ -127,9 +127,10 @@ export function updateCharacter(
 	return viewOf(character);
 }
 
-/** Stops the chief from being deleted, before anything of it is removed. */
+/** Stops the game master from being deleted, before anything of it is removed. */
 export function assertDeletable(characterId: string): void {
-	if (loadCharacter(characterId).chief) throw new BadRequestError("チーフは削除できません");
+	if (loadCharacter(characterId).game_master)
+		throw new BadRequestError("ゲームマスターは削除できません");
 }
 
 export function deleteCharacter(characterId: string): void {

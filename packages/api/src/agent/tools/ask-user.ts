@@ -40,9 +40,9 @@ const askUser = defineTool({
 	},
 });
 
-/** The choices tool, when the agent settings turn it on. */
-export function askUserTools(settings: AgentSettings): ToolSet {
-	return settings.ask_user.enabled ? { [askUser.name]: askUser } : {};
+/** The choices tool, when the agent settings turn it on; the game master always has it. */
+export function askUserTools(settings: AgentSettings, always = false): ToolSet {
+	return always || settings.ask_user.enabled ? { [askUser.name]: askUser } : {};
 }
 
 /** The reply is over once it has offered its choices. */

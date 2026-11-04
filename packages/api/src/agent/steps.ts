@@ -15,6 +15,13 @@ const MAX_OUTPUT = 10000;
 const MAX_DETAIL = 10000;
 const FLUSH_MS = 250;
 
+const CHARACTER_TOOLS = new Set([
+	"list_characters",
+	"list_materials",
+	"view_faces",
+	"transcribe_voices",
+]);
+
 function stepKind(tool: string): StepKind {
 	if (tool === "web_search" || tool === "find_topic") return "web";
 	if (tool === "execute_command") return "sandbox";
@@ -22,7 +29,8 @@ function stepKind(tool: string): StepKind {
 	if (tool === "ask_user") return "ask";
 	if (tool === "send_photo") return "image";
 	if (tool === "update_memory") return "memory";
-	if (tool.endsWith("_character") || tool === "list_characters") return "character";
+	if (tool.endsWith("_character") || tool.startsWith("set_character_") || CHARACTER_TOOLS.has(tool))
+		return "character";
 	if (/^[A-Z0-9]+_[A-Z0-9_]+$/.test(tool)) return "app";
 	return "other";
 }

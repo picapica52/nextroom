@@ -149,6 +149,30 @@ export function addRefs(characterId: string, uploadId: string): CharacterVoiceRe
 	return voiceRefs(characterId);
 }
 
+/** The clips replaced by `wavs`, each with its transcript (the game master's choice). */
+export function replaceRefs(
+	characterId: string,
+	wavs: { name: string; data: Uint8Array; text: string }[],
+): CharacterVoiceRefs {
+	const before = loadClips(characterId);
+	mkdirSync(join(voiceDir(characterId), "refs"), { recursive: true });
+	const clips = wavs.map(({ name, data, text }): Clip => {
+		const clip: Clip = {
+			id: newId("ref_"),
+			name,
+			created_at: now(),
+			duration: wavSeconds(wavInfo(data)),
+			text: text.trim() || null,
+			edited: false,
+		};
+		writeFileSync(clipPath(characterId, clip.id), data);
+		return clip;
+	});
+	saveClips(characterId, clips);
+	for (const clip of before) rmSync(clipPath(characterId, clip.id), { force: true });
+	return voiceRefs(characterId);
+}
+
 export function deleteRefs(characterId: string, clipIds: string[]): CharacterVoiceRefs {
 	const doomed = new Set(clipIds);
 	const clips = loadClips(characterId);
