@@ -199,4 +199,6 @@ export interface MemoryOverview {
 	resource_id: string;
 	working_memory: string;
 	summary: string;
+	/** About how many tokens of conversation the next reply is given. */
+	context_tokens: number;
 }

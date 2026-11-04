@@ -27,6 +27,9 @@ export function MemoryView({ characterId }: { characterId: string }) {
 			<div className="flex flex-wrap items-center gap-2">
 				<p className="m-0 min-w-0 flex-1 text-sm text-muted-foreground">
 					{name} が覚えていること。会話の中で自動で更新されます。
+					{data
+						? ` いまの会話の長さは約 ${data.context_tokens.toLocaleString()} トークンです。`
+						: ""}
 				</p>
 				<Button
 					variant="ghost"
