@@ -37,10 +37,13 @@ export function AffinityBadge({ characterId }: { characterId: string | null }) {
 	return (
 		<span
 			className="inline-flex h-5.5 shrink-0 items-center gap-1.5 rounded-full border-[1.5px] border-foreground/15 bg-pastel-peach px-2.5 text-xs font-bold whitespace-nowrap"
-			title={`好感度 ${points(data)}（${remaining(data)}）`}
+			title={`${levelName(data)} 好感度 ${points(data)}（${remaining(data)}）`}
 		>
-			{levelName(data)}
-			{data.next !== null && <Meter value={progressOf(data)} className="w-10" />}
+			Lv{data.level}
+			<span className="hidden @[13rem]:inline">{data.label}</span>
+			{data.next !== null && (
+				<Meter value={progressOf(data)} className="hidden w-10 @[17rem]:flex" />
+			)}
 		</span>
 	);
 }

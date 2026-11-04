@@ -89,7 +89,7 @@ function ProviderModel({
 }) {
 	const models = useLlmModels(provider);
 	return (
-		<div className="grid gap-4 sm:grid-cols-[1fr_10rem]">
+		<div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
 			<Field>
 				<FieldLabel htmlFor={`${id}-model`}>モデル</FieldLabel>
 				<ApiModelPicker

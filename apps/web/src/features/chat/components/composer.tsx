@@ -95,7 +95,7 @@ export function Composer({
 						id="chat-message"
 						rows={1}
 						autoComplete="off"
-						className="field-sizing-content max-h-40 min-h-9 min-w-0 flex-1 resize-none self-center border-0 bg-transparent py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+						className="field-sizing-content max-h-40 min-h-9 min-w-0 flex-1 resize-none self-center border-0 bg-transparent py-1.5 text-sm outline-none placeholder:truncate placeholder:text-muted-foreground"
 						value={draft}
 						placeholder={placeholder}
 						onChange={(e) => onDraft(e.target.value)}

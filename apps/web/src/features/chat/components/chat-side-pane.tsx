@@ -2,6 +2,7 @@ import type { ChatMessage } from "@nextroom/contracts";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@nextroom/ui/components/sheet";
 import { PanelRightOpen } from "lucide-react";
 import type { ReactNode } from "react";
+import { useExtraWide } from "@/hooks/use-media-query";
 import type { ChatLayout } from "../use-chat-layout";
 import { CollapsiblePane, PaneRail, RailUpload } from "./pane-rail";
 import { SidePanel } from "./side-panel";
@@ -21,6 +22,7 @@ export function ChatSidePane({
 	messages: ChatMessage[];
 	log: ReactNode;
 }) {
+	const extraWide = useExtraWide();
 	if (!wide)
 		return (
 			layout.filesOpen && (
@@ -42,7 +44,7 @@ export function ChatSidePane({
 	return (
 		<CollapsiblePane
 			open={layout.panelOpen}
-			width={380}
+			width={extraWide ? 380 : 300}
 			className="min-w-0"
 			rail={
 				<PaneRail

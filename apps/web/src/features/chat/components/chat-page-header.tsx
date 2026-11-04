@@ -40,7 +40,7 @@ export function ChatPageHeader({
 				</PaneToggle>
 			)}
 			<CharacterAvatar character={character} className="size-9" />
-			<div className="min-w-0 flex-1">
+			<div className="@container min-w-0 flex-1">
 				<div className="flex min-w-0 items-center gap-2">
 					<div className="truncate font-medium">{currentId ? name : "話し相手"}</div>
 					{currentId && <AffinityBadge characterId={character?.id ?? null} />}

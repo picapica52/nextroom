@@ -39,45 +39,49 @@ export function ModelChoiceFields({
 	const options = useProviderOptions(provider);
 
 	return (
-		<div className={cn("grid gap-3 sm:grid-cols-[11rem_minmax(0,1fr)_8rem]", className)}>
-			<Field>
-				<FieldLabel htmlFor={`${id}-provider`} className="text-xs text-muted-foreground">
-					プロバイダー
-				</FieldLabel>
-				<SimpleSelect<LlmProvider>
-					id={`${id}-provider`}
-					value={provider}
-					onChange={(next) => next && setDraft({ provider: next, thinking })}
-					options={options}
-				/>
-			</Field>
-			<Field>
-				<FieldLabel htmlFor={`${id}-model`} className="text-xs text-muted-foreground">
-					モデル
-				</FieldLabel>
-				<ApiModelPicker
-					id={`${id}-model`}
-					models={models}
-					value={saved?.model ?? ""}
-					onChange={(model) => {
-						setDraft(undefined);
-						onChange({ provider, model, thinking });
-					}}
-				/>
-			</Field>
-			<Field>
-				<FieldLabel htmlFor={`${id}-thinking`} className="text-xs text-muted-foreground">
-					思考
-				</FieldLabel>
-				<SimpleSelect<ThinkingLevel>
-					id={`${id}-thinking`}
-					value={thinking}
-					onChange={(next) =>
-						saved ? onChange({ ...saved, thinking: next }) : setDraft({ provider, thinking: next })
-					}
-					options={THINKING_OPTIONS}
-				/>
-			</Field>
+		<div className={cn("@container", className)}>
+			<div className="grid grid-cols-1 gap-3 @xl:grid-cols-[11rem_minmax(0,1fr)_8rem]">
+				<Field>
+					<FieldLabel htmlFor={`${id}-provider`} className="text-xs text-muted-foreground">
+						プロバイダー
+					</FieldLabel>
+					<SimpleSelect<LlmProvider>
+						id={`${id}-provider`}
+						value={provider}
+						onChange={(next) => next && setDraft({ provider: next, thinking })}
+						options={options}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel htmlFor={`${id}-model`} className="text-xs text-muted-foreground">
+						モデル
+					</FieldLabel>
+					<ApiModelPicker
+						id={`${id}-model`}
+						models={models}
+						value={saved?.model ?? ""}
+						onChange={(model) => {
+							setDraft(undefined);
+							onChange({ provider, model, thinking });
+						}}
+					/>
+				</Field>
+				<Field>
+					<FieldLabel htmlFor={`${id}-thinking`} className="text-xs text-muted-foreground">
+						思考
+					</FieldLabel>
+					<SimpleSelect<ThinkingLevel>
+						id={`${id}-thinking`}
+						value={thinking}
+						onChange={(next) =>
+							saved
+								? onChange({ ...saved, thinking: next })
+								: setDraft({ provider, thinking: next })
+						}
+						options={THINKING_OPTIONS}
+					/>
+				</Field>
+			</div>
 		</div>
 	);
 }
