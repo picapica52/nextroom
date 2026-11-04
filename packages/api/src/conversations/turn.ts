@@ -36,7 +36,7 @@ import { streamReply, TEXT_BREAK } from "../agent";
 import type { CharacterContext } from "../agent/context";
 import { compactSoon } from "../agent/memory";
 import { emptyReplyError } from "../agent/models";
-import { type LlmConnection, replyConnections } from "../agent/providers";
+import { type LlmConnection, replyConnection } from "../agent/providers";
 import type { RunStarter } from "../agent/routines";
 import { TurnReporter } from "../agent/steps";
 import { BRIEF_NOTE } from "../characters/instructions";
@@ -245,14 +245,14 @@ function queueTurn(
 
 async function runTurn(job: Job, plan: TurnPlan) {
 	const { sessionId, replyId } = plan;
-	const connections = replyConnections(
+	const connection = replyConnection(
 		plan.settings,
 		plan.routine?.model ?? plan.character.agent.model,
 	);
 	const userText = await heardText(job, plan);
 	if (userText === null) return { text: "" };
 	job.checkCancelled();
-	const turn = await prepareTurn(job, plan, connections, userText);
+	const turn = await prepareTurn(job, plan, connection, userText);
 
 	updateMessage(sessionId, replyId, { status: "thinking" });
 	job.update(0.2, "返答を生成中");
@@ -316,7 +316,7 @@ interface PreparedTurn {
 async function prepareTurn(
 	job: Job,
 	plan: TurnPlan,
-	connections: LlmConnection[],
+	connection: LlmConnection,
 	userText: string,
 ): Promise<PreparedTurn> {
 	const { sessionId, replyId, character, agentSettings } = plan;
@@ -328,7 +328,7 @@ async function prepareTurn(
 		opening: plan.opening,
 		quiet: !!plan.routine,
 		spoken: !!plan.recording,
-		connection: connections,
+		connection,
 		signal: job.signal,
 	});
 	prompt.postHistory = [prompt.postHistory, affinity.note, plan.brief ? BRIEF_NOTE : ""]
@@ -343,9 +343,7 @@ async function prepareTurn(
 	return {
 		context: {
 			...prompt,
-			connections,
-			connection: connections[0] as LlmConnection,
-			request: plan.routine?.instruction ?? userText,
+			connection,
 			sessionId,
 			characterId: sessionId,
 			settings: agentSettings,
@@ -466,7 +464,7 @@ async function finishTurn(
 	if (user && done) recordTurn(sessionId, user, done, kept);
 	settleTurn(sessionId);
 	compactSoon(sessionId, {
-		connections: turn.context.connections,
+		connection: turn.context.connection,
 		charName: plan.character.persona.name,
 		userName: plan.settings.user_name,
 	});

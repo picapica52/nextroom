@@ -3,10 +3,9 @@
 
 import { z } from "zod";
 
-/** How much a character may do without asking: never ask, let the approval model decide (it asks
- *  when an action is off the request or cannot be undone), or ask before any action that changes
+/** How much a character may do without asking: never ask, or ask before any action that changes
  *  something. */
-const APPROVAL_MODES = ["never", "auto", "ask"] as const;
+const APPROVAL_MODES = ["never", "ask"] as const;
 export type ApprovalMode = (typeof APPROVAL_MODES)[number];
 
 /** An action always allowed (it never asks) or blocked (refused without asking), in every mode.

@@ -160,7 +160,6 @@ const ENTRIES: SettingsEntry[] = [
 		keywords: "アプリ連携 api キー",
 	},
 	{ label: "メインモデル", page: "models", anchor: "main-model", keywords: "llm 思考" },
-	{ label: "フォールバック", page: "models", anchor: "fallbacks", keywords: "予備 代わり" },
 	{
 		label: "画像の生成",
 		page: "models",
@@ -194,8 +193,7 @@ const ENTRIES: SettingsEntry[] = [
 	{ label: "選択肢を出す", page: "tools", anchor: "ask-user-enabled" },
 	{ label: "写真を送る", page: "tools", anchor: "send-photo-enabled", keywords: "画像 自撮り" },
 	{ label: "ルーティン", page: "tools", anchor: "routines-enabled", keywords: "定期 スケジュール" },
-	{ label: "操作の前に確認", page: "approvals", anchor: "approval-mode", keywords: "自動" },
-	{ label: "承認モデル", page: "approvals", anchor: "approval-model" },
+	{ label: "操作の前に確認", page: "approvals", anchor: "approval-mode" },
 	{ label: "許可・ブロック", page: "approvals", anchor: "approval-rules", keywords: "常に許可" },
 	{ label: "Discord に接続する", page: "discord", anchor: "discord-enabled", keywords: "bot" },
 	{ label: "Discord のトークン", page: "discord", anchor: "discord-token" },

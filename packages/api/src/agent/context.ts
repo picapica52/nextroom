@@ -12,12 +12,8 @@ export type CharacterContext = {
 	beforeHistory: string[];
 	/** After the conversation, with the user's message; empty for none. */
 	postHistory: string;
-	/** The model the reply is made with, then the fallbacks to try when it fails. */
-	connections: LlmConnection[];
-	/** The first of them, for what the tools ask a model. */
+	/** The model the reply is made with, and what the tools ask a model. */
 	connection: LlmConnection;
-	/** What the user asked for in this turn (or the routine's instruction), for the approvals. */
-	request: string;
 	/** The conversation. */
 	sessionId: string;
 	/** Also whose workspace the file tools work in. */

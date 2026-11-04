@@ -50,10 +50,6 @@ export interface ImageProviderStatus {
 export const chatSettingsSchema = z.object({
 	/** What every character replies with unless it has a model of its own. Null: none chosen yet. */
 	main_model: modelChoiceSchema.nullable(),
-	/** Tried in order when the main model fails before it says anything. */
-	fallback_models: z.array(modelChoiceSchema).max(5),
-	/** Checks the characters' actions in the Auto approval mode. Null: Auto asks like Ask. */
-	approval_model: modelChoiceSchema.nullable(),
 	/** Draws the photos the characters send (send_photo). Null: none chosen yet. */
 	image_model: imageModelChoiceSchema.nullable(),
 	/** Added after the fixed system prompt, for every character. */

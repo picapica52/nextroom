@@ -3,7 +3,7 @@
 
 import type { Persona } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import { replyConnections } from "../agent/providers";
+import { replyConnection } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
 
@@ -34,7 +34,7 @@ const INSTRUCTIONS = [
 
 export async function describeVoice(persona: Persona, signal?: AbortSignal): Promise<string> {
 	const settings = loadSettings();
-	const connection = replyConnections(settings);
+	const connection = replyConnection(settings);
 	const sources = Object.fromEntries(
 		SOURCE_FIELDS.filter((k) => persona[k].trim()).map((k) => [k, persona[k]]),
 	);

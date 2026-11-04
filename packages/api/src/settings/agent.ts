@@ -18,7 +18,7 @@ import { readSettingsSection, writeSettingsSection } from "./file";
 export type { AgentSettings };
 
 const AGENT_DEFAULTS: AgentSettings = {
-	approvals: { mode: "auto", rules: [] },
+	approvals: { mode: "ask", rules: [] },
 	computer: { enabled: false, timeout_sec: 300, memory_mb: 4096, cpus: 2 },
 	web_search: { enabled: false },
 	topic_search: { enabled: false },

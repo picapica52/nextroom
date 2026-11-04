@@ -8,7 +8,7 @@ import {
 	type PersonaExtract,
 } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import { replyConnections } from "../agent/providers";
+import { replyConnection } from "../agent/providers";
 import { BadRequestError, ConflictError } from "../lib/errors";
 import { jsonObjectOf } from "../lib/text";
 import { loadSettings } from "../settings/chat";
@@ -89,7 +89,7 @@ export async function extractPersona(
 ): Promise<PersonaExtract> {
 	if (files.length === 0) throw new BadRequestError("ファイルを選んでください");
 	const settings = loadSettings();
-	const connection = replyConnections(settings);
+	const connection = replyConnection(settings);
 
 	const truncated: PersonaExtract["truncated"] = [];
 	const sources: string[] = [];

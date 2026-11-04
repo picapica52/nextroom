@@ -3,7 +3,7 @@
 
 import { PERSONA_FIELDS, type Persona, type PersonaGeneratedField } from "@nextroom/contracts";
 import { generateOnce } from "../agent";
-import { replyConnections } from "../agent/providers";
+import { replyConnection } from "../agent/providers";
 import { ConflictError } from "../lib/errors";
 import { loadSettings } from "../settings/chat";
 import { FIELD_GUIDE } from "./fields";
@@ -62,7 +62,7 @@ export async function generatePersonaField(
 	signal?: AbortSignal,
 ): Promise<string> {
 	const settings = loadSettings();
-	const connection = replyConnections(settings);
+	const connection = replyConnection(settings);
 	const references = Object.fromEntries(
 		PERSONA_FIELDS.filter((k) => k !== field && reference.includes(k) && persona[k].trim()).map(
 			(k) => [k, persona[k]],
